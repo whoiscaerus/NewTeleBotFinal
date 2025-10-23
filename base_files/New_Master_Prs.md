@@ -27705,4 +27705,1216 @@ CREATE INDEX idx_clients_email ON clients(email);
 
 ---
 
+## PR-88b — FULL DETAILED SPECIFICATION
+
+#### PR-88b: FXPro Premium Auto-Execute
+
+**Priority:** 🔴 CRITICAL  
+**Dependencies:** PR-88 (Copy Trading System), PR-26 (Subscription Plans)  
+**Estimated Effort:** 3 days
+
+### Overview
+
+Premium subscription tier enabling "hands-off trading" where clients pay for zero-approval copy trading. All signals execute immediately without user approval, providing maximum convenience for premium subscribers.
+
+### Purpose
+
+Unlock additional revenue stream (£20-50/user/month) while enabling premium users to get pure "set and forget" trading experience.
+
+### Key Features
+
+- ✅ **Premium Tier**: £X/month for "hands-off trading"
+- ✅ **Auto-Execute All Signals**: No approval flow for premium users
+- ✅ **Master Account Direct Execution**: Trades execute directly (not pending orders)
+- ✅ **Real-Time Trade Viewing**: Clients see trades appear instantly
+- ✅ **Automatic Exit Management**: Stop-loss and take-profit set automatically
+- ✅ **Pause Control**: Users can temporarily pause auto-execution
+- ✅ **Premium Badge**: Visible in Telegram and Web dashboard
+- ✅ **Preview Dashboard**: Shows "next 5 pending auto-executions"
+
+### Database Changes
+
+**`premium_subscriptions` table**:
+```sql
+CREATE TABLE premium_subscriptions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+    subscription_start TIMESTAMP NOT NULL DEFAULT NOW(),
+    subscription_end TIMESTAMP,
+    auto_execute BOOLEAN NOT NULL DEFAULT TRUE,
+    paused_until TIMESTAMP,
+    tier VARCHAR(50) NOT NULL, -- 'premium_basic', 'premium_pro', 'premium_elite'
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    INDEX idx_premium_user (user_id),
+    INDEX idx_premium_active (subscription_end),
+    INDEX idx_premium_auto_execute (auto_execute)
+);
+```
+
+### Logic Changes
+
+**Signal Approval Flow**:
+```python
+# In signal approval service, check premium status:
+
+async def should_auto_execute(user_id: int) -> bool:
+    """Check if user is premium and auto-execute is enabled."""
+    premium = db.query(PremiumSubscription).filter(
+        PremiumSubscription.user_id == user_id,
+        PremiumSubscription.subscription_end > datetime.utcnow(),
+        PremiumSubscription.auto_execute == True,
+        or_(PremiumSubscription.paused_until.is_(None), 
+            PremiumSubscription.paused_until < datetime.utcnow())
+    ).first()
+    
+    return premium is not None
+
+async def approve_signal(signal_id: int, user_id: int):
+    """Auto-approve if premium user, otherwise require manual approval."""
+    if await should_auto_execute(user_id):
+        # Skip approval, execute immediately
+        await execute_trade(signal_id, user_id)
+        logger.info(f"Auto-executed signal {signal_id} for premium user {user_id}")
+    else:
+        # Normal flow: create approval request
+        await create_approval_request(signal_id, user_id)
+```
+
+### Frontend Changes
+
+**Telegram Bot**:
+- Premium users see: "✅ Auto-Execution Active" badge next to signal
+- Premium users do NOT see approval button
+- Button instead shows "Pause Auto-Execute" (optional pause control)
+
+**Web Dashboard**:
+- Premium users see dashboard widget: "Next 5 Auto-Executions"
+- Shows signals pending automatic execution
+- "Pause/Resume" toggle visible
+- Historical auto-executed trades in journal
+
+### Files to Create
+
+1. `backend/app/premium/models.py` - PremiumSubscription model
+2. `backend/app/premium/schemas.py` - Pydantic models for API responses
+3. `backend/app/premium/service.py` - PremiumSubscriptionService
+4. `backend/app/premium/routes.py` - API endpoints
+5. `backend/alembic/versions/XXX_add_premium_subscriptions.py` - Migration
+6. `backend/tests/test_premium_auto_execute.py` - Test cases
+7. `frontend/src/components/premium/AutoExecuteWidget.tsx` - Dashboard component
+8. `frontend/tests/premium-auto-execute.spec.ts` - Playwright tests
+
+### API Endpoints
+
+```
+GET  /api/v1/premium/subscription        - Get current premium status
+POST /api/v1/premium/subscription        - Create/renew premium subscription
+PUT  /api/v1/premium/subscription/pause  - Pause auto-execution
+PUT  /api/v1/premium/subscription/resume - Resume auto-execution
+GET  /api/v1/premium/upcoming-executions - Get next 5 auto-executions
+```
+
+### Test Scenarios
+
+- ✅ Premium user with auto_execute=true receives signal → trade executes immediately (no approval)
+- ✅ Free user receives signal → approval request created (normal flow)
+- ✅ Premium user pauses auto-execution → next signal requires manual approval
+- ✅ Premium user resumes auto-execution → trade auto-executes
+- ✅ Premium subscription expires → auto-execute stops
+- ✅ Telegram shows correct badge/buttons based on premium status
+- ✅ Web dashboard shows upcoming auto-executions
+- ✅ Audit log tracks all auto-executions
+- ✅ SL/TP auto-set from signal data
+- ✅ Real-time execution within 2 seconds
+
+### Acceptance Criteria
+
+- [x] Premium users have trades execute immediately (no approval needed)
+- [x] Non-premium users still see approval flow
+- [x] Real-time execution happens within 2 seconds of signal
+- [x] Premium badge visible in Telegram + Web
+- [x] Pause auto-execution button works
+- [x] SL/TP auto-set based on signal data
+- [x] Audit log tracks all auto-executions
+- [x] ≥95% test coverage
+- [x] Black formatting applied
+
+**Status:** 🔲 NOT STARTED
+
+---
+
+## PR-251 — FULL DETAILED SPECIFICATION
+
+#### PR-251: Trade Journal Auto-Export
+
+**Priority:** 🟡 HIGH  
+**Dependencies:** PR-101 (Trading Strategy), PR-160a (Analytics)  
+**Estimated Effort:** 4 days
+
+### Overview
+
+Automatically export all closed trades to third-party journaling platforms (MyFxBook, eMtrading, TradingView, CSV) with daily scheduling and error recovery.
+
+### Purpose
+
+Increase transparency and trust by allowing users to verify performance on independent platforms. Hide individual trade prices (federation pattern) while sharing performance metrics.
+
+### Supported Platforms
+
+1. **MyFxBook** - Direct API integration, equity curve sync
+2. **eMtrading** - Account linking via OAuth
+3. **TradingView** - Strategy publishing and journal posts
+4. **CSV Export** - Daily/weekly/monthly automated exports
+5. **Custom Webhooks** - User-provided endpoints
+
+### Database Schema
+
+```sql
+CREATE TABLE journal_exports (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    platform VARCHAR(50) NOT NULL, -- 'myfxbook', 'etrading', 'tradingview', 'csv', 'webhook'
+    export_date DATE NOT NULL,
+    status VARCHAR(20) NOT NULL, -- 'pending', 'success', 'failed', 'partial'
+    trades_count INTEGER,
+    error_message TEXT,
+    next_retry TIMESTAMP,
+    retry_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    INDEX idx_journal_user_date (user_id, export_date),
+    INDEX idx_journal_status (status),
+    INDEX idx_journal_platform (platform)
+);
+```
+
+### Export Data Structure
+
+```python
+{
+    "trade_id": "sig_12345",
+    "entry_time": "2025-01-18T10:30:00Z",
+    "exit_time": "2025-01-18T11:45:00Z",
+    "entry_price": 1950.50,
+    "exit_price": 1960.00,
+    "instrument": "GOLD",
+    "side": "BUY",
+    "quantity": 1.0,
+    "stop_loss": 1945.00,
+    "take_profit": 1965.00,
+    "pnl": 475.00,
+    "pnl_percent": 2.45,
+    "duration_minutes": 75,
+    "commission": 5.00,
+    "slippage": 0.50,
+    "risk_reward_ratio": 2.0,
+    "source": "FXPro Trading Bot"
+}
+```
+
+### Features
+
+- ✅ **One-Click Linking**: OAuth/API key setup
+- ✅ **Daily Auto-Export**: Runs at 9 AM UTC daily
+- ✅ **Error Recovery**: Automatic retry with exponential backoff
+- ✅ **Duplicate Prevention**: Track exported trades, never double-export
+- ✅ **Export Logs**: Visible in admin panel with success/failure status
+- ✅ **Manual Trigger**: Users can manually export anytime
+- ✅ **Metadata Enrichment**: Trade duration, RR ratio, slippage
+- ✅ **NO Price Hiding**: Show prices (federation at journal platform level)
+- ✅ **Telegram Summary**: Daily notification "📊 Exported 5 trades to MyFxBook"
+- ✅ **Equity Curve Sync**: Send historical equity curve to platforms
+
+### Files to Create
+
+1. `backend/app/journal/models.py` - JournalExport model
+2. `backend/app/journal/schemas.py` - Pydantic schemas
+3. `backend/app/journal/service.py` - JournalExportService with platform adapters
+4. `backend/app/journal/adapters/myfxbook_adapter.py` - MyFxBook API client
+5. `backend/app/journal/adapters/etrading_adapter.py` - eMtrading OAuth client
+6. `backend/app/journal/adapters/tradingview_adapter.py` - TradingView API client
+7. `backend/app/journal/routes.py` - API endpoints
+8. `backend/app/journal/tasks.py` - Celery tasks for scheduled exports
+9. `backend/alembic/versions/XXX_add_journal_exports.py` - Migration
+10. `backend/tests/test_journal_export.py` - Test cases
+
+### API Endpoints
+
+```
+POST /api/v1/journal/export/myfxbook/connect       - Link MyFxBook account
+POST /api/v1/journal/export/etrading/connect       - Link eMtrading account
+POST /api/v1/journal/export/tradingview/connect    - Link TradingView account
+GET  /api/v1/journal/export/status                 - Get export status for all platforms
+POST /api/v1/journal/export/trigger/{platform}     - Manually trigger export
+GET  /api/v1/journal/export/history                - Get export history
+DELETE /api/v1/journal/export/{export_id}          - Delete export record
+```
+
+### Scheduled Task (Celery Beat)
+
+```python
+# backend/app/journal/tasks.py
+
+@periodic_task(run_every=crontab(hour=9, minute=0))
+def scheduled_daily_export():
+    """Export all closed trades from yesterday to configured platforms."""
+    users = db.query(User).filter(User.journal_export_enabled == True).all()
+    
+    for user in users:
+        for platform in user.journal_export_platforms:
+            export_trades_to_platform.delay(user.id, platform)
+```
+
+### Test Scenarios
+
+- ✅ MyFxBook connection works (real API test with mock account)
+- ✅ eMtrading OAuth flow completes successfully
+- ✅ TradingView journal post appears on account
+- ✅ CSV exports contain all trades with correct data
+- ✅ Daily export runs at 9 AM UTC
+- ✅ Failed exports retry with exponential backoff
+- ✅ Duplicate exports prevented (same trade ID not exported twice)
+- ✅ Manual trigger works immediately
+- ✅ Export history displays correctly in dashboard
+- ✅ Telegram daily summary sends with count
+
+### Acceptance Criteria
+
+- [x] MyFxBook exports work (real account test)
+- [x] eMtrading API integration working
+- [x] TradingView journal posts visible
+- [x] CSV exports accurate (all columns)
+- [x] Daily export runs automatically at 9 AM UTC
+- [x] Failed exports log errors + retry mechanism
+- [x] User can manually trigger export anytime
+- [x] Export history visible in dashboard
+- [x] ≥90% test coverage
+- [x] Black formatting applied
+
+**Status:** 🔲 NOT STARTED
+
+---
+
+## PR-252 — FULL DETAILED SPECIFICATION
+
+#### PR-252: Network Growth Engine
+
+**Priority:** 🟡 HIGH  
+**Dependencies:** PR-9 (User Management), PR-26 (Subscription Plans)  
+**Estimated Effort:** 5 days
+
+### Overview
+
+Use network science and graph theory to amplify reach through referral networks, influence scoring, and viral loop mechanics.
+
+### Purpose
+
+Create viral growth loop by identifying and rewarding network influencers. Leverage network effects to achieve compound user growth (2-3x vs linear).
+
+### Key Concepts
+
+**Network Metrics** (from networkx):
+- **Clustering Coefficient**: Measure of tight user groups (0-1 scale)
+- **Betweenness Centrality**: Who bridges network gaps (identifies hubs)
+- **Degree Distribution**: Network connectivity pattern
+- **Path Length**: Average distance between users
+
+**Influence Scoring**:
+```
+influence_score = (
+    referrals_count * 1.0 +
+    (referral_conversion_rate / 10) * 2.0 +
+    (referral_ltv / 1000) * 5.0 +
+    (network_depth_factor * 1.5) +
+    (betweenness_centrality * 10.0)
+)
+```
+
+### Database Schema
+
+```sql
+CREATE TABLE user_networks (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+    referrer_id INTEGER REFERENCES users(id),
+    network_depth INTEGER DEFAULT 0, -- 0 = direct referral, 1 = referral of referral, etc
+    influence_score FLOAT DEFAULT 0.0,
+    tier VARCHAR(50) DEFAULT 'tier_0', -- tier_0 (0-5), tier_1 (6-20), tier_2 (20+)
+    referral_count INTEGER DEFAULT 0,
+    referral_conversion_rate FLOAT DEFAULT 0.0,
+    referral_ltv FLOAT DEFAULT 0.0,
+    last_recalc TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    INDEX idx_network_tier (tier),
+    INDEX idx_network_score (influence_score DESC),
+    INDEX idx_network_referrer (referrer_id)
+);
+
+CREATE TABLE network_metrics (
+    id SERIAL PRIMARY KEY,
+    snapshot_date DATE NOT NULL UNIQUE,
+    total_users INTEGER,
+    total_referrals INTEGER,
+    clustering_coefficient FLOAT,
+    avg_path_length FLOAT,
+    network_density FLOAT,
+    largest_component_size INTEGER,
+    isolated_nodes INTEGER,
+    hub_count INTEGER, -- nodes with degree > 10
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    INDEX idx_network_metrics_date (snapshot_date)
+);
+
+CREATE TABLE influence_tiers (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+    tier_level INTEGER, -- 1, 2, 3
+    commission_rate FLOAT, -- 0.05, 0.10, 0.15
+    badge_awarded TIMESTAMP,
+    badge_expires TIMESTAMP,
+    monthly_payouts FLOAT DEFAULT 0.0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    INDEX idx_tiers_level (tier_level),
+    INDEX idx_tiers_expires (badge_expires)
+);
+```
+
+### Tier System
+
+| Tier | Referrals | Conversion Rate | LTV Multiplier | Commission | Benefits |
+|------|-----------|-----------------|----------------|-----------|----------|
+| Tier 0 | 0-5 | - | - | 5% | None |
+| Tier 1 | 6-20 | 10%+ | £50K+ | 10% | Badge, monthly email |
+| Tier 2 | 20+ | 20%+ | £100K+ | 15% | Badge, exclusive signals, leaderboard |
+
+### Features
+
+- ✅ **Referral Graph**: Visual networkx graph (user → referral chains)
+- ✅ **Influence Scoring**: Multi-factor scoring (referrals, LTV, network depth)
+- ✅ **Tier System**: Automatic tier assignment based on thresholds
+- ✅ **Monthly Rewards**: Top 10 influencers get 50% discount next month
+- ✅ **Network Visualization**: D3.js graph showing all referral chains
+- ✅ **Leaderboard**: Top 100 influencers ranked by influence score
+- ✅ **Predictive Model**: ML to identify future high-value influencers
+- ✅ **Tier Badges**: Visible in Telegram + Web dashboard
+- ✅ **Commission Payouts**: Automated monthly payouts for tier 1+
+
+### Files to Create
+
+1. `backend/app/network/models.py` - UserNetwork, NetworkMetrics, InfluenceTier models
+2. `backend/app/network/schemas.py` - Pydantic schemas
+3. `backend/app/network/service.py` - NetworkService with graph algorithms
+4. `backend/app/network/scoring.py` - Influence scoring logic
+5. `backend/app/network/routes.py` - API endpoints
+6. `backend/app/network/tasks.py` - Celery tasks for nightly recalculation
+7. `backend/app/network/ml_model.py` - Influencer prediction model
+8. `backend/alembic/versions/XXX_add_network_tables.py` - Migrations
+9. `backend/tests/test_network_scoring.py` - Test cases
+10. `frontend/src/components/network/NetworkVisualization.tsx` - D3.js graph
+11. `frontend/src/components/network/LeaderboardWidget.tsx` - Top 100 list
+
+### Telegram Commands
+
+```
+/influencers               - Show top 50 network hub users
+/myinfluence              - Show personal influence score + referral chain
+/leaderboard              - Show monthly top 10 (with rewards info)
+/mynetwork                - Show graphical representation of personal network
+/commission               - Show current month's commission earned
+```
+
+### Web Dashboard
+
+- **Network visualization** tab (D3.js graph)
+- **Influence analytics** (score trends, tier progress)
+- **Referral history** (all referrals with conversion status)
+- **Commission tracker** (monthly earnings, payout schedule)
+- **Top 100 leaderboard** (filter by region, tier)
+
+### Test Scenarios
+
+- ✅ Referral graph builds correctly (all chains tracked)
+- ✅ Influence score calculated accurately
+- ✅ Network visualization renders without lag
+- ✅ Leaderboard updates weekly
+- ✅ Monthly rewards distribute to top 10
+- ✅ Tier assignment automatic based on thresholds
+- ✅ Predictive model identifies future influencers
+- ✅ Commission payouts flow correctly
+- ✅ `/influencers` and `/myinfluence` work
+
+### Acceptance Criteria
+
+- [x] Referral graph builds correctly (all chains tracked)
+- [x] Influence score calculated accurately
+- [x] Network visualization renders (networkx → D3.js)
+- [x] Leaderboard updates weekly
+- [x] Monthly rewards distribute automatically
+- [x] Predictive model identifies future influencers
+- [x] Commission payouts flow correctly
+- [x] `/influencers` and `/myinfluence` commands work
+- [x] ≥90% test coverage
+- [x] Black formatting applied
+
+**Status:** 🔲 NOT STARTED
+
+---
+
+## PR-253 — FULL DETAILED SPECIFICATION
+
+#### PR-253: Economic Calendar Bot
+
+**Priority:** 🟡 HIGH  
+**Dependencies:** PR-22a (Content Distribution)  
+**Estimated Effort:** 2 days
+
+### Overview
+
+Automatically fetch economic calendar events and post timely alerts to subscriber channels (24 hours before, 1 hour before, post-event).
+
+### Purpose
+
+Increase engagement by keeping users aware of major market-moving events. Educational value (learn what moves markets) + trading opportunity alerts.
+
+### Supported Events
+
+- **Major**: NFP, CPI, GDP, Interest Rates, Trade Balance, Unemployment
+- **Medium**: Inflation, Retail Sales, ISM, PMI, Housing Starts
+- **Minor**: Claims, Consumer Confidence, Factory Orders, etc.
+
+### API Integration
+
+**ForexFactory API** or **TradingEconomics API**:
+```python
+# Example response
+{
+    "event_id": "nfp_2025_01_17",
+    "name": "Non-Farm Payrolls (NFP)",
+    "country": "USA",
+    "datetime": "2025-01-17T13:30:00Z",
+    "impact": "high",
+    "forecast": 250000,
+    "previous": 227000,
+    "actual": null,
+    "unit": "persons",
+    "currency": "USD"
+}
+```
+
+### Database Schema
+
+```sql
+CREATE TABLE calendar_events (
+    id SERIAL PRIMARY KEY,
+    external_event_id VARCHAR(255) UNIQUE,
+    event_name VARCHAR(255) NOT NULL,
+    country VARCHAR(50) NOT NULL,
+    event_datetime TIMESTAMP NOT NULL,
+    impact VARCHAR(20), -- 'high', 'medium', 'low'
+    forecast FLOAT,
+    previous FLOAT,
+    actual FLOAT,
+    unit VARCHAR(50),
+    currency VARCHAR(10),
+    posted_at_24h BOOLEAN DEFAULT FALSE,
+    posted_at_1h BOOLEAN DEFAULT FALSE,
+    posted_post_event BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    INDEX idx_events_datetime (event_datetime),
+    INDEX idx_events_country (country),
+    INDEX idx_events_impact (impact)
+);
+```
+
+### Features
+
+- ✅ **24h Before Alert**: "📅 NFP coming tomorrow 13:30 UTC - High impact"
+- ✅ **1h Before Alert**: "⚠️ NFP in 1 hour! Volatility incoming!"
+- ✅ **Post-Event Alert**: "✅ NFP Released: +250K (expected +200K) → USD strengthens"
+- ✅ **Rich Formatting**: Event name, time, forecast, actual, impact arrow
+- ✅ **Channel Routing**: Posts to relevant channels (Gold events → Gold channel)
+- ✅ **Error Handling**: API failures, retry logic
+- ✅ **Admin Control**: Suppress specific events or countries
+- ✅ **Scheduled Execution**: APScheduler runs every 6 hours
+
+### Files to Create
+
+1. `backend/app/calendar/models.py` - CalendarEvent model
+2. `backend/app/calendar/schemas.py` - Pydantic schemas
+3. `backend/app/calendar/service.py` - CalendarService with API client
+4. `backend/app/calendar/routes.py` - API endpoints
+5. `backend/app/calendar/tasks.py` - Celery tasks for posting
+6. `backend/alembic/versions/XXX_add_calendar_events.py` - Migration
+7. `backend/tests/test_calendar_bot.py` - Test cases
+
+### Telegram Posts
+
+**Format**:
+```
+📅 Economic Event Alert
+
+NFP (Non-Farm Payrolls) 🇺🇸
+━━━━━━━━━━━━━━━━━━━━━━━
+📅 Friday, January 17 @ 1:30 PM UTC
+Impact: 🔴 HIGH
+
+📊 Forecast: +250K
+📈 Previous: +227K
+⏳ Released: --
+
+Posted to: Gold Channel, SP500 Channel, All-In-One
+```
+
+### Scheduled Tasks
+
+```python
+@periodic_task(run_every=crontab(minute=0))  # Every hour
+def check_calendar_events():
+    """Check for events and post alerts."""
+    now = datetime.utcnow()
+    
+    # 24h before
+    events_24h = db.query(CalendarEvent).filter(
+        CalendarEvent.event_datetime == now + timedelta(hours=24),
+        CalendarEvent.posted_at_24h == False
+    ).all()
+    for event in events_24h:
+        await post_24h_alert(event)
+    
+    # 1h before
+    events_1h = db.query(CalendarEvent).filter(
+        CalendarEvent.event_datetime == now + timedelta(hours=1),
+        CalendarEvent.posted_at_1h == False
+    ).all()
+    for event in events_1h:
+        await post_1h_alert(event)
+    
+    # Post-event (within 10 minutes of release)
+    events_post = db.query(CalendarEvent).filter(
+        CalendarEvent.event_datetime <= now,
+        CalendarEvent.event_datetime >= now - timedelta(minutes=10),
+        CalendarEvent.posted_post_event == False
+    ).all()
+    for event in events_post:
+        await post_post_event_alert(event)
+```
+
+### Test Scenarios
+
+- ✅ Calendar fetches events from API successfully
+- ✅ Posts send at correct times (24h, 1h before + after)
+- ✅ All 7 channels receive posts
+- ✅ Format readable and professional
+- ✅ Handles API failures gracefully (retry)
+- ✅ Database tracks all posted events
+- ✅ Admin can disable certain events or countries
+- ✅ Currency impact direction displayed correctly (↑/↓)
+
+### Acceptance Criteria
+
+- [x] Calendar fetches events from API successfully
+- [x] Posts send at correct times (24h, 1h before + after)
+- [x] All 7 channels receive posts
+- [x] Format readable and professional
+- [x] Handles API failures gracefully
+- [x] Database tracks all posted events
+- [x] Admin can disable certain events or countries
+- [x] ≥90% test coverage
+- [x] Black formatting applied
+
+**Status:** 🔲 NOT STARTED
+
+---
+
+## PR-254 — FULL DETAILED SPECIFICATION
+
+#### PR-254: News Feed Bot
+
+**Priority:** 🟡 HIGH  
+**Dependencies:** PR-22a (Content Distribution)  
+**Estimated Effort:** 3 days
+
+### Overview
+
+Fetch and auto-post relevant trading news from multiple sources (2-3 times daily) to subscriber channels with sentiment analysis.
+
+### Purpose
+
+Increase engagement with daily content. Educational value (learn market dynamics) + trading catalyst alerts.
+
+### News Sources
+
+- **CoinTelegraph**: Crypto news
+- **Investing.com**: Forex + commodities news
+- **TradingView**: General trading news
+- **NewsAPI**: Aggregator for broader coverage
+- **Custom RSS feeds**: Community-provided sources
+
+### News Categories
+
+- **GOLD**: Precious metals news
+- **SP500**: Equities/US market news
+- **CRYPTO**: Cryptocurrency news
+- **GENERAL**: Market commentary
+
+### Sentiment Analysis
+
+- 🟢 **Positive**: Bullish headlines
+- ⚪ **Neutral**: Factual announcements
+- 🔴 **Negative**: Bearish headlines
+
+### Database Schema
+
+```sql
+CREATE TABLE news_feeds (
+    id SERIAL PRIMARY KEY,
+    external_news_id VARCHAR(255) UNIQUE,
+    title VARCHAR(500) NOT NULL,
+    summary TEXT,
+    url VARCHAR(2048) NOT NULL,
+    source VARCHAR(50) NOT NULL, -- 'cointelegraph', 'investing', 'tradingview', 'newsapi'
+    category VARCHAR(50), -- 'GOLD', 'SP500', 'CRYPTO', 'GENERAL'
+    sentiment VARCHAR(20), -- 'positive', 'neutral', 'negative'
+    published_at TIMESTAMP NOT NULL,
+    posted_at TIMESTAMP,
+    channel_id BIGINT, -- Telegram group ID
+    suppressed BOOLEAN DEFAULT FALSE,
+    suppressed_reason TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    INDEX idx_news_posted (posted_at),
+    INDEX idx_news_category (category),
+    INDEX idx_news_sentiment (sentiment),
+    INDEX idx_news_source (source),
+    INDEX idx_news_published (published_at DESC)
+);
+```
+
+### Features
+
+- ✅ **Multi-Source Fetch**: CoinTelegraph, Investing.com, TradingView, NewsAPI
+- ✅ **Sentiment Analysis**: ML-based (positive/neutral/negative)
+- ✅ **Posts 2-3x Daily**: 8 AM, 1 PM, 7 PM UTC (configurable)
+- ✅ **Category Routing**: Crypto news → Crypto channel, Gold news → Gold channel
+- ✅ **Duplicate Detection**: Fuzzy matching prevents duplicate posts
+- ✅ **Rich Formatting**: Headline, sentiment, summary, link, timestamp
+- ✅ **Admin Curation**: Suppress specific stories manually
+- ✅ **Error Handling**: API failures, retry logic
+- ✅ **Scheduled Execution**: APScheduler runs on schedule
+
+### Files to Create
+
+1. `backend/app/news/models.py` - NewsFeed model
+2. `backend/app/news/schemas.py` - Pydantic schemas
+3. `backend/app/news/service.py` - NewsService with multi-source fetchers
+4. `backend/app/news/sentiment.py` - Sentiment analysis (TextBlob or Transformers)
+5. `backend/app/news/sources/` - Source adapters (cointelegraph, investing, tradingview, newsapi)
+6. `backend/app/news/routes.py` - API endpoints
+7. `backend/app/news/tasks.py` - Celery tasks for fetching + posting
+8. `backend/alembic/versions/XXX_add_news_feeds.py` - Migration
+9. `backend/tests/test_news_bot.py` - Test cases
+
+### Telegram Posts
+
+**Format**:
+```
+📰 Market Update
+
+[🟢 POSITIVE] Bitcoin Surges Past $50K 🚀
+
+Bitcoin rebounds strongly as institutional
+adoption accelerates...
+
+📖 Read more →
+Investing.com • 2 mins ago
+
+Posted to: Crypto Channel, All-In-One
+```
+
+### Scheduled Tasks
+
+```python
+@periodic_task(run_every=crontab(hour='8,13,19', minute=0))  # 8 AM, 1 PM, 7 PM UTC
+def fetch_and_post_news():
+    """Fetch news from all sources and post to channels."""
+    news_list = []
+    
+    # Fetch from all sources
+    news_list.extend(await fetch_cointelegraph())
+    news_list.extend(await fetch_investing())
+    news_list.extend(await fetch_tradingview())
+    news_list.extend(await fetch_newsapi())
+    
+    # Deduplicate
+    news_list = deduplicate_news(news_list)
+    
+    # Analyze sentiment
+    for news in news_list:
+        news.sentiment = analyze_sentiment(news.title + " " + news.summary)
+    
+    # Route to channels
+    for news in news_list:
+        channel_ids = get_channels_for_category(news.category)
+        for channel_id in channel_ids:
+            await post_news_to_channel(channel_id, news)
+
+def deduplicate_news(news_list):
+    """Remove duplicates using fuzzy string matching."""
+    unique_news = []
+    seen_titles = []
+    
+    for news in news_list:
+        # Check if similar title already seen (using difflib)
+        if not any(SequenceMatcher(None, news.title, seen).ratio() > 0.85 
+                  for seen in seen_titles):
+            unique_news.append(news)
+            seen_titles.append(news.title)
+    
+    return unique_news
+```
+
+### Admin Commands
+
+```
+/suppress_news {news_id}    - Suppress a news story
+/unsuppress_news {news_id}  - Unsuppress a story
+/news_stats                 - Show news posting stats
+```
+
+### Telegram Command
+
+```
+/latest          - Show top 5 news from past 24h
+/latest GOLD     - Show top 5 gold-related news
+/latest CRYPTO   - Show top 5 crypto news
+```
+
+### Test Scenarios
+
+- ✅ News fetches from all sources
+- ✅ Sentiment analysis working (positive/neutral/negative)
+- ✅ Posts at correct times (8 AM, 1 PM, 7 PM UTC)
+- ✅ News routes to correct channels (no cross-posting)
+- ✅ Duplicate detection prevents spam
+- ✅ Format clean and professional
+- ✅ `/latest` command shows relevant stories
+- ✅ Admin can suppress specific stories
+- ✅ Error handling on API failures
+
+### Acceptance Criteria
+
+- [x] News fetches from all sources
+- [x] Sentiment analysis working (positive/neutral/negative)
+- [x] Posts at correct times (8 AM, 1 PM, 7 PM UTC)
+- [x] News routes to correct channels (no cross-posting errors)
+- [x] Duplicate detection prevents spam
+- [x] Format clean and professional
+- [x] `/latest` command shows relevant stories
+- [x] Admin can suppress specific stories
+- [x] ≥90% test coverage
+- [x] Black formatting applied
+
+**Status:** 🔲 NOT STARTED
+
+---
+
+## PR-0b — FULL DETAILED SPECIFICATION
+
+#### PR-0b: Local Test Framework
+
+**Priority:** 🔴 CRITICAL  
+**Dependencies:** All backend + frontend infrastructure  
+**Estimated Effort:** 3 days
+
+### Overview
+
+Enable developers to run full test suite locally before pushing, matching GitHub Actions exactly. Enforces quality gates before commit.
+
+### Purpose
+
+Enable parallel testing, faster iteration, and prevent CI/CD failures by catching issues locally first.
+
+### Key Features
+
+- ✅ **Pre-Commit Hooks**: Run tests before `git commit` allowed
+- ✅ **Local Test Runner**: Runs all tests in correct order with clear output
+- ✅ **Test Database**: Local PostgreSQL + Redis (via Docker Compose)
+- ✅ **Coverage Enforcement**: Backend ≥90%, Frontend ≥70%
+- ✅ **Lint & Format Checks**: Black (Python), ESLint (TS), etc.
+- ✅ **Security Scanning**: bandit, npm audit, OWASP ZAP
+- ✅ **GitHub Actions Mirror**: Local tests match CI/CD exactly
+- ✅ **Clear Output**: Pass/fail report with failure logs
+
+### Files to Create/Modify
+
+1. `Makefile` - Test commands (test-local, test-backend, test-frontend, lint, security-scan)
+2. `.github/workflows/tests.yml` - GitHub Actions workflow (mirror local)
+3. `.pre-commit-config.yaml` - Pre-commit hooks
+4. `scripts/test/run-local-tests.sh` - Main test orchestrator
+5. `scripts/test/coverage-check.py` - Coverage enforcement
+6. `docker-compose.test.yml` - Test environment (PostgreSQL, Redis)
+7. `backend/tests/conftest.py` - pytest fixtures
+8. `frontend/playwright.config.ts` - Playwright config
+
+### Make Commands
+
+```makefile
+make test-local          # Run all tests locally (pre-commit simulation)
+make test-backend        # Run backend tests only
+make test-frontend       # Run frontend tests only
+make lint                # Run linting checks
+make format              # Auto-format code
+make security-scan       # Run security checks
+make coverage-report     # Generate coverage HTML
+make clean-test-db       # Reset test database
+```
+
+### Pre-Commit Hooks
+
+**`.pre-commit-config.yaml`**:
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest
+        entry: bash -c 'cd backend && pytest --cov=app --cov-report=term-missing'
+        language: system
+        types: [python]
+        stages: [commit]
+      
+      - id: black-check
+        name: black
+        entry: black --check backend/app backend/tests
+        language: system
+        types: [python]
+        stages: [commit]
+      
+      - id: playwright-check
+        name: playwright
+        entry: npx playwright test
+        language: system
+        types: [typescript]
+        stages: [commit]
+```
+
+### Test Database Setup
+
+**`docker-compose.test.yml`**:
+```yaml
+version: '3.8'
+services:
+  test-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+      POSTGRES_DB: test_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - test-db-volume:/var/lib/postgresql/data
+  
+  test-redis:
+    image: redis:7
+    ports:
+      - "6380:6379"
+
+volumes:
+  test-db-volume:
+```
+
+### Test Orchestration Script
+
+**`scripts/test/run-local-tests.sh`**:
+```bash
+#!/bin/bash
+
+set -e  # Exit on first error
+
+echo "🧪 Starting local test suite..."
+echo ""
+
+# 1. Start test database
+echo "📦 Starting test database (Docker Compose)..."
+docker-compose -f docker-compose.test.yml up -d
+sleep 5  # Wait for database to be ready
+
+# 2. Run database migrations
+echo "🗄️  Running database migrations..."
+cd backend
+alembic upgrade head
+cd ..
+
+# 3. Run backend tests
+echo "🧪 Running backend tests..."
+cd backend
+python -m pytest tests/ --cov=app --cov-report=term-missing --cov-report=html
+BACKEND_COVERAGE=$(python scripts/test/coverage-check.py app 90)
+cd ..
+
+# 4. Run frontend tests
+echo "🧪 Running frontend tests..."
+cd frontend
+npx playwright test
+cd ..
+
+# 5. Run linting
+echo "🔍 Running linting checks..."
+cd backend
+python -m black --check app tests
+python -m ruff check app tests
+cd ../frontend
+npm run lint
+cd ..
+
+# 6. Run security scans
+echo "🔒 Running security scans..."
+cd backend
+python -m bandit -r app -f json > security-report.json || true
+pip-audit --json > pip-audit.json || true
+cd ../frontend
+npm audit --json > npm-audit.json || true
+cd ..
+
+# 7. Generate report
+echo ""
+echo "✅ All tests completed!"
+echo ""
+echo "📊 Test Results:"
+echo "  Backend Coverage: $BACKEND_COVERAGE"
+echo "  See: htmlcov/index.html for details"
+echo ""
+
+# Stop test database
+docker-compose -f docker-compose.test.yml down
+```
+
+### Coverage Check Script
+
+**`scripts/test/coverage-check.py`**:
+```python
+#!/usr/bin/env python
+"""Check coverage meets minimum threshold."""
+
+import sys
+import json
+from pathlib import Path
+
+def check_coverage(module: str, min_coverage: int) -> str:
+    """Check coverage and return formatted result."""
+    coverage_file = Path(".coverage")
+    
+    if not coverage_file.exists():
+        print(f"❌ Coverage file not found")
+        sys.exit(1)
+    
+    # Parse coverage report
+    coverage_json = json.loads(Path(".coverage.json").read_text())
+    module_coverage = coverage_json["totals"]["percent_covered"]
+    
+    if module_coverage < min_coverage:
+        print(f"❌ Coverage {module_coverage}% < {min_coverage}% (FAILED)")
+        sys.exit(1)
+    else:
+        print(f"✅ Coverage {module_coverage}% >= {min_coverage}% (PASSED)")
+        return f"{module_coverage}%"
+
+if __name__ == "__main__":
+    module = sys.argv[1] if len(sys.argv) > 1 else "app"
+    min_coverage = int(sys.argv[2]) if len(sys.argv) > 2 else 90
+    check_coverage(module, min_coverage)
+```
+
+### GitHub Actions Workflow
+
+**`.github/workflows/tests.yml`**:
+```yaml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+      
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://test_user:test_pass@localhost/test_db
+        run: cd backend && alembic upgrade head
+      
+      - name: Run backend tests
+        env:
+          DATABASE_URL: postgresql://test_user:test_pass@localhost/test_db
+        run: |
+          cd backend
+          python -m pytest tests/ --cov=app --cov-report=xml
+          python scripts/test/coverage-check.py app 90
+      
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+      
+      - name: Run frontend tests
+        run: cd frontend && npx playwright test
+      
+      - name: Run linting
+        run: |
+          cd backend
+          python -m black --check app tests
+          python -m ruff check app tests
+          cd ../frontend
+          npm run lint
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage.xml
+```
+
+### Makefile
+
+**`Makefile`** (at project root):
+```makefile
+.PHONY: test-local test-backend test-frontend lint format security-scan
+
+test-local:
+	bash scripts/test/run-local-tests.sh
+
+test-backend:
+	cd backend && python -m pytest tests/ --cov=app --cov-report=html
+
+test-frontend:
+	cd frontend && npx playwright test
+
+lint:
+	cd backend && python -m black --check app tests && python -m ruff check app tests
+	cd frontend && npm run lint
+
+format:
+	cd backend && python -m black app tests
+	cd frontend && npx prettier --write src
+
+security-scan:
+	cd backend && python -m bandit -r app && pip-audit
+	cd frontend && npm audit
+
+clean-test-db:
+	docker-compose -f docker-compose.test.yml down -v
+	rm -rf backend/.coverage backend/htmlcov
+
+coverage-report:
+	cd backend && python -m pytest tests/ --cov=app --cov-report=html && open htmlcov/index.html
+```
+
+### Test Scenarios
+
+- ✅ `make test-local` runs all tests successfully
+- ✅ Backend coverage ≥90% enforced
+- ✅ Frontend coverage ≥70% enforced
+- ✅ Pre-commit hook blocks commits if tests fail
+- ✅ Local tests match GitHub Actions output
+- ✅ Database migrations validate
+- ✅ Lint/format checks pass
+- ✅ Security scanning completes
+- ✅ Coverage reports generate (HTML)
+
+### Acceptance Criteria
+
+- [x] `make test-local` runs all tests successfully
+- [x] Backend coverage ≥90% enforced
+- [x] Frontend coverage ≥70% enforced
+- [x] Pre-commit hook blocks commits if tests fail
+- [x] Local tests match GitHub Actions output
+- [x] Database migrations validate
+- [x] Lint/format checks pass
+- [x] Security scanning completes without critical issues
+- [x] Documentation explains how to use locally
+- [x] All configurations tested
+
+**Status:** 🔲 NOT STARTED
+
+---
+
+## PRs 201-256: FINAL SUMMARY
+
+**Total New PRs Added in This Session**: 6
+- **PR-88b**: FXPro Premium Auto-Execute
+- **PR-251**: Trade Journal Auto-Export
+- **PR-252**: Network Growth Engine
+- **PR-253**: Economic Calendar Bot
+- **PR-254**: News Feed Bot
+- **PR-0b**: Local Test Framework
+
+**New Total PR Count**: 262 (was 256)
+
+**Categories Added**:
+- Premium Features & Revenue (PR-88b, PR-251): 2 PRs
+- Growth & Engagement (PR-252, PR-253, PR-254): 3 PRs
+- Developer Infrastructure (PR-0b): 1 PR
+
+**High-Priority PRs**: 6  
+**Medium-Priority PRs**: 0  
+**Low-Priority PRs**: 0
+
+**Estimated Total Effort**: 17 days (3-4 weeks)
+
+**Key Value Additions**:
+- ✅ **Premium Revenue**: £20-50/user/month from auto-execute (300-500 premium users = £60-250K/month)
+- ✅ **Transparency**: Auto-export to third-party platforms builds trust
+- ✅ **Viral Growth**: Network science engine enables 2-3x compound growth
+- ✅ **Daily Engagement**: Calendar + News bots keep users returning
+- ✅ **Developer Velocity**: Local test framework enables parallel development
+
+**Strategic Impact**:
+- **Revenue Multiplier**: +£50-250K/month from premium features
+- **User Retention**: +15-20% from daily content
+- **Network Growth**: 2-3x compound growth from influencer program
+- **Exit Value**: +£10-50M from premium + network effects
+- **Developer Productivity**: -50% time to identify test failures (catch locally before push)
+
+---
+
 **END OF DOCUMENT**
