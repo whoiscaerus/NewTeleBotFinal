@@ -88,16 +88,14 @@ jobs:
           sudo apt-get install -y postgresql-client redis-tools
 
       - name: Install backend dependencies
-        working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r backend/requirements.txt
           echo "✓ Backend dependencies installed"
 
       - name: Run pytest with coverage
-        working-directory: backend
         run: |
-          python -m pytest tests/ -v --tb=short --cov=app --cov-report=term-missing --cov-report=html
+          python -m pytest backend/tests/ -v --tb=short --cov=backend.app --cov-report=term-missing --cov-report=html
           echo "✓ Backend tests passed"
 
       - name: Upload coverage reports
