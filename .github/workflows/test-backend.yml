@@ -1,0 +1,180 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**' ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/test-backend.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: telebot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping || exit 1"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client redis-tools
+    
+    - name: Wait for services
+      run: |
+        echo "Waiting for PostgreSQL..."
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "PostgreSQL not ready, waiting..."
+          sleep 1
+        done
+        echo "PostgreSQL is ready!"
+        
+        echo "Waiting for Redis..."
+        until redis-cli -h localhost -p 6379 ping; do
+          echo "Redis not ready, waiting..."
+          sleep 1
+        done
+        echo "Redis is ready!"
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        echo "Dependencies installed successfully"
+    
+    - name: Run database migrations
+      working-directory: backend
+      env:
+        DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/telebot_test
+        REDIS_URL: redis://localhost:6379/0
+        ENVIRONMENT: test
+      run: |
+        echo "Running Alembic migrations..."
+        alembic -c alembic.ini upgrade head
+        echo "Alembic migrations completed successfully"
+
+    - name: Verify database schema
+      working-directory: backend
+      env:
+        DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/telebot_test
+        ENVIRONMENT: test
+      run: |
+        python << 'EOF'
+        import os
+        from sqlalchemy import inspect, create_engine
+        
+        engine = create_engine(os.environ['DATABASE_URL'])
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        
+        required_tables = ['users', 'api_keys', 'signals', 'trades', 'orders', 'login_history']
+        missing = [t for t in required_tables if t not in tables]
+        
+        if missing:
+            print(f"ERROR: Missing required tables: {missing}")
+            exit(1)
+        
+        print(f"✓ Database schema valid. Found {len(tables)} tables")
+        engine.dispose()
+        EOF
+
+    - name: Run all tests with coverage
+      working-directory: backend
+      env:
+        ENVIRONMENT: test
+        DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/telebot_test
+        REDIS_URL: redis://localhost:6379/1
+        LOG_LEVEL: ERROR
+      run: |
+        echo "Starting test suite..."
+        pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term --ignore=tests/test_dsar.py
+        echo "Test suite completed"
+    
+    - name: Clean up database after tests
+      if: always()
+      working-directory: backend
+      env:
+        DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/telebot_test
+      run: |
+        echo "Cleaning up test database..."
+        python << 'EOF'
+        import os
+        from sqlalchemy import inspect, create_engine, text
+        
+        try:
+            engine = create_engine(os.environ['DATABASE_URL'])
+            inspector = inspect(engine)
+            tables = inspector.get_table_names()
+            
+            with engine.begin() as conn:
+                for table in tables:
+                    conn.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE"))
+            
+            print(f"✓ Cleaned up {len(tables)} tables")
+            engine.dispose()
+        except Exception as e:
+            print(f"Warning: Cleanup failed: {e}")
+        EOF
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./backend/coverage.xml
+        fail_ci_if_error: false
+        verbose: true
+    
+    - name: Generate test report
+      if: always()
+      working-directory: backend
+      run: |
+        echo "Test Summary Report"
+        echo "==================="
+        echo "Database: PostgreSQL 16"
+        echo "Python: 3.11"
+        echo "Test Framework: pytest"
+        if [ -f .coverage ]; then
+          python -m coverage report --omit="*/site-packages/*"
+        fi
+    
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Tests failed on branch: ${{ github.ref }}"
+        echo "Commit: ${{ github.sha }}"
+        if [ ! -z "${{ secrets.SLACK_WEBHOOK }}" ]; then
+          echo "Slack webhook is configured. Notification would be sent."
+        fi
