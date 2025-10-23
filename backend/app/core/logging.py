@@ -7,7 +7,6 @@ Request IDs are included in every log entry for distributed tracing.
 import json
 import logging
 import sys
-import time
 from contextvars import ContextVar
 from typing import Any
 

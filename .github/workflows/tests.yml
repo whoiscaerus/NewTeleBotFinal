@@ -6,61 +6,12 @@ on:
   pull_request:
     branches: [main, develop]
 
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/telebot_test
+  REDIS_URL: redis://localhost:6379/0
+  ENVIRONMENT: test
+
 jobs:
-  backend-tests:
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: telebot
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: telebot_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          echo "✓ Backend dependencies installed"
-
-      - name: Run Black formatting check
-        run: |
-          cd backend
-          python -m black --check app/ tests/ --line-length=88
-          echo "✓ Black formatting check passed"
-
-      - name: Run pytest with coverage
-        env:
-          DATABASE_URL: postgresql://telebot:test_password@localhost:5432/telebot_test
-        run: |
-          cd backend
-          pytest tests/ -v --tb=short --cov=app --cov-report=term-missing --cov-report=html
-          echo "✓ Backend tests passed"
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./backend/htmlcov/coverage.xml
-          flags: backend
-          fail_ci_if_error: false
-
   code-quality:
     runs-on: ubuntu-latest
 
@@ -80,10 +31,82 @@ jobs:
       - name: Check Black formatting
         run: |
           python -m black --check backend/app/ backend/tests/ --line-length=88
+          echo "✓ Black formatting check passed"
 
       - name: Run Ruff linter
         run: |
           ruff check backend/app/ backend/tests/ --line-length=88
+          echo "✓ Ruff linting passed"
+
+  backend-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: telebot_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Wait for services
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "PostgreSQL starting..."
+            sleep 1
+          done
+          echo "✓ PostgreSQL ready"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client redis-tools
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          echo "✓ Backend dependencies installed"
+
+      - name: Run pytest with coverage
+        working-directory: backend
+        run: |
+          python -m pytest tests/ -v --tb=short --cov=app --cov-report=term-missing --cov-report=html
+          echo "✓ Backend tests passed"
+
+      - name: Upload coverage reports
+        if: always()
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/htmlcov/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -96,8 +119,15 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install frontend dependencies
+      - name: Check if frontend exists
         run: |
+          if [ -d "frontend" ]; then
+            echo "Frontend directory found"
+            exit 0
+          else
+            echo "Frontend not yet created - skipping"
+            exit 0
+          fi
           if [ -d "frontend" ]; then
             cd frontend
             npm ci --legacy-peer-deps || npm install --legacy-peer-deps

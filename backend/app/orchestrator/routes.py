@@ -4,7 +4,6 @@ These endpoints provide basic health checks and version information.
 """
 
 import time
-from datetime import datetime
 
 from fastapi import APIRouter
 

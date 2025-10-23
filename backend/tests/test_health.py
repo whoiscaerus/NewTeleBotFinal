@@ -3,7 +3,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.core.logging import _request_id_context
 from backend.app.orchestrator.main import create_app
 
 
