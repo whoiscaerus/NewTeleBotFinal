@@ -1,0 +1,1 @@
+"""FXPro Trading Bot application."""
