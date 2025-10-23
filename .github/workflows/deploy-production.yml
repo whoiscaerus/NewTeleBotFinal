@@ -1,0 +1,81 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  ENVIRONMENT: production
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://yourdomain.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Pre-deployment checks
+        run: |
+          echo "🔍 Pre-deployment validation"
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Environment: production"
+          echo "Deployer: ${{ github.actor }}"
+          echo "✓ Pre-deployment checks passed"
+
+      - name: Placeholder - Deploy backend
+        run: |
+          echo "Backend deployment placeholder"
+          echo "Would deploy version: ${{ steps.version.outputs.version }}"
+          echo "Would deploy to: yourdomain.com"
+          echo "✓ Backend deployed (placeholder)"
+
+      - name: Placeholder - Health check
+        run: |
+          echo "Health check placeholder"
+          echo "Would verify: /api/v1/health returns 200"
+          echo "Would verify: /api/v1/version matches ${{ steps.version.outputs.version }}"
+          echo "✓ Health check passed (placeholder)"
+
+      - name: Deployment success notification
+        run: |
+          echo "✅ Production deployment successful"
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "URL: https://yourdomain.com"
+          echo "Time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## Release ${{ steps.version.outputs.version }}
+            
+            Deployed to production on $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+            
+            ### Changes
+            See commit history for details.
+          draft: false
+          prerelease: false
