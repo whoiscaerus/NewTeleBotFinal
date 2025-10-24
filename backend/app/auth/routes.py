@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from backend.app.auth.rbac import require_roles
 from backend.app.auth.schemas import LoginRequest, LoginResponse, UserCreate, UserResponse
 from backend.app.auth.utils import create_access_token, decode_token, hash_password, verify_password
 from backend.app.core.db import get_db
+from backend.app.core.decorators import rate_limit, abuse_throttle
 from backend.app.core.logging import get_logger
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -78,30 +79,36 @@ async def get_current_user(
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(request: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
+@rate_limit(max_tokens=10, refill_rate=0.17, window_seconds=60)  # 10/min
+async def register(
+    request: Request,
+    user_create: UserCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     """Register a new user.
 
     Args:
-        request: User registration request (email, password)
+        request: HTTP request (for rate limiting)
+        user_create: User registration request (email, password)
         db: Database session
 
     Returns:
         UserResponse: Created user details
 
     Raises:
-        HTTPException: 400 if email already exists
+        HTTPException: 400 if email already exists, 429 if rate limited
     """
     logger = get_logger(__name__)
 
     # Check if user exists
-    stmt = select(User).where(User.email == request.email)
+    stmt = select(User).where(User.email == user_create.email)
     result = await db.execute(stmt)
     if result.scalar_one_or_none():
-        logger.warning("Registration failed: email already exists", extra={"email": request.email})
+        logger.warning("Registration failed: email already exists", extra={"email": user_create.email})
         raise HTTPException(status_code=400, detail="Email already registered")
 
     # Create user
-    user = User(email=request.email, password_hash=hash_password(request.password))
+    user = User(email=user_create.email, password_hash=hash_password(user_create.password))
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -112,28 +119,35 @@ async def register(request: UserCreate, db: Annotated[AsyncSession, Depends(get_
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest, db: Annotated[AsyncSession, Depends(get_db)]):
+@rate_limit(max_tokens=10, refill_rate=0.17, window_seconds=60)  # 10/min
+@abuse_throttle(max_failures=5, lockout_seconds=300)  # 5 failures = 5 min lockout
+async def login(
+    request: Request,
+    login_req: LoginRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     """Login user with email and password.
 
     Args:
-        request: Login credentials (email, password)
+        request: HTTP request (for rate limiting)
+        login_req: Login credentials (email, password)
         db: Database session
 
     Returns:
         LoginResponse: JWT token and user info
 
     Raises:
-        HTTPException: 401 if credentials invalid
+        HTTPException: 401 if credentials invalid, 429 if rate limited or throttled
     """
     logger = get_logger(__name__)
 
     # Find user
-    stmt = select(User).where(User.email == request.email)
+    stmt = select(User).where(User.email == login_req.email)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(request.password, user.password_hash):
-        logger.warning("Login failed: invalid credentials", extra={"email": request.email})
+    if not user or not verify_password(login_req.password, user.password_hash):
+        logger.warning("Login failed: invalid credentials", extra={"email": login_req.email})
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Generate token
