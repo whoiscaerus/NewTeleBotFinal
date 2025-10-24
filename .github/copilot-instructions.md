@@ -246,7 +246,7 @@
          signal = create_signal(instrument="XAUUSD", side="buy")
          assert signal.id is not None
          assert signal.status == "new"
-     
+
      def test_create_signal_invalid_instrument():
          """Test signal creation rejects invalid instrument."""
          with pytest.raises(ValueError, match="invalid instrument"):
@@ -264,11 +264,11 @@
          """Test complete flow: signal ingestion → approval → trade execution."""
          # Create signal
          signal = await create_signal(db_session, instrument="GOLD")
-         
+
          # Approve signal
          approval = await approve_signal(db_session, signal.id)
          assert approval.status == "approved"
-         
+
          # Verify trade executed
          trades = await get_trades_for_signal(db_session, signal.id)
          assert len(trades) == 1
@@ -404,7 +404,7 @@ THEN: Safe to push to GitHub
    - Example:
      ```markdown
      # PR-88b Implementation Complete
-     
+
      ## Checklist
      - [x] Premium auto-execute logic implemented
      - [x] Database schema created (premium_subscriptions table)
@@ -412,11 +412,11 @@ THEN: Safe to push to GitHub
      - [x] Web dashboard shows auto-execution status
      - [x] 95% test coverage achieved
      - [x] All acceptance criteria passing
-     
+
      ## Test Results
      Backend: 95% coverage (112/118 lines)
      Frontend: 72% coverage (85/118 components)
-     
+
      ## Verification
      ✅ verify-pr-88b.sh passing
      ✅ GitHub Actions CI/CD passing
@@ -430,12 +430,12 @@ THEN: Safe to push to GitHub
    - Example:
      ```markdown
      # PR-88b Acceptance Criteria
-     
+
      ## Criterion 1: Premium users trade execute immediately (no approval)
      - Test: `test_premium_user_auto_execute`
      - Status: ✅ PASSING
      - Coverage: 3 test cases (happy path + 2 edge cases)
-     
+
      ## Criterion 2: Non-premium users see approval flow
      - Test: `test_free_user_approval_flow`
      - Status: ✅ PASSING
@@ -451,15 +451,15 @@ THEN: Safe to push to GitHub
    - Example:
      ```markdown
      # PR-88b Business Impact
-     
+
      ## Revenue Impact
      - New premium tier: £20-50/user/month
      - Projected 10% of users upgrade → +£2-5M/year
-     
+
      ## User Experience
      - Premium users: "set and forget" trading
      - No approval fatigue → +40% premium tier adoption
-     
+
      ## Technical
      - Auto-execution reduces support tickets
      - SL/TP automation increases win rate
@@ -658,7 +658,7 @@ class SignalCreate(BaseModel):
     instrument: str = Field(..., min_length=2, max_length=20, regex="^[A-Z0-9._-]+$")
     side: str = Field(..., pattern="^(buy|sell)$")
     price: float = Field(..., gt=0, lt=1_000_000)
-    
+
     @validator("instrument")
     def validate_instrument(cls, v):
         """Validate instrument is known."""
@@ -675,19 +675,19 @@ async def create_signal(
 ):
     """
     Create a new trading signal.
-    
+
     Args:
         request: Signal creation request
         db: Database session
         current_user: Authenticated user
         logger: Structured logger
-    
+
     Returns:
         SignalOut: Created signal details
-    
+
     Raises:
         HTTPException: 400 if validation fails, 401 if unauthorized, 500 on error
-    
+
     Example:
         >>> response = await create_signal(
         ...     SignalCreate(instrument="GOLD", side="buy", price=1950.50),
@@ -702,12 +702,12 @@ async def create_signal(
             "instrument": request.instrument,
             "side": request.side
         })
-        
+
         # Validate input
         if request.instrument not in VALID_INSTRUMENTS:
             logger.warning(f"Invalid instrument: {request.instrument}")
             raise HTTPException(status_code=400, detail="Invalid instrument")
-        
+
         # Create signal
         signal = Signal(
             instrument=request.instrument,
@@ -715,24 +715,24 @@ async def create_signal(
             price=request.price,
             user_id=current_user.id
         )
-        
+
         db.add(signal)
         await db.commit()
         await db.refresh(signal)
-        
+
         logger.info(f"Signal created: {signal.id}", extra={"signal_id": signal.id})
-        
+
         return SignalOut(
             id=signal.id,
             instrument=signal.instrument,
             status="new",
             created_at=signal.created_at
         )
-    
+
     except ValueError as e:
         logger.error(f"Signal validation failed: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     except Exception as e:
         logger.error(f"Unexpected error creating signal: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -748,12 +748,12 @@ from backend.app.core.db import Base
 
 class Signal(Base):
     """Trading signal model.
-    
+
     Represents a signal to buy/sell an instrument at a specific price.
     Signals are created by the strategy engine and approved by users.
     """
     __tablename__ = "signals"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     instrument = Column(String(20), nullable=False, index=True)
@@ -762,11 +762,11 @@ class Signal(Base):
     status = Column(Integer, nullable=False, default=0)  # 0=new, 1=approved, 2=filled, 3=closed
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     user = relationship("User", back_populates="signals")
     approvals = relationship("Approval", back_populates="signal", cascade="all, delete-orphan")
-    
+
     # Indexes
     __table_args__ = (
         Index("ix_signals_user_created", "user_id", "created_at"),
@@ -795,10 +795,10 @@ interface SignalsListProps {
 
 /**
  * Component: SignalsList
- * 
+ *
  * Displays list of pending trading signals with approve/reject buttons.
  * Auto-refreshes at specified interval.
- * 
+ *
  * @example
  * <SignalsList refreshInterval={5000} onSignalApproved={handleApproved} />
  */
@@ -836,7 +836,7 @@ export const SignalsList: React.FC<SignalsListProps> = ({
     try {
       await approveSignal(signal.id, true);
       logger.info("Signal approved", { signal_id: signal.id });
-      
+
       setSignals(prev => prev.filter(s => s.id !== signal.id));
       onSignalApproved?.(signal);
     } catch (err) {
@@ -907,7 +907,7 @@ async def test_create_signal_valid(
         },
         headers=auth_headers
     )
-    
+
     assert response.status_code == 201
     data = response.json()
     assert data["instrument"] == "GOLD"
@@ -929,7 +929,7 @@ async def test_create_signal_invalid_instrument(
         },
         headers=auth_headers
     )
-    
+
     assert response.status_code == 400
     assert "Invalid instrument" in response.json()["detail"]
 
@@ -946,7 +946,7 @@ async def test_create_signal_unauthorized(
             "price": 1950.50
         }
     )
-    
+
     assert response.status_code == 401
 ```
 
@@ -958,17 +958,17 @@ import { test, expect } from "@playwright/test";
 test.describe("SignalsList Component", () => {
   test("should load and display signals", async ({ page }) => {
     await page.goto("/dashboard");
-    
+
     const signals = page.locator("[data-testid=signal-card]");
     await expect(signals).toHaveCount(3);  // 3 pending signals
   });
 
   test("should approve a signal on button click", async ({ page }) => {
     await page.goto("/dashboard");
-    
+
     const approveButton = page.locator("[data-testid=approve-button]").first();
     await approveButton.click();
-    
+
     const signals = page.locator("[data-testid=signal-card]");
     await expect(signals).toHaveCount(2);  // 1 less after approval
   });
@@ -978,9 +978,9 @@ test.describe("SignalsList Component", () => {
     await page.route("/api/v1/signals", route => {
       route.abort("failed");
     });
-    
+
     await page.goto("/dashboard");
-    
+
     const error = page.locator("[data-testid=error-message]");
     await expect(error).toContainText("Failed to load signals");
   });
@@ -1036,7 +1036,7 @@ def process_signal(signal: Signal) -> Signal:
     """Process a signal with full validation and error handling."""
     if not signal.instrument:
         raise ValueError("Signal must have instrument")
-    
+
     try:
         return _validate_and_process(signal)
     except ValidationError as e:
@@ -1090,7 +1090,7 @@ class Settings(BaseSettings):
     max_signal_price: int = 1000000
     api_timeout_seconds: int = 30
     db_host: str = "localhost"
-    
+
     class Config:
         env_file = ".env"
 
@@ -1254,7 +1254,7 @@ Once current PR is 100% complete:
 
 3. Add to `/base_files/PROJECT_TEMPLATES/02_UNIVERSAL_PROJECT_TEMPLATE.md`
    - Find section: `## 📚 LESSONS LEARNED - Common Issues & Solutions`
-   - Add new lesson as item #N (increment number)
+   - Add new lesson as item (increment number after existing lessons)
    - Format exactly like existing lessons (12+ examples as reference)
    - Keep same structure: Problem → Solution → Prevention
 
