@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.auth.routes import router as auth_router
 from backend.app.core.errors import (
     APIException,
-    problem_detail_exception_handler,
     generic_exception_handler,
+    problem_detail_exception_handler,
 )
 from backend.app.core.middleware import RequestIDMiddleware
 from backend.app.core.settings import get_settings
@@ -15,7 +15,7 @@ from backend.app.core.settings import get_settings
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application.
-    
+
     Initializes:
     - FastAPI app with metadata
     - CORS middleware
@@ -23,12 +23,12 @@ def create_app() -> FastAPI:
     - Error handlers (RFC 7807)
     - Authentication routes
     - Health check endpoints
-    
+
     Returns:
         FastAPI: Configured application instance
     """
     settings = get_settings()
-    
+
     app = FastAPI(
         title="Trading Signal Platform",
         version="0.1.0",
@@ -37,7 +37,7 @@ def create_app() -> FastAPI:
 
     # Add middlewares
     app.add_middleware(RequestIDMiddleware)
-    
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],  # TODO: Restrict in production

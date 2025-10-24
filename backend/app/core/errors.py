@@ -2,8 +2,8 @@
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Optional
 
 from fastapi import Request, status
 from pydantic import BaseModel, Field
@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 class ProblemDetail(BaseModel):
     """RFC 7807 Problem Detail model for API errors.
-    
+
     Spec: https://tools.ietf.org/html/rfc7807
-    
+
     Example:
         {
             "type": "https://api.example.com/errors/validation",
@@ -38,16 +38,16 @@ class ProblemDetail(BaseModel):
     title: str = Field(..., description="Short error title (e.g., 'Validation Error')")
     status: int = Field(..., description="HTTP status code")
     detail: str = Field(..., description="Detailed error message for client")
-    instance: Optional[str] = Field(
+    instance: str | None = Field(
         None, description="URI of problematic resource (e.g., /api/v1/users/123)"
     )
-    request_id: Optional[str] = Field(
+    request_id: str | None = Field(
         None, description="Correlation ID for tracing (from X-Request-Id)"
     )
-    timestamp: Optional[str] = Field(
+    timestamp: str | None = Field(
         None, description="ISO 8601 timestamp when error occurred"
     )
-    errors: Optional[list[dict[str, str]]] = Field(
+    errors: list[dict[str, str]] | None = Field(
         None, description="Field-level validation errors"
     )
 
@@ -80,7 +80,7 @@ ERROR_TYPES = {
 
 class APIException(Exception):
     """Base class for API exceptions that map to RFC 7807 responses.
-    
+
     Example:
         raise APIException(
             status_code=400,
@@ -97,11 +97,11 @@ class APIException(Exception):
         error_type: str,
         title: str,
         detail: str,
-        instance: Optional[str] = None,
-        errors: Optional[list[dict[str, str]]] = None,
+        instance: str | None = None,
+        errors: list[dict[str, str]] | None = None,
     ):
         """Initialize API exception.
-        
+
         Args:
             status_code: HTTP status code (400, 401, 403, 404, 409, 422, 429, 500)
             error_type: Key from ERROR_TYPES (validation, authentication, etc.)
@@ -118,12 +118,12 @@ class APIException(Exception):
         self.errors = errors
         super().__init__(detail)
 
-    def to_problem_detail(self, request_id: Optional[str] = None) -> ProblemDetail:
+    def to_problem_detail(self, request_id: str | None = None) -> ProblemDetail:
         """Convert exception to RFC 7807 ProblemDetail.
-        
+
         Args:
             request_id: Correlation ID for tracing
-        
+
         Returns:
             ProblemDetail: RFC 7807 formatted error response
         """
@@ -134,7 +134,7 @@ class APIException(Exception):
             detail=self.detail,
             instance=self.instance,
             request_id=request_id,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             errors=self.errors,
         )
 
@@ -145,8 +145,8 @@ class ValidationError(APIException):
     def __init__(
         self,
         detail: str,
-        instance: Optional[str] = None,
-        errors: Optional[list[dict[str, str]]] = None,
+        instance: str | None = None,
+        errors: list[dict[str, str]] | None = None,
     ):
         super().__init__(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -185,7 +185,7 @@ class AuthorizationError(APIException):
 class NotFoundError(APIException):
     """Not found error (404)."""
 
-    def __init__(self, resource: str, resource_id: Optional[str] = None):
+    def __init__(self, resource: str, resource_id: str | None = None):
         detail = f"{resource} not found"
         instance = f"/{resource.lower()}/{resource_id}" if resource_id else None
         super().__init__(
@@ -235,13 +235,13 @@ class ServerError(APIException):
 
 async def problem_detail_exception_handler(request: Request, exc: APIException):
     """FastAPI exception handler for APIException.
-    
+
     Converts APIException to RFC 7807 ProblemDetail response.
-    
+
     Args:
         request: HTTP request
         exc: APIException instance
-    
+
     Returns:
         JSONResponse: RFC 7807 formatted error response
     """
@@ -272,11 +272,11 @@ async def problem_detail_exception_handler(request: Request, exc: APIException):
 
 async def pydantic_validation_exception_handler(request: Request, exc: Exception):
     """Handle Pydantic validation errors and convert to RFC 7807.
-    
+
     Args:
         request: HTTP request
         exc: Exception from Pydantic
-    
+
     Returns:
         JSONResponse: RFC 7807 formatted validation error response
     """
@@ -288,11 +288,13 @@ async def pydantic_validation_exception_handler(request: Request, exc: Exception
     if isinstance(exc, PydanticValidationError):
         for error in exc.errors():
             field_path = ".".join(str(p) for p in error["loc"])
-            errors.append({
-                "field": field_path,
-                "message": error["msg"],
-                "type": error["type"],
-            })
+            errors.append(
+                {
+                    "field": field_path,
+                    "message": error["msg"],
+                    "type": error["type"],
+                }
+            )
 
     request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
 
@@ -303,7 +305,7 @@ async def pydantic_validation_exception_handler(request: Request, exc: Exception
         detail="Request body validation failed",
         instance=request.url.path,
         request_id=request_id,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         errors=errors if errors else None,
     )
 
@@ -324,11 +326,11 @@ async def pydantic_validation_exception_handler(request: Request, exc: Exception
 
 async def generic_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions and convert to RFC 7807.
-    
+
     Args:
         request: HTTP request
         exc: Unexpected exception
-    
+
     Returns:
         JSONResponse: RFC 7807 formatted server error response
     """
@@ -353,7 +355,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
         detail="An unexpected error occurred",
         instance=request.url.path,
         request_id=request_id,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
     )
 
     return JSONResponse(

@@ -1,7 +1,5 @@
 """Tests for settings module."""
 
-import os
-
 import pytest
 
 from backend.app.core.settings import (

@@ -2,10 +2,9 @@
 
 import pytest
 from httpx import AsyncClient
-from pydantic import BaseModel, Field
 
 from backend.app.core.errors import (
-    APIException,
+    ERROR_TYPES,
     AuthenticationError,
     AuthorizationError,
     ConflictError,
@@ -13,9 +12,8 @@ from backend.app.core.errors import (
     ProblemDetail,
     RateLimitError,
     ServerError,
-    ValidationError as APIValidationError,
-    ERROR_TYPES,
 )
+from backend.app.core.errors import ValidationError as APIValidationError
 from backend.app.core.validation import (
     EmailValidator,
     InstrumentValidator,

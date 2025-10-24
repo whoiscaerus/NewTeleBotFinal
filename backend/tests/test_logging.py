@@ -2,8 +2,6 @@
 
 import logging
 
-import pytest
-
 from backend.app.core.logging import JSONFormatter, configure_logging, get_logger
 
 

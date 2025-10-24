@@ -8,16 +8,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.models import User
 from backend.app.auth.rbac import require_roles
-from backend.app.auth.schemas import LoginRequest, LoginResponse, UserCreate, UserResponse
-from backend.app.auth.utils import create_access_token, decode_token, hash_password, verify_password
+from backend.app.auth.schemas import (
+    LoginRequest,
+    LoginResponse,
+    UserCreate,
+    UserResponse,
+)
+from backend.app.auth.utils import (
+    create_access_token,
+    decode_token,
+    hash_password,
+    verify_password,
+)
 from backend.app.core.db import get_db
-from backend.app.core.decorators import rate_limit, abuse_throttle
+from backend.app.core.decorators import abuse_throttle, rate_limit
 from backend.app.core.logging import get_logger
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-async def get_bearer_token(authorization: Annotated[str | None, Header()] = None) -> str:
+async def get_bearer_token(
+    authorization: Annotated[str | None, Header()] = None,
+) -> str:
     """Extract bearer token from Authorization header.
 
     Args:
@@ -34,7 +46,9 @@ async def get_bearer_token(authorization: Annotated[str | None, Header()] = None
 
     parts = authorization.split()
     if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(status_code=403, detail="Invalid Authorization header format")
+        raise HTTPException(
+            status_code=403, detail="Invalid Authorization header format"
+        )
 
     return parts[1]
 
@@ -78,7 +92,9 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 @rate_limit(max_tokens=10, refill_rate=0.17, window_seconds=60)  # 10/min
 async def register(
     request: Request,
@@ -104,11 +120,16 @@ async def register(
     stmt = select(User).where(User.email == user_create.email)
     result = await db.execute(stmt)
     if result.scalar_one_or_none():
-        logger.warning("Registration failed: email already exists", extra={"email": user_create.email})
+        logger.warning(
+            "Registration failed: email already exists",
+            extra={"email": user_create.email},
+        )
         raise HTTPException(status_code=400, detail="Email already registered")
 
     # Create user
-    user = User(email=user_create.email, password_hash=hash_password(user_create.password))
+    user = User(
+        email=user_create.email, password_hash=hash_password(user_create.password)
+    )
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -147,7 +168,9 @@ async def login(
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(login_req.password, user.password_hash):
-        logger.warning("Login failed: invalid credentials", extra={"email": login_req.email})
+        logger.warning(
+            "Login failed: invalid credentials", extra={"email": login_req.email}
+        )
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Generate token
@@ -170,7 +193,9 @@ async def get_me(current_user: Annotated[User, Depends(get_current_user)]):
     Returns:
         UserResponse: Current user details
     """
-    return UserResponse(id=current_user.id, email=current_user.email, role=current_user.role.value)
+    return UserResponse(
+        id=current_user.id, email=current_user.email, role=current_user.role.value
+    )
 
 
 @router.post("/protected-admin")
@@ -185,6 +210,9 @@ async def admin_only_endpoint(current_user: Annotated[User, Depends(get_current_
         dict: Success message
     """
     logger = get_logger(__name__)
-    logger.info("Admin endpoint accessed", extra={"user_id": current_user.id, "role": current_user.role.value})
+    logger.info(
+        "Admin endpoint accessed",
+        extra={"user_id": current_user.id, "role": current_user.role.value},
+    )
 
     return {"message": f"Hello {current_user.role.value}: {current_user.email}"}

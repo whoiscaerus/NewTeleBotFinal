@@ -1,9 +1,7 @@
 """Redis-backed rate limiting with token bucket algorithm."""
 
-import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
 
@@ -15,10 +13,10 @@ settings = get_settings()
 
 class RateLimiter:
     """Redis-backed rate limiter using token bucket algorithm.
-    
+
     Maintains a bucket with tokens. Each request consumes 1 token.
     Tokens are replenished at rate: tokens_per_second.
-    
+
     Example:
         limiter = RateLimiter()
         is_allowed = await limiter.is_allowed("user:123", max_tokens=100, refill_rate=10)
@@ -33,7 +31,7 @@ class RateLimiter:
 
     async def initialize(self):
         """Initialize Redis connection.
-        
+
         Raises:
             RuntimeError: If Redis not enabled in settings
         """
@@ -43,7 +41,9 @@ class RateLimiter:
             return
 
         try:
-            self.redis_client = aioredis.from_url(settings.redis.url, decode_responses=True)
+            self.redis_client = aioredis.from_url(
+                settings.redis.url, decode_responses=True
+            )
             await self.redis_client.ping()
             self._initialized = True
             logger.info("Redis rate limiter initialized")
@@ -59,16 +59,16 @@ class RateLimiter:
         window_seconds: int = 60,
     ) -> bool:
         """Check if request is allowed under rate limit.
-        
+
         Args:
             key: Rate limit key (e.g., "user:123" or "ip:192.168.1.1")
             max_tokens: Maximum tokens in bucket
             refill_rate: Tokens added per second
             window_seconds: Time window for refill calculation
-        
+
         Returns:
             bool: True if request allowed, False if rate limited
-        
+
         Example:
             # 60 requests per minute (refill_rate=1, window_seconds=60)
             allowed = await limiter.is_allowed("user:123", max_tokens=60, refill_rate=1, window_seconds=60)
@@ -85,22 +85,22 @@ class RateLimiter:
             local refill_rate = tonumber(ARGV[2])
             local window_seconds = tonumber(ARGV[3])
             local now = tonumber(ARGV[4])
-            
+
             -- Get current bucket state
             local state = redis.call('HGETALL', key)
             local tokens = 0
             local last_refill = now
-            
+
             if #state > 0 then
                 tokens = tonumber(state[2]) or 0
                 last_refill = tonumber(state[4]) or now
             end
-            
+
             -- Calculate tokens to add based on time passed
             local time_passed = math.max(0, now - last_refill)
             local tokens_to_add = math.floor(time_passed * refill_rate / window_seconds)
             tokens = math.min(max_tokens, tokens + tokens_to_add)
-            
+
             -- Check if request allowed
             if tokens >= 1 then
                 tokens = tokens - 1
@@ -114,7 +114,7 @@ class RateLimiter:
             end
             """
 
-            now = datetime.now(timezone.utc).timestamp()
+            now = datetime.now(UTC).timestamp()
             result = await self.redis_client.eval(
                 script,
                 1,
@@ -144,13 +144,13 @@ class RateLimiter:
         window_seconds: int = 60,
     ) -> int:
         """Get remaining tokens for a key.
-        
+
         Args:
             key: Rate limit key
             max_tokens: Maximum tokens in bucket
             refill_rate: Tokens added per second
             window_seconds: Time window for refill calculation
-        
+
         Returns:
             int: Number of remaining tokens (0-max_tokens)
         """
@@ -164,24 +164,24 @@ class RateLimiter:
             local refill_rate = tonumber(ARGV[2])
             local window_seconds = tonumber(ARGV[3])
             local now = tonumber(ARGV[4])
-            
+
             local state = redis.call('HGETALL', key)
             local tokens = 0
             local last_refill = now
-            
+
             if #state > 0 then
                 tokens = tonumber(state[2]) or 0
                 last_refill = tonumber(state[4]) or now
             end
-            
+
             local time_passed = math.max(0, now - last_refill)
             local tokens_to_add = math.floor(time_passed * refill_rate / window_seconds)
             tokens = math.min(max_tokens, tokens + tokens_to_add)
-            
+
             return tokens
             """
 
-            now = datetime.now(timezone.utc).timestamp()
+            now = datetime.now(UTC).timestamp()
             result = await self.redis_client.eval(
                 script,
                 1,
@@ -200,7 +200,7 @@ class RateLimiter:
 
     async def reset(self, key: str):
         """Reset rate limit for a key (admin operation).
-        
+
         Args:
             key: Rate limit key to reset
         """
@@ -215,12 +215,12 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_limiter: Optional[RateLimiter] = None
+_limiter: RateLimiter | None = None
 
 
 async def get_rate_limiter() -> RateLimiter:
     """Get or initialize global rate limiter.
-    
+
     Returns:
         RateLimiter: Initialized rate limiter instance
     """

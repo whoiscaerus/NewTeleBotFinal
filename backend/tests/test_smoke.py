@@ -10,10 +10,10 @@ def test_python_version():
 
 def test_imports():
     """Test core dependencies available."""
-    import pytest
     import fastapi
-    import sqlalchemy
     import pydantic
+    import pytest
+    import sqlalchemy
 
     assert pytest.__version__
     assert fastapi.__version__

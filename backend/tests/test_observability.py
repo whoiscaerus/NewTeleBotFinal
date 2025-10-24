@@ -1,7 +1,8 @@
 """Observability metrics tests."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from backend.app.observability.metrics import MetricsCollector, get_metrics
 
@@ -19,7 +20,9 @@ class TestMetricsCollector:
         """Test recording HTTP request metrics."""
         with patch("backend.app.observability.metrics.CollectorRegistry"):
             with patch("backend.app.observability.metrics.Counter") as mock_counter:
-                with patch("backend.app.observability.metrics.Histogram") as mock_histogram:
+                with patch(
+                    "backend.app.observability.metrics.Histogram"
+                ) as mock_histogram:
                     collector = MetricsCollector()
 
                     # Mock the metric objects
@@ -118,7 +121,9 @@ class TestMetricsInstrumentation:
         """Test HTTP requests can be instrumented."""
         with patch("backend.app.observability.metrics.CollectorRegistry"):
             with patch("backend.app.observability.metrics.Counter") as mock_counter:
-                with patch("backend.app.observability.metrics.Histogram") as mock_histogram:
+                with patch(
+                    "backend.app.observability.metrics.Histogram"
+                ) as mock_histogram:
                     collector = MetricsCollector()
 
                     # Simulate multiple requests

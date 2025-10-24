@@ -1,11 +1,12 @@
 """Rate limiting tests."""
 
-import pytest
-from httpx import AsyncClient
 from unittest.mock import AsyncMock, patch
 
-from backend.app.core.rate_limit import RateLimiter, get_rate_limiter
-from backend.app.core.decorators import rate_limit, abuse_throttle
+import pytest
+from httpx import AsyncClient
+
+from backend.app.core.decorators import abuse_throttle, rate_limit
+from backend.app.core.rate_limit import RateLimiter
 
 
 class TestRateLimiterBasic:
@@ -54,8 +55,9 @@ class TestRateLimitDecorator:
     @pytest.mark.asyncio
     async def test_rate_limit_decorator_with_mock_request(self):
         """Test rate_limit decorator with mocked request."""
-        from fastapi import Request
         from unittest.mock import MagicMock
+
+        from fastapi import Request
 
         # Create mock request
         mock_request = MagicMock(spec=Request)
@@ -81,8 +83,9 @@ class TestRateLimitDecorator:
     @pytest.mark.asyncio
     async def test_rate_limit_decorator_exceeds_limit(self):
         """Test rate_limit decorator returns 429 when limit exceeded."""
-        from fastapi import Request
         from unittest.mock import MagicMock
+
+        from fastapi import Request
 
         mock_request = MagicMock(spec=Request)
         mock_request.client.host = "127.0.0.1"
@@ -106,8 +109,9 @@ class TestAbuseThrottleDecorator:
     @pytest.mark.asyncio
     async def test_abuse_throttle_allows_initial_attempts(self):
         """Test abuse throttle allows initial attempts."""
-        from fastapi import Request
         from unittest.mock import MagicMock
+
+        from fastapi import Request
 
         mock_request = MagicMock(spec=Request)
         mock_request.client.host = "192.168.1.1"
@@ -127,8 +131,9 @@ class TestAbuseThrottleDecorator:
     @pytest.mark.asyncio
     async def test_abuse_throttle_no_redis(self):
         """Test abuse throttle gracefully handles missing Redis."""
-        from fastapi import Request
         from unittest.mock import MagicMock
+
+        from fastapi import Request
 
         mock_request = MagicMock(spec=Request)
         mock_request.client.host = "10.0.0.1"

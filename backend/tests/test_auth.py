@@ -1,12 +1,12 @@
 """Authentication tests."""
 
+from datetime import UTC
+
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.models import User, UserRole
-from backend.app.auth.schemas import LoginRequest, UserCreate
 from backend.app.auth.utils import create_access_token, hash_password, verify_password
 
 
@@ -77,7 +77,7 @@ class TestJWT:
 
     def test_decode_token_expired(self):
         """Test decoding expired token raises ValueError."""
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         import jwt
 
@@ -87,7 +87,7 @@ class TestJWT:
         payload = {
             "sub": "user123",
             "role": "USER",
-            "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+            "exp": datetime.now(UTC) - timedelta(hours=1),
         }
         expired_token = jwt.encode(
             payload,
@@ -161,10 +161,14 @@ class TestRegisterEndpoint:
         assert "id" in data
 
     @pytest.mark.asyncio
-    async def test_register_duplicate_email(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_register_duplicate_email(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test registration fails with duplicate email."""
         # Create existing user
-        user = User(email="existing@example.com", password_hash=hash_password("password"))
+        user = User(
+            email="existing@example.com", password_hash=hash_password("password")
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -223,10 +227,15 @@ class TestLoginEndpoint:
         assert data["user"]["email"] == "testuser@example.com"
 
     @pytest.mark.asyncio
-    async def test_login_invalid_password(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_login_invalid_password(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test login fails with wrong password."""
         # Create user
-        user = User(email="testuser2@example.com", password_hash=hash_password("correct_password"))
+        user = User(
+            email="testuser2@example.com",
+            password_hash=hash_password("correct_password"),
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -255,10 +264,14 @@ class TestMeEndpoint:
     """Test GET /api/v1/auth/me endpoint."""
 
     @pytest.mark.asyncio
-    async def test_me_with_valid_token(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_me_with_valid_token(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test getting current user with valid token."""
         # Create user
-        user = User(email="current@example.com", password_hash=hash_password("password"))
+        user = User(
+            email="current@example.com", password_hash=hash_password("password")
+        )
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
@@ -267,7 +280,9 @@ class TestMeEndpoint:
         token = create_access_token(subject=user.id, role=user.role.value)
 
         # Get current user
-        response = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+        response = await client.get(
+            "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -285,16 +300,22 @@ class TestMeEndpoint:
     @pytest.mark.asyncio
     async def test_me_with_invalid_token(self, client: AsyncClient):
         """Test /me fails with invalid token."""
-        response = await client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token"})
+        response = await client.get(
+            "/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token"}
+        )
 
         assert response.status_code == 401
         assert "Invalid token" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_me_with_deleted_user(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_me_with_deleted_user(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test /me fails if user deleted after token creation."""
         # Create user
-        user = User(email="deleted@example.com", password_hash=hash_password("password"))
+        user = User(
+            email="deleted@example.com", password_hash=hash_password("password")
+        )
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
@@ -307,7 +328,9 @@ class TestMeEndpoint:
         await db_session.commit()
 
         # Try to access /me
-        response = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+        response = await client.get(
+            "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
+        )
 
         assert response.status_code == 401
         assert "User not found" in response.json()["detail"]
@@ -317,10 +340,16 @@ class TestAdminEndpoint:
     """Test protected admin endpoint."""
 
     @pytest.mark.asyncio
-    async def test_admin_endpoint_owner(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_admin_endpoint_owner(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test admin endpoint accessible to OWNER."""
         # Create owner
-        user = User(email="owner@example.com", password_hash=hash_password("password"), role=UserRole.OWNER)
+        user = User(
+            email="owner@example.com",
+            password_hash=hash_password("password"),
+            role=UserRole.OWNER,
+        )
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
@@ -337,10 +366,16 @@ class TestAdminEndpoint:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_admin_endpoint_admin(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_admin_endpoint_admin(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test admin endpoint accessible to ADMIN."""
         # Create admin
-        user = User(email="admin@example.com", password_hash=hash_password("password"), role=UserRole.ADMIN)
+        user = User(
+            email="admin@example.com",
+            password_hash=hash_password("password"),
+            role=UserRole.ADMIN,
+        )
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
@@ -357,10 +392,16 @@ class TestAdminEndpoint:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_admin_endpoint_user_denied(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_admin_endpoint_user_denied(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test admin endpoint denies regular USER."""
         # Create regular user
-        user = User(email="user@example.com", password_hash=hash_password("password"), role=UserRole.USER)
+        user = User(
+            email="user@example.com",
+            password_hash=hash_password("password"),
+            role=UserRole.USER,
+        )
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
@@ -375,4 +416,7 @@ class TestAdminEndpoint:
         )
 
         assert response.status_code == 403
-        assert "PermissionError" in response.text or "Insufficient permissions" in response.text
+        assert (
+            "PermissionError" in response.text
+            or "Insufficient permissions" in response.text
+        )

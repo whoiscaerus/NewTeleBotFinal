@@ -1,14 +1,15 @@
 """Secrets management tests."""
 
 import os
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 from backend.app.core.secrets import (
     DotenvProvider,
     EnvProvider,
-    VaultProvider,
     SecretManager,
+    VaultProvider,
     get_secret_manager,
 )
 

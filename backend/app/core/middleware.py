@@ -1,8 +1,8 @@
 """Request ID middleware for correlation tracking."""
 
 import uuid
+from collections.abc import Callable
 from contextvars import ContextVar
-from typing import Callable
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -15,14 +15,10 @@ request_id_var: ContextVar[str] = ContextVar("request_id", default="")
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Middleware to add request ID to all requests."""
 
-    async def dispatch(
-        self, request: Request, call_next: Callable
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and add request ID."""
         # Get or create request ID
-        request_id = request.headers.get(
-            "X-Request-Id", str(uuid.uuid4())
-        )
+        request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
 
         # Store in context
         token = request_id_var.set(request_id)

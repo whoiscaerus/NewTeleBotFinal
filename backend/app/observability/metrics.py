@@ -1,12 +1,19 @@
 """OpenTelemetry metrics collection."""
 
 import logging
-from typing import Dict, List
 
 try:
-    from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, generate_latest
+    from prometheus_client import (
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
 except ImportError:
-    raise ImportError("prometheus-client not installed. Install with: pip install prometheus-client")
+    raise ImportError(
+        "prometheus-client not installed. Install with: pip install prometheus-client"
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +127,7 @@ class MetricsCollector:
         duration_seconds: float,
     ):
         """Record HTTP request metrics.
-        
+
         Args:
             route: API route (e.g., '/api/v1/auth/login')
             method: HTTP method (GET, POST, etc.)
@@ -136,7 +143,7 @@ class MetricsCollector:
 
     def record_login_attempt(self, success: bool):
         """Record login attempt.
-        
+
         Args:
             success: Whether login succeeded
         """
@@ -145,7 +152,7 @@ class MetricsCollector:
 
     def record_registration(self, success: bool):
         """Record user registration.
-        
+
         Args:
             success: Whether registration succeeded
         """
@@ -154,7 +161,7 @@ class MetricsCollector:
 
     def record_rate_limit_rejection(self, route: str):
         """Record rate limit rejection.
-        
+
         Args:
             route: API route that was rate limited
         """
@@ -162,7 +169,7 @@ class MetricsCollector:
 
     def record_error(self, status_code: int, endpoint: str):
         """Record error.
-        
+
         Args:
             status_code: HTTP status code
             endpoint: API endpoint
@@ -171,7 +178,7 @@ class MetricsCollector:
 
     def record_audit_event(self, action: str, status: str):
         """Record audit event.
-        
+
         Args:
             action: Audit action (e.g., 'auth.login')
             status: Status (success, failure, error)
@@ -180,7 +187,7 @@ class MetricsCollector:
 
     def set_db_connection_pool_size(self, size: int):
         """Set database connection pool size.
-        
+
         Args:
             size: Number of connections in pool
         """
@@ -188,7 +195,7 @@ class MetricsCollector:
 
     def record_db_query(self, query_type: str, duration_seconds: float):
         """Record database query.
-        
+
         Args:
             query_type: Type of query (select, insert, update, etc.)
             duration_seconds: Query duration
@@ -199,7 +206,7 @@ class MetricsCollector:
 
     def set_redis_connected(self, connected: bool):
         """Set Redis connection status.
-        
+
         Args:
             connected: True if connected, False otherwise
         """
@@ -207,7 +214,7 @@ class MetricsCollector:
 
     def get_metrics(self) -> bytes:
         """Get metrics in Prometheus format.
-        
+
         Returns:
             bytes: Prometheus-formatted metrics
         """
@@ -220,7 +227,7 @@ _metrics: MetricsCollector | None = None
 
 def get_metrics() -> MetricsCollector:
     """Get or initialize global metrics collector.
-    
+
     Returns:
         MetricsCollector: Global instance
     """

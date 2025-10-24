@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.audit.models import AuditLog, AUDIT_ACTIONS
+from backend.app.audit.models import AUDIT_ACTIONS, AuditLog
 from backend.app.audit.service import AuditService
 
 
