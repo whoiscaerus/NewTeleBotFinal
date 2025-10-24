@@ -31,12 +31,13 @@
     - id: ruff
       args: ["--fix"]
 
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.7.1
+- repo: local
   hooks:
     - id: mypy
-      additional_dependencies: ["pydantic", "pydantic-settings"]
-      args: ["--config-file=mypy.ini"]
+      name: mypy
+      entry: bash -c 'cd backend && python -m mypy app --config-file=../mypy.ini'
+      language: system
+      types: [python]
       files: ^backend/app/
       exclude: ^backend/tests/
-      stages: [manual]
+      pass_filenames: false
