@@ -4486,7 +4486,225 @@ async def test_rate_limit_decorator_mock():
 
 ---
 
-## ✅ COMPLETE LESSONS CHECKLIST (29 Comprehensive Lessons)
+### 36. CI/CD Environment Variables: Local vs GitHub Actions Isolation
+
+#### Lesson (Discovered Phase 7 - Codecov Setup)
+- **Problem:** Test passes locally, fails in GitHub Actions
+  - Symptom: `assert 'DEBUG' == 'INFO'` (env var overrides defaults)
+  - Root cause: GitHub Actions workflow sets `APP_LOG_LEVEL: DEBUG` as environment variable
+  - Test didn't isolate from CI/CD environment, so it tested CI/CD value not default
+
+- **Solution:** Use monkeypatch to clear environment variables in test
+```python
+# WRONG: Tests the CI/CD environment, not the default
+def test_defaults(self):
+    settings = AppSettings()
+    assert settings.log_level == "INFO"  # Fails: gets DEBUG from CI/CD
+
+# RIGHT: Clear environment first, test actual defaults
+def test_defaults(self, monkeypatch):
+    """Test default values with CI/CD env var cleanup."""
+    monkeypatch.delenv("APP_LOG_LEVEL", raising=False)
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("DEBUG", raising=False)
+
+    settings = AppSettings()
+    assert settings.log_level == "INFO"  # ✅ Passes everywhere
+```
+
+- **Prevention:** When testing defaults/configuration:
+  1. Identify all environment variables that affect settings
+  2. Clear them with monkeypatch.delenv() at test start
+  3. Test with raising=False (don't error if var doesn't exist)
+  4. This pattern applies to: secrets, credentials, API URLs, log levels, debug flags
+
+---
+
+### 37. Frontend Coverage Integration: Unified Backend + Frontend Reporting
+
+#### Lesson (Discovered Phase 7 - Codecov Setup)
+- **Problem:** Project has Python backend + JavaScript frontend, but only backend coverage reported
+  - Symptom: Codecov dashboard shows no frontend code coverage
+  - Missing: Jest configuration, frontend coverage generation, merge strategy
+
+- **Solution:** Unified coverage setup for multi-language projects
+```yaml
+# GitHub Actions workflow (tests.yml)
+
+- name: Run pytest with coverage (Backend)
+  run: |
+    python -m pytest backend/tests \
+      --cov=backend/app \
+      --cov-report=xml:coverage/backend/coverage.xml \
+      -v
+
+- name: Run Jest with coverage (Frontend)
+  run: npm run test:ci
+  continue-on-error: true  # Don't fail if no tests yet
+
+- name: Upload coverage reports to Codecov
+  uses: codecov/codecov-action@v4
+  with:
+    directory: ./coverage
+    files: ./coverage/backend/coverage.xml,./coverage/frontend/coverage.xml
+    token: ${{ secrets.CODECOV_TOKEN }}
+    flags: backend,frontend
+```
+
+- **Jest Configuration** (jest.config.js):
+```javascript
+module.exports = {
+  collectCoverage: true,
+  coverageDirectory: "./coverage/frontend",
+  coverageReporters: ["text", "json", "lcov", "xml"],  // XML for Codecov
+
+  // Graceful handling for CI when no tests exist yet
+  passWithNoTests: process.env.CI === "true",
+
+  // TypeScript support via ts-jest
+  transform: { "^.+\\.tsx?$": "ts-jest" },
+};
+```
+
+- **Prevention:**
+  1. Set up frontend coverage NOW (even if no tests yet)
+  2. Use continue-on-error: true for frontend tests in CI
+  3. Include both backend + frontend files in Codecov upload
+  4. Codecov merges reports automatically (no manual merge needed)
+  5. This pattern works: Python, JavaScript, Go, Java, C#, etc. (any language combo)
+
+---
+
+### 38. GitHub Secrets for CI/CD: Token Authentication for Protected Branches
+
+#### Lesson (Discovered Phase 7 - Codecov Setup)
+- **Problem:** Codecov upload fails with "Token required - not valid tokenless upload"
+  - Symptom: GitHub Actions workflow uploads coverage, but Codecov rejects it
+  - Root cause: Private/protected branches require authentication token
+  - Repository is private → Codecov needs token in GitHub Secrets
+
+- **Solution:** Add authentication token to GitHub repository secrets
+```bash
+# Step 1: Generate token at codecov.io
+#   - Log in to https://codecov.io
+#   - Find your repository
+#   - Copy "Upload Token" (UUID format)
+
+# Step 2: Add to GitHub repository settings
+#   - Settings → Secrets and variables → Actions
+#   - Click "New repository secret"
+#   - Name: CODECOV_TOKEN
+#   - Value: <paste token from codecov.io>
+#   - Save
+
+# Step 3: Reference in workflow
+uses: codecov/codecov-action@v4
+with:
+  token: ${{ secrets.CODECOV_TOKEN }}  # ← Automatically injected by GitHub
+
+# Step 4: Trigger workflow by pushing to main
+#   - Any commit to main triggers workflow
+#   - Codecov action uses token automatically
+#   - Coverage appears on Codecov dashboard (~5-10 min)
+```
+
+- **Prevention:**
+  1. **Public repositories:** Can upload without token (tokenless)
+  2. **Private/protected repositories:** MUST have token
+  3. **Check your repo status:** GitHub Settings → Visibility
+  4. **Regenerate token:** If old token compromised, regenerate at codecov.io
+  5. **Keep token secret:** GitHub Secrets automatically masks in logs
+  6. **Multiple projects:** Each needs its own token (one per repo)
+
+---
+
+### 39. Package.json Scripts: Consistent local + CI/CD Testing
+
+#### Lesson (Discovered Phase 7 - Codecov Setup)
+- **Problem:** npm scripts inconsistent between local development and CI/CD
+  - Symptom: Works locally with `npm test`, fails in CI/CD
+  - Root cause: CI/CD uses different script (missing flags, wrong environment)
+
+- **Solution:** Define clear scripts for different contexts
+```json
+{
+  "scripts": {
+    "test": "jest",                              // Local development
+    "test:coverage": "jest --coverage",          // Local with coverage report
+    "test:watch": "jest --watch",                // Local with file watching
+    "test:ci": "jest --coverage --ci --maxWorkers=2"  // GitHub Actions
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "ts-jest": "^29.1.1"
+  }
+}
+```
+
+- **GitHub Actions usage:**
+```yaml
+- name: Run Jest with coverage (Frontend)
+  run: npm run test:ci  # ← Uses test:ci script, not test
+```
+
+- **Why the differences:**
+  - `--coverage`: Generate coverage.xml for Codecov
+  - `--ci`: Jest CI mode (faster, single run, no watch)
+  - `--maxWorkers=2`: Limit parallelism in CI (prevents timeouts)
+
+- **Prevention:**
+  1. Define separate scripts: `test` (local), `test:ci` (GitHub Actions)
+  2. **Local:** Use `--watch` for development feedback
+  3. **CI/CD:** Use `--ci` + coverage flags
+  4. **Always commit:** package.json scripts are single source of truth
+  5. **Test locally:** `npm run test:ci` before pushing to verify CI behavior
+
+---
+
+### 40. Jest TypeScript Support: ts-jest Configuration
+
+#### Lesson (Discovered Phase 7 - Frontend Coverage)
+- **Problem:** Jest can't transform TypeScript files
+  - Error: `Module ts-jest in the transform option was not found`
+  - Root cause: jest.config.js references ts-jest but package not installed
+
+- **Solution:** Install ts-jest and configure transform
+```json
+{
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "ts-jest": "^29.1.1"
+  }
+}
+```
+
+```javascript
+// jest.config.js
+module.exports = {
+  transform: {
+    "^.+\\.tsx?$": "ts-jest",  // Transform TypeScript files
+  },
+  testEnvironment: "node",
+};
+```
+
+- **In GitHub Actions:**
+```yaml
+- name: Install Node dependencies
+  run: npm ci  # Installs ts-jest from package.json
+```
+
+- **Prevention:**
+  1. **Always include ts-jest** if your frontend uses TypeScript
+  2. **npm ci vs npm install:** Use `ci` in CI/CD (deterministic)
+  3. **testEnvironment:** Use "node" for backend-like tests, "jsdom" for browser tests
+  4. **moduleNameMapper:** Map import aliases (e.g., @/lib → src/lib)
+
+---
+
+## ✅ COMPLETE LESSONS CHECKLIST (40 Comprehensive Lessons)
+
+## ✅ COMPLETE LESSONS CHECKLIST (40 Comprehensive Lessons)
 
 ### Critical Patterns (Must Know)
 - [ ] **Lesson 18:** Local pre-commit + GitHub Actions must match
@@ -4496,6 +4714,8 @@ async def test_rate_limit_decorator_mock():
 - [ ] **Lesson 29:** Local imports bypass module-level patches - patch SOURCE
 - [ ] **Lesson 30:** Pydantic alias only works in dict unpacking, not positional
 - [ ] **Lesson 31:** mode="before" validator for empty field detection
+- [ ] **Lesson 36:** Isolate CI/CD environment variables in tests (monkeypatch)
+- [ ] **Lesson 38:** GitHub Secrets required for private repo Codecov
 
 ### Testing Patterns (Must Know)
 - [ ] **Lesson 5:** Fixtures scope, async/await patterns
@@ -4503,6 +4723,11 @@ async def test_rate_limit_decorator_mock():
 - [ ] **Lesson 17:** Separate concerns (HMAC + timing = different tests)
 - [ ] **Lesson 32:** When to use @pytest.mark.xfail vs fix
 - [ ] **Lesson 34:** Integration tests > unit test mock complexity
+- [ ] **Lesson 39:** Define separate npm scripts: test (local), test:ci (CI/CD)
+
+### Frontend & Coverage (Must Know)
+- [ ] **Lesson 37:** Unified backend + frontend coverage via Codecov
+- [ ] **Lesson 40:** Always include ts-jest for TypeScript frontend support
 
 ### Environment & Setup (Must Know)
 - [ ] **Lesson 4:** DATABASE_URL set in conftest.py BEFORE imports
@@ -4569,8 +4794,15 @@ This template gives you everything needed to build a production-ready project fr
 ---
 
 **Last Updated:** October 24, 2025
-**Version:** 2.2.0 (Phase 5 Test Fixing Lessons Added - CRITICAL PRODUCTION PATTERNS)
+**Version:** 2.3.0 (Phase 7 Codecov & Frontend Setup Lessons Added - MULTI-LANGUAGE CI/CD)
 **Maintained By:** Your Team
+
+**Changes in v2.3.0 (Phase 7):**
+- **Added 5 new Codecov & frontend lessons (Lessons 36-40) from Phase 7 CI/CD setup**
+- **Lessons cover:** CI/CD environment variable isolation (monkeypatch), unified backend+frontend coverage tracking, GitHub Secrets for protected repos, package.json script patterns, TypeScript Jest setup
+- **Real CI/CD patterns:** GitHub Actions environment differences, Codecov token authentication, multi-language test integration
+- **Production-ready:** Setup for Python backend + JavaScript frontend coverage in single Codecov dashboard
+- **Knowledge preserved:** CI/CD integration patterns for any future multi-language projects
 
 **Changes in v2.2.0:**
 - **Added 7 critical production lessons (Lessons 29-35) from Phase 5 test fixing session**
