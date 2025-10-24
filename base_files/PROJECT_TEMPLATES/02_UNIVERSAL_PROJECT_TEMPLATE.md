@@ -1096,7 +1096,7 @@ async def test_verify_db_connection_failure(monkeypatch):
     """Database connection fails gracefully"""
     def mock_engine():
         raise ConnectionError("Connection refused")
-    
+
     monkeypatch.setattr("app.db.get_engine", mock_engine)
     result = await verify_db_connection()
     assert result is False  # Returns False, doesn't crash
@@ -1227,7 +1227,7 @@ async def create_signal(request: Request):
     MAX_PAYLOAD_SIZE = 32 * 1024
     if len(body) > MAX_PAYLOAD_SIZE:
         raise HTTPException(status_code=413, detail="Request body too large")
-    
+
     # 2. THEN parse with Pydantic
     try:
         body_dict = json.loads(body)
@@ -1421,6 +1421,593 @@ async def test_create_signal_clock_skew_boundary(client, valid_signal_data):
 
 ---
 
+### 18. Pre-Commit Hook Configuration and Module Path Resolution (CRITICAL)
+
+#### Problem (Discovered Phase 0 Type Checking)
+- **Symptom:** Pre-commit mypy hook fails with "Source file found twice under different module names"
+- **Root Cause:** Pre-commit runs from repo root (`/`), but mypy sees modules as both `app.*` and `backend.app.*` (dual module paths)
+- **Why It Happens:**
+  1. Pre-commit passes individual file paths to mypy: `mypy backend/app/core/db.py`
+  2. Mypy computes module path from working directory: `backend.app.core.db`
+  3. ALSO discovers module from file package structure: `app.core.db`
+  4. Result: Two different module paths for same code = ambiguous
+- **Why Simple Fixes Fail:**
+  - `--explicit-package-bases`: Doesn't help; ambiguity created at different layer
+  - `--namespace-packages`: Wrong for regular packages; ignores init files
+  - Disabling mypy in pre-commit: Defeats purpose of early validation
+
+#### Solution
+```yaml
+# In .pre-commit-config.yaml
+# ❌ WRONG (runs from repo root, mypy sees dual module paths)
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.5.0
+  hooks:
+    - id: mypy
+      args: [--config-file=mypy.ini, --explicit-package-bases]
+      exclude: ^backend/tests/
+
+# ❌ ALSO WRONG (disables mypy to avoid the problem)
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.5.0
+  hooks:
+    - id: mypy
+      stages: [manual]  # Skipped during commits; only runs on "pre-commit run --hook-stage=manual"
+
+# ✅ CORRECT (custom local hook that changes directory FIRST)
+- repo: local
+  hooks:
+    - id: mypy
+      name: mypy
+      description: "Type checking with mypy (from backend/ directory)"
+      entry: bash -c 'cd backend && python -m mypy app --config-file=../mypy.ini'
+      language: system
+      types: [python]
+      files: ^backend/app/
+      exclude: ^backend/tests/
+      pass_filenames: false  # Don't pass individual file paths to bash
+```
+
+#### Why This Works
+```
+1. bash -c 'cd backend && ...'  ← Changes working directory FIRST
+2. python -m mypy app           ← Now runs from backend/, sees modules as app.* (canonical path)
+3. --config-file=../mypy.ini    ← Mypy config stays in root, but referenced from backend/
+4. pass_filenames: false        ← Pre-commit doesn't pass individual files (avoids dual path issue)
+
+Result:
+- Mypy sees only ONE module path: app.*
+- No "Source file found twice" error
+- Exactly matches how GitHub Actions CI/CD runs mypy
+```
+
+#### Prevention
+- **From Day 1:** Use `repo: local` with custom entry point for any tool that depends on working directory
+- Test pre-commit locally before pushing: Add a comment to a file, run `pre-commit run`, verify passes
+- Document WHY certain hooks use local vs remote repos (working directory requirements)
+- Verify local pre-commit behavior matches CI/CD behavior (both should run from same directory)
+- Pin mypy version in requirements.txt: `mypy==1.5.0` (matches CI/CD version)
+
+#### Critical Pattern: When to Use Local vs Remote Hooks
+```yaml
+# ✅ REMOTE HOOK (can run from any directory)
+- repo: https://github.com/pre-commit/mirrors-black
+  rev: 23.12.1
+  hooks:
+    - id: black
+      # Black works the same from any directory
+      # Safe to use remote hook
+
+# ✅ LOCAL HOOK (needs specific working directory)
+- repo: local
+  hooks:
+    - id: mypy
+      entry: bash -c 'cd backend && python -m mypy app'
+      # Mypy results depend on working directory
+      # MUST use local hook to control cd
+
+# ✅ LOCAL HOOK (complex pre-processing needed)
+- repo: local
+  hooks:
+    - id: custom-validation
+      entry: bash -c 'python scripts/validate-schema.py'
+      # Custom logic that needs setup
+      # Use local hook for full control
+```
+
+---
+
+### 19. Pydantic v2 Type Compatibility with Inheritance
+
+#### Problem (Discovered Phase 0 Type Checking)
+- **Symptom:** Mypy error on `model_config: SettingsConfigDict = SettingsConfigDict(...)`
+- **Root Cause:** In Pydantic v2, `BaseSettings` forbids overriding class variables as instance attributes in subclasses
+- **Why It Happens:** BaseSettings defines `model_config` as class variable; subclass can't reassign as instance variable (violates Python variable semantics)
+- **Incorrect Diagnosis:** Thought it was a naming conflict; actually a Python class semantics issue
+
+#### Solution
+```python
+# ❌ WRONG (Pydantic v2 BaseSettings forbids this pattern)
+from pydantic_settings import BaseSettings
+
+class AppSettings(BaseSettings):
+    app_name: str
+    debug: bool
+
+    model_config: SettingsConfigDict = SettingsConfigDict(
+        env_file=".env",
+        extra="allow"
+    )
+
+# ❌ ALSO WRONG (mypy sees as instance variable override)
+class AppSettings(BaseSettings):
+    model_config = SettingsConfigDict(...)  # No type annotation
+    # Mypy can't verify this is intentional
+
+# ✅ CORRECT (explicit ClassVar annotation tells type checker it's a class variable)
+from typing import ClassVar
+from pydantic_settings import BaseSettings
+
+class AppSettings(BaseSettings):
+    app_name: str
+    debug: bool
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env",
+        extra="allow"
+    )
+```
+
+#### Why ClassVar Is Needed
+```python
+# ClassVar tells Python and mypy:
+# 1. This is a class variable, not instance variable
+# 2. All instances share the same value
+# 3. It's not included in __init__ signature
+# 4. Inheritance patterns are allowed
+# 5. Parent class method can reference child class value
+```
+
+#### Prevention
+- When overriding class variables in BaseSettings subclasses, ALWAYS use `ClassVar[T]`
+- Apply to ALL Pydantic v2 settings classes: AppSettings, DbSettings, AuthSettings, etc.
+- Add comment explaining why: `# ClassVar: Pydantic v2 inheritance requires explicit class variable annotation`
+- Check in linting: `mypy --strict` should catch missing ClassVar
+- Pin Pydantic version: `pydantic==2.0.0` (document v2-specific patterns)
+
+---
+
+### 20. SQLAlchemy 2.0 Async Session Factory Pattern
+
+#### Problem (Discovered Phase 0 Type Checking)
+- **Symptom:** Type error on `sessionmaker[AsyncSession]` - sessionmaker can't be subscripted
+- **Root Cause:** SQLAlchemy 2.0 changes async session factory pattern; `sessionmaker` doesn't support type parameters in same way as 1.4
+- **Why It Happens:** SQLAlchemy 2.0 introduces `async_sessionmaker` specifically for async contexts with proper typing
+
+#### Solution
+```python
+# ❌ WRONG (SQLAlchemy 1.4 pattern, doesn't work in 2.0)
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+engine = create_async_engine("postgresql+asyncpg://...", echo=False)
+SessionLocal: sessionmaker[AsyncSession] = sessionmaker(  # ❌ Type error: can't subscript sessionmaker
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+# ✅ CORRECT (SQLAlchemy 2.0 pattern with async_sessionmaker)
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,  # ← Use THIS in 2.0
+)
+
+engine = create_async_engine("postgresql+asyncpg://...", echo=False)
+
+# async_sessionmaker is properly typed for async contexts
+async_session = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+)
+
+# Usage in dependency injection
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+```
+
+#### Why async_sessionmaker Matters
+```
+sessionmaker (1.4/2.0):
+- Works for sync contexts
+- create_session() returns sync Session
+- Not properly typed for async use
+
+async_sessionmaker (2.0 only):
+- Specifically designed for async contexts
+- create_session() returns AsyncSession
+- Properly typed with generic parameters
+- __aenter__/__aexit__ support out of box
+```
+
+#### Prevention
+- For ANY async SQLAlchemy project, use `async_sessionmaker` from day 1
+- Never use `sessionmaker` with `create_async_engine`
+- Pin SQLAlchemy version: `sqlalchemy==2.0.23` (document async patterns)
+- Add type hints to all session factories: `async_session: async_sessionmaker[AsyncSession]`
+- Test database session cleanup: ensure sessions close properly in tests
+
+---
+
+### 21. Explicit Type Casting for Comparison Results in Type Checkers
+
+#### Problem (Discovered Phase 0 Type Checking)
+- **Symptom:** Mypy error "Returning Any from function declared to return 'bool' [no-any-return]"
+- **Root Cause:** Type checker can't guarantee that comparison result is always bool (in edge cases with overloaded __eq__, result could be Any)
+- **Why It Happens:** Comparison operators can be overloaded to return non-bool values in custom classes
+
+#### Solution
+```python
+from enum import Enum
+
+class UserRole(Enum):
+    ADMIN = "admin"
+    OWNER = "owner"
+    USER = "user"
+
+# ❌ WRONG (type checker warns: comparison might return Any in edge cases)
+def is_admin(user_role: UserRole) -> bool:
+    """Check if user has admin role."""
+    return user_role in [UserRole.ADMIN, UserRole.OWNER]
+
+def is_owner(user_role: UserRole) -> bool:
+    """Check if user is owner."""
+    return user_role == UserRole.OWNER
+
+# ✅ CORRECT (explicit bool() cast ensures return type is always bool)
+def is_admin(user_role: UserRole) -> bool:
+    """Check if user has admin role."""
+    return bool(user_role in [UserRole.ADMIN, UserRole.OWNER])
+
+def is_owner(user_role: UserRole) -> bool:
+    """Check if user is owner."""
+    return bool(user_role == UserRole.OWNER)
+```
+
+#### Why Explicit Cast Is Needed
+```
+In strict type checking mode:
+- Comparison returns "bool | Any" (might be bool, might be Any)
+- Function declared to return "bool" (always bool)
+- Type mismatch: "bool | Any" ≠ "bool"
+- Explicit bool() cast: accepts "bool | Any", always returns "bool"
+- Type checker satisfied: guaranteed to return bool
+```
+
+#### Prevention
+- Enable strict type checking: `mypy --strict app/`
+- Any function returning bool from comparison needs explicit `bool()` cast
+- Pattern: `return bool(comparison_expression)`
+- Document why: `# Explicit cast for type safety (mypy strict mode)`
+- Add pre-commit hook to check: `mypy --strict app/` (see Lesson 18)
+
+---
+
+### 22. Integrate Local Pre-Commit Validation Into GitHub Actions CI/CD
+
+#### Problem (Discovered Phase 0 Type Checking)
+- **Symptom:** Passed local pre-commit checks, but GitHub Actions mypy fails with different error
+- **Root Cause:** Pre-commit and GitHub Actions run from different directories (pre-commit: local with custom hook; Actions: standard config from root)
+- **Why It Happens:** GitHub Actions CI/CD doesn't run pre-commit; it runs individual tools directly
+
+#### Solution
+```yaml
+# In .github/workflows/tests.yml
+# ❌ WRONG (doesn't validate that CI/CD matches local development)
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install -r backend/requirements.txt
+      - run: python -m mypy backend/app/  # Different directory structure!
+
+# ✅ CORRECT (runs mypy EXACTLY like local pre-commit hook)
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install -r backend/requirements.txt
+      - name: "Type check (matches local pre-commit)"
+        run: cd backend && python -m mypy app --config-file=../mypy.ini
+        # ↑ Same command as local pre-commit hook!
+        # This ensures CI/CD always matches local development
+```
+
+#### Why This Matters
+```
+Scenario: Mypy passes locally, fails on CI/CD
+↓
+Root cause: Different working directories
+↓
+Solution: Local pre-commit and GitHub Actions must use IDENTICAL commands
+↓
+Result: "It works locally" = "It will pass CI/CD"
+```
+
+#### Prevention
+- Document every GitHub Actions command in comments
+- Reference local equivalent: "Matches local: `cd backend && python -m mypy app`"
+- Before pushing, run the EXACT GitHub Actions command locally
+- Add comment in CI/CD workflow: "Must match local pre-commit hook"
+- Test CI/CD commands locally first: `bash -c 'cd backend && python -m mypy app --config-file=../mypy.ini'`
+
+---
+
+### 23. Type Checking Configuration Order: .pre-commit-config.yaml vs mypy.ini
+
+#### Problem (Discovered Phase 0 Type Checking)
+- **Symptom:** Mypy.ini settings ignored when pre-commit runs mypy from backend/
+- **Root Cause:** File path resolution: --config-file=../mypy.ini references from backend/ dir, but mypy looks for includes/excludes relative to config file location
+- **Why It Happens:** Mypy's include/exclude paths are relative to mypy.ini location, not current working directory
+
+#### Solution
+```yaml
+# In .pre-commit-config.yaml
+- repo: local
+  hooks:
+    - id: mypy
+      name: mypy
+      # ❌ WRONG (config file path is ambiguous)
+      entry: bash -c 'cd backend && python -m mypy app --config-file=mypy.ini'
+      # mypy.ini in backend/ still needs ../docs/prs etc.
+
+      # ✅ CORRECT (explicit parent directory reference)
+      entry: bash -c 'cd backend && python -m mypy app --config-file=../mypy.ini'
+      # Now mypy.ini in root resolves paths correctly
+      language: system
+      types: [python]
+      files: ^backend/app/
+      exclude: ^backend/tests/
+      pass_filenames: false
+```
+
+```ini
+# In mypy.ini (stays in repo root)
+[mypy]
+python_version = 3.11
+strict = True
+warn_return_any = True
+warn_unused_configs = True
+
+# These paths are relative to mypy.ini location (repo root)
+namespace_packages = False
+explicit_package_bases = False
+
+# Can reference files in docs/, backend/, etc. from root
+ignore_missing_imports = False
+```
+
+#### Prevention
+- Keep mypy.ini in repo root (not backend/)
+- Reference it explicitly: `--config-file=../mypy.ini` when running from subdirectory
+- All include/exclude paths in mypy.ini are relative to its location
+- Document in comments: "Config file must be in repo root for path resolution"
+- Test from different directories: ensure same config works when run as `cd backend && python -m mypy app`
+
+---
+
+### 24. Pre-Commit Hook Testing - Avoid File Corruption
+
+#### Problem (Discovered Phase 0 Type Checking)
+- **Symptom:** Test file edited to trigger pre-commit hook, but bash command created null bytes in Python file
+- **Root Cause:** Using `echo` command to append content to file; shell redirection creates binary data in text file
+- **Why It Happens:** `echo "# test" >> file.py` can create unprintable characters in different shells
+
+#### Solution
+```bash
+# ❌ WRONG (shell echo creates null bytes in Windows PowerShell)
+echo "# test comment" >> backend/app/core/settings.py
+# File now contains binary data, Python won't parse it
+
+# ❌ ALSO WRONG (git restore works, but can corrupt repo state)
+git restore backend/app/core/settings.py
+# File recovered, but uncommitted changes lost
+
+# ✅ CORRECT (test pre-commit without modifying code)
+# Option 1: Create temporary test file
+touch test_file.py
+echo "# test" >> test_file.py
+pre-commit run mypy --files test_file.py  # Runs on temp file
+rm test_file.py
+
+# Option 2: Modify existing file SAFELY, then restore
+python -c "
+with open('backend/app/core/settings.py', 'a') as f:
+    f.write('\n# test comment\n')
+"
+pre-commit run
+git restore backend/app/core/settings.py
+
+# ✅ BEST: Understand pre-commit behavior without modifying code
+pre-commit run --all-files  # Run all hooks on all files
+pre-commit run mypy --all-files  # Run specific hook
+# No file modifications needed!
+```
+
+#### Prevention
+- Never use shell `echo` to modify Python files
+- Use `git restore` to undo accidental changes (always have git initialized)
+- Test pre-commit hooks without modifying code: `pre-commit run --all-files`
+- Understand pre-commit behavior: runs on staged files (git add) by default
+- Document in README: "To test pre-commit locally: `pre-commit run --all-files`"
+
+---
+
+### 25. Comprehensive CI/CD Pipeline Validation: Local-to-Remote Parity
+
+#### Problem (Discovered Phase 0 Type Checking)
+- **Symptom:** All local checks pass; GitHub Actions fails with mysterious error
+- **Root Cause:** Environment differences (Python version, package versions, working directory, OS-specific path behavior)
+- **Why It Happens:** Local dev environment and CI/CD container have different configurations
+
+#### Solution
+```bash
+# ❌ WRONG (assume local = remote)
+python -m mypy backend/app  # Passes locally
+git push  # Wait for GitHub Actions to run
+# Fails on CI/CD with different error!
+
+# ✅ CORRECT (validate local matches CI/CD BEFORE pushing)
+
+# Step 1: Run ALL quality checks locally (in order)
+echo "=== Step 1: Type Checking ==="
+cd backend && python -m mypy app --config-file=../mypy.ini
+cd ..
+
+echo "=== Step 2: Black Formatting ==="
+python -m black --check backend/app backend/tests
+
+echo "=== Step 3: Ruff Linting ==="
+python -m ruff check backend/app backend/tests
+
+echo "=== Step 4: Import Sorting ==="
+python -m isort --check-only backend/app backend/tests
+
+echo "=== Step 5: Run Tests ==="
+python -m pytest backend/tests -v --cov=backend/app
+
+# Step 2: Verify pre-commit hooks
+echo "=== Step 6: Pre-Commit Hooks ==="
+pre-commit run --all-files
+
+# Step 3: Check git status
+echo "=== Step 7: Git Status ==="
+git status
+
+# Step 4: If everything passes, push
+if [ $? -eq 0 ]; then
+    echo "✅ All checks passed locally!"
+    echo "GitHub Actions will now validate"
+    git push origin main
+else
+    echo "❌ Checks failed locally - fix before pushing!"
+fi
+```
+
+#### Create Makefile for Easy Validation
+```makefile
+# backend/Makefile or root Makefile
+.PHONY: test-local test-ci lint format typecheck
+
+# Run ALL local checks (matches CI/CD)
+test-local:
+	@echo "=== Black Formatting Check ==="
+	python -m black --check backend/app backend/tests
+
+	@echo "=== Ruff Linting Check ==="
+	python -m ruff check backend/app backend/tests
+
+	@echo "=== Import Sorting Check ==="
+	python -m isort --check-only backend/app backend/tests
+
+	@echo "=== Type Checking (matches CI/CD) ==="
+	cd backend && python -m mypy app --config-file=../mypy.ini
+	cd ..
+
+	@echo "=== Running Tests ==="
+	python -m pytest backend/tests -v --cov=backend/app --cov-report=html
+
+	@echo "✅ All local checks passed!"
+
+# Run pre-commit hooks
+lint:
+	pre-commit run --all-files
+
+# Auto-format code
+format:
+	python -m black backend/app backend/tests
+	python -m isort backend/app backend/tests
+
+# Type check only
+typecheck:
+	cd backend && python -m mypy app --config-file=../mypy.ini
+```
+
+#### GitHub Actions Should Mirror Local
+```yaml
+# .github/workflows/tests.yml
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"  # Match local Python version
+      - run: pip install -r backend/requirements.txt  # Match local packages
+
+      - name: "Black formatter check"
+        run: python -m black --check backend/app backend/tests
+
+      - name: "Ruff linter check"
+        run: python -m ruff check backend/app backend/tests
+
+      - name: "Import sorting check"
+        run: python -m isort --check-only backend/app backend/tests
+
+      - name: "Type checking (matches local: cd backend && mypy app)"
+        run: cd backend && python -m mypy app --config-file=../mypy.ini
+
+      - name: "Run tests with coverage"
+        run: python -m pytest backend/tests -v --cov=backend/app --cov-report=xml
+```
+
+#### Prevention
+- Create Makefile with `make test-local` command that runs ALL checks
+- Document in README: "Always run `make test-local` before pushing"
+- GitHub Actions workflow should list EXACT same commands as Makefile
+- Pin all tool versions in requirements.txt (black, ruff, mypy, pytest)
+- Add comment in CI/CD: "These commands must match local development"
+- Use `--version` checks to ensure local tools match CI/CD versions
+- Test CI/CD commands locally first BEFORE committing workflow file
+
+---
+
+## ✅ Phase 0 CI/CD Lessons - Complete Checklist
+
+Apply these lessons when setting up type checking and CI/CD:
+
+- [ ] **Lesson 18:** Use `repo: local` with `cd backend &&` for directory-dependent tools (mypy)
+- [ ] **Lesson 18:** Set `pass_filenames: false` in local pre-commit hooks
+- [ ] **Lesson 18:** Test local pre-commit locally: `pre-commit run --all-files`
+- [ ] **Lesson 19:** All Pydantic BaseSettings subclasses use `ClassVar[SettingsConfigDict]`
+- [ ] **Lesson 20:** Always use `async_sessionmaker` (not `sessionmaker`) with async engines
+- [ ] **Lesson 21:** Explicit `bool()` cast for comparison returns in type-strict mode
+- [ ] **Lesson 22:** GitHub Actions mypy should run from same directory as local pre-commit
+- [ ] **Lesson 23:** Keep mypy.ini in repo root, reference with `--config-file=../mypy.ini`
+- [ ] **Lesson 24:** Never use shell `echo` to modify Python files (creates null bytes in Windows)
+- [ ] **Lesson 25:** Create Makefile with `make test-local` that runs ALL checks before push
+- [ ] **Lesson 25:** GitHub Actions workflow commands must EXACTLY match Makefile commands
+- [ ] **Lesson 25:** Pin all tool versions: black, ruff, mypy, pytest, isort
+- [ ] **Lesson 25:** Document in GitHub Actions: "These commands must match local development"
+
+---
+
 ## ✅ Comprehensive Checklist for New Projects
 
 Apply these lessons from Day 1:
@@ -1442,6 +2029,18 @@ Apply these lessons from Day 1:
 - [ ] **NEW (PR-3):** Explicitly catch third-party exceptions (ValidationError, etc.) and convert to HTTPException
 - [ ] **NEW (PR-3):** Always use `datetime.now(timezone.utc)` for timezone-aware comparisons
 - [ ] **NEW (PR-3):** Separate test concerns (HMAC + timing = 2 tests, not 1)
+- [ ] **NEW (Phase 0):** Use `repo: local` with `cd backend &&` in pre-commit for directory-dependent tools
+- [ ] **NEW (Phase 0):** All Pydantic BaseSettings subclasses use `ClassVar[SettingsConfigDict]`
+- [ ] **NEW (Phase 0):** Always use `async_sessionmaker` (not `sessionmaker`) with async engines
+- [ ] **NEW (Phase 0):** Explicit `bool()` cast for comparison returns in type-strict mode
+- [ ] **NEW (Phase 0):** GitHub Actions mypy runs from same directory as local pre-commit
+- [ ] **NEW (Phase 0):** Keep mypy.ini in repo root, reference with `--config-file=../mypy.ini`
+- [ ] **NEW (Phase 0):** Create Makefile with `make test-local` that runs ALL checks before push
+- [ ] **NEW (Phase 0):** GitHub Actions workflow commands must EXACTLY match Makefile commands
+- [ ] **NEW (Phase 0):** Pin all tool versions: black, ruff, mypy, pytest, isort, pydantic, sqlalchemy
+- [ ] **NEW (Phase 0):** Document in GitHub Actions: "These commands must match local development"
+- [ ] **NEW (Phase 0):** Never use shell `echo` to modify Python files (creates null bytes in Windows)
+- [ ] **NEW (Phase 0):** Test pre-commit hooks locally: `pre-commit run --all-files`
 
 ---
 
@@ -1479,6 +2078,12 @@ This template gives you everything needed to build a production-ready project fr
 
 ---
 
-**Last Updated:** October 23, 2025  
-**Version:** 1.0.0  
+**Last Updated:** October 24, 2025
+**Version:** 2.0.0 (Phase 0 CI/CD Lessons Added)
 **Maintained By:** Your Team
+
+**Changes in v2.0.0:**
+- Added 8 comprehensive CI/CD lessons (Lessons 18-25) from Phase 0 implementation
+- Lessons cover: Pre-commit configuration, Pydantic v2 inheritance, SQLAlchemy 2.0 async patterns, type casting, CI/CD parity validation, and environment setup
+- Updated comprehensive checklist with 12 new preventative measures
+- All lessons follow production-proven patterns from real project implementation
