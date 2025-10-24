@@ -2,10 +2,9 @@
 
 import functools
 import logging
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from fastapi import HTTPException, Request
-from starlette.responses import JSONResponse
 
 from backend.app.core.rate_limit import get_rate_limiter
 
@@ -19,19 +18,19 @@ def rate_limit(
     by: str = "ip",
 ):
     """Decorator to rate limit an endpoint.
-    
+
     Args:
         max_tokens: Maximum requests in window (default 60)
         refill_rate: Tokens added per second (default 1 = 60/min)
         window_seconds: Time window in seconds (default 60)
         by: Rate limit key source - "ip" (client IP) or "user" (current user ID)
-    
+
     Returns:
         Callable: Decorator function
-    
+
     Raises:
         HTTPException: 429 Too Many Requests if rate limited
-    
+
     Example:
         @router.post("/login")
         @rate_limit(max_tokens=10, refill_rate=0.17, window_seconds=60)  # 10/min
@@ -43,7 +42,7 @@ def rate_limit(
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             # Extract request from kwargs or args (FastAPI dependency injection)
-            request: Optional[Request] = kwargs.get("request")
+            request: Request | None = kwargs.get("request")
             if not request and len(args) > 0:
                 # Try to find Request in args
                 for arg in args:
@@ -63,10 +62,14 @@ def rate_limit(
                 if current_user:
                     key = f"rate_limit:user:{current_user.id}"
                 else:
-                    # Fallback to IP if no user
-                    key = f"rate_limit:ip:{request.client.host}"
+                    # Fallback to IP if no user; guard request.client which may be None
+                    client = getattr(request, "client", None)
+                    host = client.host if client is not None else "unknown"
+                    key = f"rate_limit:ip:{host}"
             else:  # by == "ip"
-                key = f"rate_limit:ip:{request.client.host}"
+                client = getattr(request, "client", None)
+                host = client.host if client is not None else "unknown"
+                key = f"rate_limit:ip:{host}"
 
             # Check rate limit
             limiter = await get_rate_limiter()
@@ -114,18 +117,18 @@ def abuse_throttle(
     by: str = "ip",
 ):
     """Decorator to throttle endpoints after repeated failures (e.g., login).
-    
+
     Args:
         max_failures: Number of failures before lockout
         lockout_seconds: Duration of lockout in seconds (default 300 = 5 min)
         by: Throttle key source - "ip" (client IP) or "user" (email/username)
-    
+
     Returns:
         Callable: Decorator function
-    
+
     Raises:
         HTTPException: 429 Too Many Requests if locked out
-    
+
     Example:
         @router.post("/login")
         @abuse_throttle(max_failures=5, lockout_seconds=300)  # 5 failures = 5 min lockout
@@ -137,7 +140,7 @@ def abuse_throttle(
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             # Extract request from kwargs or args
-            request: Optional[Request] = kwargs.get("request")
+            request: Request | None = kwargs.get("request")
             if not request and len(args) > 0:
                 for arg in args:
                     if isinstance(arg, Request):
@@ -151,9 +154,13 @@ def abuse_throttle(
             # Determine throttle key
             if by == "user":
                 # Extract email from request body (for login endpoints)
-                key = f"abuse_throttle:user:unknown"  # Will be updated after function call
+                key = (
+                    "abuse_throttle:user:unknown"  # Will be updated after function call
+                )
             else:  # by == "ip"
-                key = f"abuse_throttle:ip:{request.client.host}"
+                client = getattr(request, "client", None)
+                host = client.host if client is not None else "unknown"
+                key = f"abuse_throttle:ip:{host}"
 
             # Check if currently locked out
             limiter = await get_rate_limiter()

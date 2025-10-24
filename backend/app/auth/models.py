@@ -4,10 +4,15 @@ from datetime import datetime
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, Enum as SQLEnum, String, func
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import DateTime, String
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Declarative base for typed SQLAlchemy ORM (SQLAlchemy 1.4+/2.0 style)."""
+
+    pass
 
 
 class UserRole(str, Enum):
@@ -23,12 +28,20 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
-    role = Column(SQLEnum(UserRole), nullable=False, default=UserRole.USER, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        SQLEnum(UserRole), nullable=False, default=UserRole.USER, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         default=datetime.utcnow,

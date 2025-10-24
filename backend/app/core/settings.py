@@ -3,8 +3,8 @@
 import os
 from typing import Literal
 
-from pydantic import ConfigDict, Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AppSettings(BaseSettings):
@@ -20,11 +20,11 @@ class AppSettings(BaseSettings):
     )
     debug: bool = Field(default=False, alias="DEBUG")
 
-    model_config = ConfigDict(
+    model_config: SettingsConfigDict = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="allow"
+        extra="allow",
     )
 
 
@@ -38,11 +38,11 @@ class DbSettings(BaseSettings):
     pool_pre_ping: bool = Field(default=True)
     pool_recycle: int = Field(default=3600, ge=300)
 
-    model_config = ConfigDict(
+    model_config: SettingsConfigDict = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="allow"
+        extra="allow",
     )
 
     @field_validator("url", mode="after")
@@ -75,18 +75,20 @@ class RedisSettings(BaseSettings):
     url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     enabled: bool = Field(default=True)
 
-    model_config = ConfigDict(
+    model_config: SettingsConfigDict = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="allow"
+        extra="allow",
     )
 
 
 class SecuritySettings(BaseSettings):
     """Security settings (JWT, hashing, etc.)."""
 
-    jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
+    jwt_secret_key: str = Field(
+        default="change-me-in-production", alias="JWT_SECRET_KEY"
+    )
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_expiration_hours: int = Field(default=24, alias="JWT_EXPIRATION_HOURS", ge=1)
 
@@ -94,11 +96,11 @@ class SecuritySettings(BaseSettings):
     argon2_memory_cost: int = Field(default=65536, alias="ARGON2_MEMORY_COST", ge=1024)
     argon2_parallelism: int = Field(default=4, alias="ARGON2_PARALLELISM", ge=1)
 
-    model_config = ConfigDict(
+    model_config: SettingsConfigDict = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="allow"
+        extra="allow",
     )
 
     @field_validator("jwt_secret_key", mode="after")
@@ -107,9 +109,7 @@ class SecuritySettings(BaseSettings):
         """Validate JWT secret in production."""
         if os.getenv("APP_ENV") == "production":
             if v == "change-me-in-production" or len(v) < 32:
-                raise ValueError(
-                    "JWT_SECRET_KEY must be ≥32 characters in production"
-                )
+                raise ValueError("JWT_SECRET_KEY must be ≥32 characters in production")
         return v
 
 
@@ -123,11 +123,11 @@ class TelemetrySettings(BaseSettings):
     prometheus_enabled: bool = Field(default=True, alias="PROMETHEUS_ENABLED")
     prometheus_port: int = Field(default=9090, alias="PROMETHEUS_PORT", ge=1, le=65535)
 
-    model_config = ConfigDict(
+    model_config: SettingsConfigDict = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="allow"
+        extra="allow",
     )
 
 
@@ -140,11 +140,11 @@ class Settings(BaseSettings):
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
 
-    model_config = ConfigDict(
+    model_config: SettingsConfigDict = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="allow"
+        extra="allow",
     )
 
 

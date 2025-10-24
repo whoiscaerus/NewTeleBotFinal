@@ -8,18 +8,18 @@ import sys
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from backend.app.core.settings import settings
 
 # contextvar that holds current request id for the running context
-_request_id_var: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+_request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "_request_id", default=None
 )
 
 
 @contextmanager
-def _request_id_context(request_id: Optional[str] = None):
+def _request_id_context(request_id: str | None = None):
     """
     Context manager to set a request id for the current context.
     Tests import this name directly, so keep it available as a private symbol.
@@ -47,7 +47,7 @@ class RequestIdFilter(logging.Filter):
         request_id = _request_id_var.get()
         if request_id:
             # add attribute expected by formatters/tests
-            setattr(record, "request_id", request_id)
+            record.request_id = request_id
         return True
 
 
@@ -69,7 +69,7 @@ class JSONFormatter(logging.Formatter):
 
         # Add extra fields
         if hasattr(record, "extra_fields"):
-            log_data.update(record.extra_fields)  # type: ignore[attr-defined]
+            log_data.update(record.extra_fields)
 
         # Add exception info
         if record.exc_info:

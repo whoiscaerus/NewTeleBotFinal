@@ -1,9 +1,9 @@
 """Database setup and session management."""
 
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
-from sqlalchemy import Column, String, create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from backend.app.core.settings import get_settings
@@ -14,14 +14,16 @@ Base = declarative_base()
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency for getting AsyncSession in FastAPI endpoints.
-    
+
     Yields:
         AsyncSession: Database session
     """
     settings = get_settings()
-    engine = create_async_engine(settings.db.url, echo=settings.app.debug)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
+    engine: AsyncEngine = create_async_engine(settings.db.url, echo=settings.app.debug)
+    async_session: sessionmaker[AsyncSession] = sessionmaker(
+        bind=engine, class_=AsyncSession, expire_on_commit=False
+    )
+
     async with async_session() as session:
         try:
             yield session
@@ -32,7 +34,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # For non-async contexts (imports, etc.)
 def create_sync_session():
     """Create synchronous session for setup/migration tasks.
-    
+
     Returns:
         sessionmaker: Synchronous session factory
     """

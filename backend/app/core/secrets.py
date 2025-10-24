@@ -3,9 +3,6 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Optional
-
-from backend.app.core.settings import get_settings
 
 # Import python-dotenv functions to re-export for tests
 try:
@@ -22,16 +19,16 @@ class SecretProvider(ABC):
     """Abstract base class for secret providers."""
 
     @abstractmethod
-    async def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get_secret(self, key: str, default: str | None = None) -> str | None:
         """Retrieve a secret by key.
-        
+
         Args:
             key: Secret key/name
             default: Default value if secret not found
-        
+
         Returns:
             str: Secret value or default
-        
+
         Raises:
             ValueError: If secret not found and no default provided
         """
@@ -40,7 +37,7 @@ class SecretProvider(ABC):
     @abstractmethod
     async def set_secret(self, key: str, value: str) -> None:
         """Set a secret (for testing or rotation).
-        
+
         Args:
             key: Secret key/name
             value: Secret value
@@ -50,7 +47,7 @@ class SecretProvider(ABC):
 
 class DotenvProvider(SecretProvider):
     """Read secrets from .env file via python-dotenv.
-    
+
     Use only for development. Not recommended for production.
     """
 
@@ -62,13 +59,13 @@ class DotenvProvider(SecretProvider):
         self.secrets = dotenv_values(self.env_file)
         logger.warning("Using DotenvProvider - not suitable for production")
 
-    async def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get_secret(self, key: str, default: str | None = None) -> str | None:
         """Get secret from .env file.
-        
+
         Args:
             key: Environment variable name
             default: Default value if not found
-        
+
         Returns:
             Secret value
         """
@@ -79,7 +76,7 @@ class DotenvProvider(SecretProvider):
 
     async def set_secret(self, key: str, value: str) -> None:
         """Set secret in memory (not written to file).
-        
+
         Args:
             key: Secret key
             value: Secret value
@@ -89,7 +86,7 @@ class DotenvProvider(SecretProvider):
 
 class EnvProvider(SecretProvider):
     """Read secrets from environment variables.
-    
+
     Suitable for containerized environments where secrets are injected
     via environment variables (K8s secrets, ECS task definitions, etc.).
     """
@@ -98,16 +95,16 @@ class EnvProvider(SecretProvider):
         """Initialize environment variable provider."""
         logger.info("Using EnvProvider (environment variables)")
 
-    async def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get_secret(self, key: str, default: str | None = None) -> str | None:
         """Get secret from environment.
-        
+
         Args:
             key: Environment variable name
             default: Default value if not set
-        
+
         Returns:
             Secret value
-        
+
         Raises:
             ValueError: If secret not found and no default provided
         """
@@ -118,7 +115,7 @@ class EnvProvider(SecretProvider):
 
     async def set_secret(self, key: str, value: str) -> None:
         """Set secret in environment.
-        
+
         Args:
             key: Environment variable name
             value: Secret value
@@ -128,7 +125,7 @@ class EnvProvider(SecretProvider):
 
 class VaultProvider(SecretProvider):
     """Read secrets from HashiCorp Vault.
-    
+
     For production use with secret rotation and audit logging.
     Requires VAULT_ADDR, VAULT_TOKEN environment variables.
     """
@@ -144,16 +141,16 @@ class VaultProvider(SecretProvider):
 
         logger.info(f"Using VaultProvider at {self.vault_addr}")
 
-    async def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get_secret(self, key: str, default: str | None = None) -> str | None:
         """Get secret from Vault.
-        
+
         Args:
             key: Secret key in format 'secret_name' or 'path/secret_name'
             default: Default value if not found
-        
+
         Returns:
             Secret value
-        
+
         Raises:
             ValueError: If secret not found and no default provided
         """
@@ -161,9 +158,6 @@ class VaultProvider(SecretProvider):
             import hvac
 
             client = hvac.Client(url=self.vault_addr, token=self.vault_token)
-
-            # Build secret path
-            path = f"{self.vault_path}/{key}"
 
             # Read from Vault
             response = client.secrets.kv.v2.read_secret_version(path=key)
@@ -186,7 +180,7 @@ class VaultProvider(SecretProvider):
 
     async def set_secret(self, key: str, value: str) -> None:
         """Set secret in Vault.
-        
+
         Args:
             key: Secret key
             value: Secret value
@@ -208,10 +202,10 @@ class VaultProvider(SecretProvider):
 
 class SecretManager:
     """Unified secret management interface.
-    
+
     Routes to appropriate provider based on configuration.
     Caches secrets in memory with optional TTL.
-    
+
     Example:
         manager = SecretManager()
         jwt_key = await manager.get_secret("JWT_SECRET_KEY")
@@ -221,19 +215,21 @@ class SecretManager:
     def __init__(self):
         """Initialize secret manager with configured provider."""
         self.provider = self._get_provider()
-        self.cache: dict[str, tuple[str, float]] = {}  # {key: (value, expiry_time)}
+        # Value may be str | None because providers may return None (or raise).
+        self.cache: dict[str, tuple[str | None, float]] = (
+            {}
+        )  # {key: (value, expiry_time)}
         self.cache_ttl = 3600  # 1 hour default
 
     def _get_provider(self) -> SecretProvider:
         """Get configured secret provider.
-        
+
         Returns:
             SecretProvider: Initialized provider instance
-        
+
         Raises:
             ValueError: If invalid provider or missing config
         """
-        settings = get_settings()
         provider_name = os.environ.get("SECRETS_PROVIDER", "dotenv").lower()
 
         logger.info(f"Loading SecretProvider: {provider_name}")
@@ -250,16 +246,16 @@ class SecretManager:
                 "Must be: dotenv, env, or vault"
             )
 
-    async def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get_secret(self, key: str, default: str | None = None) -> str | None:
         """Get secret, checking cache first.
-        
+
         Args:
             key: Secret key
             default: Default value if not found
-        
+
         Returns:
             Secret value
-        
+
         Raises:
             ValueError: If secret not found and no default provided
         """
@@ -288,7 +284,7 @@ class SecretManager:
 
     async def set_secret(self, key: str, value: str) -> None:
         """Set secret and invalidate cache.
-        
+
         Args:
             key: Secret key
             value: Secret value
@@ -298,9 +294,9 @@ class SecretManager:
         if key in self.cache:
             del self.cache[key]
 
-    def invalidate_cache(self, key: Optional[str] = None) -> None:
+    def invalidate_cache(self, key: str | None = None) -> None:
         """Invalidate cache for specific key or all keys.
-        
+
         Args:
             key: Secret key to invalidate, or None to clear all
         """
@@ -313,12 +309,12 @@ class SecretManager:
 
 
 # Global secret manager instance
-_manager: Optional[SecretManager] = None
+_manager: SecretManager | None = None
 
 
 async def get_secret_manager() -> SecretManager:
     """Get or initialize global secret manager.
-    
+
     Returns:
         SecretManager: Initialized manager instance
     """
