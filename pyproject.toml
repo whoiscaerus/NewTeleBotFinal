@@ -10,7 +10,13 @@ requires-python = ">=3.11"
 authors = [
     {name = "Trading Signals Team", email = "dev@tradingsignals.local"},
 ]
-license = {text = "MIT"}
+license = "MIT"
+
+[tool.setuptools]
+packages = ["backend"]
+
+[tool.setuptools.package-data]
+backend = ["py.typed"]
 
 dependencies = [
     "fastapi>=0.104.1",
