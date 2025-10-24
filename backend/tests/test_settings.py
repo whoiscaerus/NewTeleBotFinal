@@ -15,8 +15,17 @@ from backend.app.core.settings import (
 class TestAppSettings:
     """Test AppSettings configuration."""
 
-    def test_defaults(self):
-        """Test default values."""
+    def test_defaults(self, monkeypatch):
+        """Test default values.
+
+        Note: In CI/CD (GitHub Actions), APP_LOG_LEVEL is set to DEBUG.
+        Use monkeypatch to test actual defaults.
+        """
+        # Clear CI/CD environment variables to test actual defaults
+        monkeypatch.delenv("APP_LOG_LEVEL", raising=False)
+        monkeypatch.delenv("APP_ENV", raising=False)
+        monkeypatch.delenv("DEBUG", raising=False)
+
         settings = AppSettings()
         assert settings.env == "development"
         assert settings.name == "trading-signal-platform"
