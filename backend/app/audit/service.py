@@ -1,10 +1,10 @@
 """Audit event recording service."""
 
-import logging
-from typing import Any, Optional
+from typing import Any
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.audit.models import AuditLog, AUDIT_ACTIONS
+from backend.app.audit.models import AUDIT_ACTIONS, AuditLog
 from backend.app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 class AuditService:
     """Service for recording audit events.
-    
+
     Events are immutable - only append operations allowed.
     """
 
@@ -21,16 +21,16 @@ class AuditService:
         db: AsyncSession,
         action: str,
         target: str,
-        actor_id: Optional[str] = None,
+        actor_id: str | None = None,
         actor_role: str = "USER",
-        target_id: Optional[str] = None,
-        meta: Optional[dict[str, Any]] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        target_id: str | None = None,
+        meta: dict[str, Any] | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
         status: str = "success",
     ) -> AuditLog:
         """Record an audit event.
-        
+
         Args:
             db: Database session
             action: Action name (e.g., 'auth.login')
@@ -42,13 +42,13 @@ class AuditService:
             ip_address: Client IP address
             user_agent: HTTP User-Agent header
             status: Result status ('success', 'failure', 'error')
-        
+
         Returns:
             AuditLog: Recorded audit event
-        
+
         Raises:
             ValueError: If action or target not recognized
-        
+
         Example:
             await AuditService.record(
                 db=db,
@@ -101,18 +101,18 @@ class AuditService:
         db: AsyncSession,
         user_id: str,
         success: bool,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> AuditLog:
         """Record login attempt.
-        
+
         Args:
             db: Database session
             user_id: User ID
             success: Whether login succeeded
             ip_address: Client IP
             user_agent: HTTP User-Agent
-        
+
         Returns:
             AuditLog: Recorded event
         """
@@ -129,20 +129,20 @@ class AuditService:
         )
 
     @staticmethod
-    async def record_registration(
+    async def record_register(
         db: AsyncSession,
         user_id: str,
         email: str,
-        ip_address: Optional[str] = None,
+        ip_address: str | None = None,
     ) -> AuditLog:
         """Record user registration.
-        
+
         Args:
             db: Database session
             user_id: New user ID
             email: User email (non-PII field for audit)
             ip_address: Client IP
-        
+
         Returns:
             AuditLog: Recorded event
         """
@@ -167,14 +167,14 @@ class AuditService:
         new_role: str,
     ) -> AuditLog:
         """Record user role change.
-        
+
         Args:
             db: Database session
             admin_id: Admin user ID making change
             target_user_id: User whose role changed
             old_role: Previous role
             new_role: New role
-        
+
         Returns:
             AuditLog: Recorded event
         """
@@ -190,22 +190,22 @@ class AuditService:
         )
 
     @staticmethod
-    async def record_failure(
+    async def record_error(
         db: AsyncSession,
         action: str,
         target: str,
         error: str,
-        ip_address: Optional[str] = None,
+        ip_address: str | None = None,
     ) -> AuditLog:
         """Record failed operation.
-        
+
         Args:
             db: Database session
             action: Action name
             target: Resource type
             error: Error message
             ip_address: Client IP
-        
+
         Returns:
             AuditLog: Recorded event
         """

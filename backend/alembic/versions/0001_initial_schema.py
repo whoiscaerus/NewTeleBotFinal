@@ -1,12 +1,13 @@
 """Initial schema: users and audit_logs tables.
 
 Revision ID: 0001
-Revises: 
+Revises:
 Create Date: 2024-01-01 00:00:00.000000
 
 """
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -18,7 +19,7 @@ depends_on = None
 
 def upgrade() -> None:
     """Create initial tables: users, audit_logs."""
-    
+
     # Create users table
     op.create_table(
         "users",
@@ -31,8 +32,12 @@ def upgrade() -> None:
             nullable=False,
             server_default="user",
         ),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("email", name="uq_users_email"),
     )
