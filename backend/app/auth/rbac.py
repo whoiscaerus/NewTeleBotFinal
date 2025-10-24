@@ -33,7 +33,7 @@ def has_role(user_role: UserRole, required_roles: list[UserRole]) -> bool:
 
 def is_owner(user_role: UserRole) -> bool:
     """Check if user is owner."""
-    return user_role == UserRole.OWNER
+    return bool(user_role == UserRole.OWNER)
 
 
 def is_admin(user_role: UserRole) -> bool:
