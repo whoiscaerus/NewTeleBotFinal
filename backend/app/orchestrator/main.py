@@ -8,6 +8,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
+from backend.app.approvals import routes as approvals_routes
 from backend.app.core.db import close_db, init_db, verify_db_connection
 from backend.app.core.logging import get_logger, setup_logging
 from backend.app.core.middleware import RequestIDMiddleware
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(routes.router)
     app.include_router(signals_routes.router)
+    app.include_router(approvals_routes.router)
 
     logger.info("FastAPI application created")
 
