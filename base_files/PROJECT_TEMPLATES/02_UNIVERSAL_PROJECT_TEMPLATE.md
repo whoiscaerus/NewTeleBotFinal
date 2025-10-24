@@ -4702,9 +4702,71 @@ module.exports = {
 
 ---
 
-## ✅ COMPLETE LESSONS CHECKLIST (40 Comprehensive Lessons)
+### 41. Docker Multi-Stage Build: Path Context and COPY Command Precision
+
+#### Lesson (Discovered Phase 7 - Docker Build)
+- **Problem:** Docker build succeeds locally, fails in GitHub Actions CI/CD
+  - Error: `failed to solve: /alembic: not found` and `/alembic.ini: not found`
+  - Tests pass ✅, but Docker build ❌ at final step
+  - Root cause: COPY commands looked for files in wrong directory
+
+- **Original (BROKEN) approach:**
+```dockerfile
+WORKDIR /app
+
+# These try to copy from PROJECT ROOT, not from /backend/
+COPY --chown=appuser:appuser backend/ backend/
+COPY --chown=appuser:appuser alembic/ alembic/          # ❌ Not at ./alembic/, but at ./backend/alembic/
+COPY --chown=appuser:appuser alembic.ini .             # ❌ Not at ./alembic.ini, but at ./backend/alembic.ini
+```
+
+- **Problem details:**
+  - Docker build context is project root (.)
+  - Files needed: `backend/alembic/`, `backend/alembic.ini`, `backend/app/`
+  - Dockerfile tried to find them at root level
+  - Docker can't calculate cache checksums → build fails
+
+- **Fixed approach:**
+```dockerfile
+WORKDIR /app
+
+# Single COPY that includes all backend files
+# backend/ directory contains: app/, alembic/, alembic.ini, requirements.txt, tests/
+COPY --chown=appuser:appuser backend/ /app/
+
+# Everything is now in /app/ where CMD expects it
+CMD ["uvicorn", "backend.app.orchestrator.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+- **Prevention checklist:**
+  1. **Understand project structure** - Know where files actually are
+  2. **Visualize build context** - `docker build .` means context is root directory
+  3. **Test Docker locally first** - `docker build -f docker/backend.Dockerfile .` before pushing
+  4. **Use single COPY when possible** - Reduces failure points (copy entire dir instead of 3 separate files)
+  5. **Document in Dockerfile** - Add comments explaining what COPY includes
+  6. **Check paths in multi-stage** - Each FROM starts fresh, verify COPY works in each stage
+  7. **Reason:** GitHub Actions runs with fresh checkout, strict root context (no local environment differences)
+
+- **Real-world checklist for any Dockerfile:**
+```dockerfile
+# WRONG: Assumes files at root
+COPY app/ /app/
+COPY alembic/ /app/alembic/
+COPY alembic.ini /app/
+
+# RIGHT: Copy everything from where it is
+COPY backend/ /app/
+# Now /app contains: app/, alembic/, alembic.ini (all files from backend/ dir)
+
+# VERIFY: Correct paths for CMD/ENTRYPOINT
+CMD ["uvicorn", "backend.app.orchestrator.main:app", ...]  # ✅ Works from /app/
+```
+
+---
 
 ## ✅ COMPLETE LESSONS CHECKLIST (40 Comprehensive Lessons)
+
+## ✅ COMPLETE LESSONS CHECKLIST (41 Comprehensive Lessons)
 
 ### Critical Patterns (Must Know)
 - [ ] **Lesson 18:** Local pre-commit + GitHub Actions must match
@@ -4716,6 +4778,7 @@ module.exports = {
 - [ ] **Lesson 31:** mode="before" validator for empty field detection
 - [ ] **Lesson 36:** Isolate CI/CD environment variables in tests (monkeypatch)
 - [ ] **Lesson 38:** GitHub Secrets required for private repo Codecov
+- [ ] **Lesson 41:** Docker COPY paths relative to build context, test locally first
 
 ### Testing Patterns (Must Know)
 - [ ] **Lesson 5:** Fixtures scope, async/await patterns
@@ -4728,6 +4791,9 @@ module.exports = {
 ### Frontend & Coverage (Must Know)
 - [ ] **Lesson 37:** Unified backend + frontend coverage via Codecov
 - [ ] **Lesson 40:** Always include ts-jest for TypeScript frontend support
+
+### Docker & Infrastructure (Must Know)
+- [ ] **Lesson 41:** Multi-stage build paths, COPY context, test before pushing
 
 ### Environment & Setup (Must Know)
 - [ ] **Lesson 4:** DATABASE_URL set in conftest.py BEFORE imports
@@ -4794,8 +4860,17 @@ This template gives you everything needed to build a production-ready project fr
 ---
 
 **Last Updated:** October 24, 2025
-**Version:** 2.3.0 (Phase 7 Codecov & Frontend Setup Lessons Added - MULTI-LANGUAGE CI/CD)
+**Version:** 2.4.0 (Phase 7 Docker Build Fix + Lesson 41 Added)
 **Maintained By:** Your Team
+
+**Changes in v2.4.0 (Phase 7 - Docker Infrastructure):**
+- **Added 1 critical Docker lesson (Lesson 41) from Docker build failure investigation**
+- **Lesson covers:** Multi-stage build path context, COPY command precision, testing before pushing
+- **Real-world issue:** Tests pass but Docker build fails in GitHub Actions (file path mismatch)
+- **Root cause:** COPY commands looked in wrong directory (root vs backend/)
+- **Solution:** Consolidated to single COPY of backend/ directory
+- **Prevention:** Always test Docker build locally, understand build context, use single COPY when possible
+- **Template now covers:** 41 comprehensive lessons across 8 areas (Docker + 7 previous)
 
 **Changes in v2.3.0 (Phase 7):**
 - **Added 5 new Codecov & frontend lessons (Lessons 36-40) from Phase 7 CI/CD setup**
