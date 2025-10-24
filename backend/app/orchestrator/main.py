@@ -8,10 +8,12 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
+from backend.app.core.db import close_db, init_db, verify_db_connection
 from backend.app.core.logging import get_logger, setup_logging
 from backend.app.core.middleware import RequestIDMiddleware
 from backend.app.core.settings import settings
 from backend.app.orchestrator import routes
+from backend.app.signals import routes as signals_routes
 
 logger = get_logger(__name__)
 
@@ -21,6 +23,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """Application lifespan context manager.
 
     Handles startup and shutdown events.
+
+    Startup tasks:
+    - Log application start
+    - Initialize database tables
+    - Verify database connectivity
+
+    Shutdown tasks:
+    - Close database connections
+    - Log application stop
     """
     # Startup
     logger.info(
@@ -30,9 +41,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         app_env=settings.APP_ENV,
     )
 
+    try:
+        # Initialize database tables
+        await init_db()
+        logger.info("Database tables initialized")
+
+        # Verify database connectivity
+        is_connected = await verify_db_connection()
+        if is_connected:
+            logger.info("Database connection verified")
+        else:
+            logger.warning("Database connection check failed")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}", exc_info=True)
+        # Continue startup even if DB init fails (may retry on requests)
+
     yield
 
     # Shutdown
+    try:
+        await close_db()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database: {e}", exc_info=True)
+
     logger.info("Application shutting down")
 
 
@@ -58,6 +90,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(routes.router)
+    app.include_router(signals_routes.router)
 
     logger.info("FastAPI application created")
 

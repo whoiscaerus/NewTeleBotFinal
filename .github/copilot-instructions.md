@@ -543,6 +543,18 @@ BEFORE git push:
 - ✅ Zero TODOs, FIXMEs, or placeholders
 - ✅ Zero hardcoded values (use config/env)
 - ✅ Security validated (input sanitization, no secrets)
+- ✅ **ALL Python code formatted with Black (88 char line length)** - MANDATORY
+
+### Black Formatting Requirement
+**CRITICAL**: Before committing ANY code, run Black formatter:
+```bash
+python -m black backend/app/ backend/tests/
+```
+Verify all files pass:
+```bash
+python -m black --check backend/app/ backend/tests/
+```
+If any files need reformatting, Black will fix them automatically on first command.
 
 ### Testing Gate
 - ✅ Backend tests: ≥90% coverage (pytest)
@@ -1228,6 +1240,29 @@ def downgrade():
 ## 🎯 WHEN READY FOR NEXT PR
 
 Once current PR is 100% complete:
+
+### Step 1: Capture Lessons Learned
+**MANDATORY: Add any technical issues/solutions discovered to universal template**
+
+1. Review all problems encountered during PR implementation
+2. Document each problem with:
+   - Symptom (error message)
+   - Root cause (why it happened)
+   - Solution (code showing WRONG vs CORRECT)
+   - Prevention (how to avoid in future)
+
+3. Add to `/base_files/PROJECT_TEMPLATES/02_UNIVERSAL_PROJECT_TEMPLATE.md`
+   - Find section: `## 📚 LESSONS LEARNED - Common Issues & Solutions`
+   - Add new lesson as item #N (increment number)
+   - Format exactly like existing lessons (12+ examples as reference)
+   - Keep same structure: Problem → Solution → Prevention
+
+4. Update comprehensive checklist at bottom of "Lessons Learned" section
+   - Add new preventative measure if applicable
+
+**Why**: Universal template grows from real production issues. Next project avoids same mistakes.
+
+### Step 2: Standard Completion Steps
 1. Verify all quality gates passed
 2. Get code review (at least 2 approvals)
 3. Merge to main branch
@@ -1273,6 +1308,40 @@ Once current PR is 100% complete:
 3. Verify no merge markers remain
 4. Run tests: `make test-local`
 5. Commit: `git add . && git commit -m "Resolve merge conflicts"`
+
+---
+
+## 📚 Template Knowledge Base Updates
+
+### How Lessons Get Into the Universal Template
+
+**Every completed PR contributes to the universal template:**
+
+1. **After PR passes all tests & quality gates:**
+   - Problems discovered during implementation are documented
+   - Solutions with WRONG vs CORRECT code examples are added
+   - Prevention strategies are captured
+
+2. **Before moving to next PR:**
+   - Add new lesson to `/base_files/PROJECT_TEMPLATES/02_UNIVERSAL_PROJECT_TEMPLATE.md`
+   - Section: `## 📚 LESSONS LEARNED - Common Issues & Solutions`
+   - Follow exact format of existing 12 lessons (Problem → Solution → Prevention)
+   - Update checklist at bottom with new preventative measure
+
+3. **Result:**
+   - Next project using template starts with knowledge from ALL previous projects
+   - Avoids repeating same mistakes across different domains
+   - Technical mechanics (async patterns, testing, etc.) apply universally
+
+### Examples of Universal Patterns
+
+Even though each project is different, these patterns repeat:
+- Any async Python 3.11 + SQLAlchemy 2.0 → SessionLocal factory pattern applies
+- Any project with dev/test/prod databases → Conditional pool configuration applies
+- Any async code → Type hints + monkeypatch patterns apply
+- Any testing framework → Happy path + error path testing applies
+
+**Template grows organically from real implementation experience across all projects.**
 
 ---
 

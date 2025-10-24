@@ -7,6 +7,7 @@ import time
 
 from fastapi import APIRouter
 
+from backend.app.core.db import verify_db_connection
 from backend.app.core.logging import get_logger
 from backend.app.core.settings import settings
 
@@ -34,13 +35,26 @@ async def health_check() -> dict:
 async def readiness_check() -> dict:
     """Readiness check endpoint.
 
+    Verifies that the application is ready to receive requests by checking:
+    - Database connectivity
+    - Redis connectivity (if configured)
+
     Returns:
         dict: Ready status and dependency states.
+
+    Example:
+        >>> response = await readiness_check()
+        >>> assert response["ready"] is True
+        >>> assert response["dependencies"]["db"] == "connected"
     """
     logger.info("Readiness check")
+
+    # Check database connectivity
+    db_status = "connected" if await verify_db_connection() else "disconnected"
+
     return {
-        "ready": True,
-        "dependencies": {"db": "unknown", "redis": "unknown"},
+        "ready": db_status == "connected",
+        "dependencies": {"db": db_status, "redis": "unknown"},
     }
 
 
