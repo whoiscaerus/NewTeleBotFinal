@@ -85,8 +85,8 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client(db_session: AsyncSession):
-    """Create test FastAPI client."""
+async def client(db_session: AsyncSession, monkeypatch):
+    """Create test FastAPI client with disabled rate limiting."""
     from httpx import ASGITransport
 
     from backend.app.core.db import get_db
@@ -95,7 +95,33 @@ async def client(db_session: AsyncSession):
     async def override_get_db():
         yield db_session
 
+    # Mock the rate limiter to always allow requests in tests
+    class NoOpRateLimiter:
+        """Rate limiter that allows all requests in tests."""
+
+        def __init__(self):
+            """Initialize with no Redis client (signals Redis unavailable)."""
+            self._initialized = False
+            self.redis_client = None
+
+        async def is_allowed(self, key: str, **kwargs) -> bool:
+            """Always allow requests in tests."""
+            return True
+
+        async def get_remaining(self, key: str, max_tokens: int, **kwargs) -> int:
+            """Return max tokens as always available in tests."""
+            return max_tokens
+
+    async def mock_get_rate_limiter():
+        """Return no-op rate limiter for tests."""
+        return NoOpRateLimiter()
+
     app.dependency_overrides[get_db] = override_get_db
+
+    # Monkeypatch get_rate_limiter to return our no-op version
+    monkeypatch.setattr(
+        "backend.app.core.decorators.get_rate_limiter", mock_get_rate_limiter
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
