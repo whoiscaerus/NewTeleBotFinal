@@ -43,6 +43,14 @@ class DbSettings(BaseSettings):
         extra="allow",
     )
 
+    @field_validator("url", mode="before")
+    @classmethod
+    def validate_db_url_before(cls, v: str) -> str:
+        """Validate database URL is not empty (before coercion)."""
+        if not v or (isinstance(v, str) and v.strip() == ""):
+            raise ValueError("DATABASE_URL cannot be empty")
+        return v
+
     @field_validator("url", mode="after")
     @classmethod
     def validate_db_url(cls, v: str) -> str:

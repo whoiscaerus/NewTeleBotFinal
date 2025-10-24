@@ -39,30 +39,37 @@ class TestAppSettings:
 class TestDbSettings:
     """Test DbSettings configuration."""
 
-    def test_postgresql_url_valid(self):
+    def test_postgresql_url_valid(self, monkeypatch):
         """Test PostgreSQL URL validation."""
-        settings = DbSettings(url="postgresql://user:pass@localhost:5432/db")
+        monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db")
+        settings = DbSettings()
         assert settings.url == "postgresql://user:pass@localhost:5432/db"
 
-    def test_postgresql_asyncpg_url_valid(self):
+    def test_postgresql_asyncpg_url_valid(self, monkeypatch):
         """Test PostgreSQL asyncpg URL validation."""
-        settings = DbSettings(url="postgresql+asyncpg://user:pass@localhost:5432/db")
+        monkeypatch.setenv(
+            "DATABASE_URL", "postgresql+asyncpg://user:pass@localhost:5432/db"
+        )
+        settings = DbSettings()
         assert settings.url == "postgresql+asyncpg://user:pass@localhost:5432/db"
 
-    def test_sqlite_url_valid(self):
+    def test_sqlite_url_valid(self, monkeypatch):
         """Test SQLite URL validation."""
-        settings = DbSettings(url="sqlite+aiosqlite:///:memory:")
+        monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+        settings = DbSettings()
         assert settings.url == "sqlite+aiosqlite:///:memory:"
 
-    def test_invalid_url_raises_error(self):
+    def test_invalid_url_raises_error(self, monkeypatch):
         """Test invalid database URL raises error."""
+        monkeypatch.setenv("DATABASE_URL", "mysql://localhost/db")
         with pytest.raises(ValueError, match="Unsupported database URL"):
-            DbSettings(url="mysql://localhost/db")
+            DbSettings()
 
-    def test_empty_url_raises_error(self):
+    def test_empty_url_raises_error(self, monkeypatch):
         """Test empty database URL raises error."""
+        monkeypatch.setenv("DATABASE_URL", "")
         with pytest.raises(ValueError, match="cannot be empty"):
-            DbSettings(url="")
+            DbSettings()
 
     def test_pool_constraints(self):
         """Test pool size constraints."""
@@ -118,7 +125,7 @@ class TestSecuritySettings:
     def test_jwt_expiration_constraint(self):
         """Test JWT expiration must be >= 1."""
         with pytest.raises(ValueError):
-            SecuritySettings(jwt_expiration_hours=0)
+            SecuritySettings(**{"JWT_EXPIRATION_HOURS": 0})
 
     def test_jwt_secret_production_validation(self, monkeypatch):
         """Test JWT secret validation in production."""
@@ -126,10 +133,10 @@ class TestSecuritySettings:
 
         # Should fail with default secret
         with pytest.raises(ValueError, match="must be ≥32 characters"):
-            SecuritySettings(jwt_secret_key="change-me-in-production")
+            SecuritySettings(**{"JWT_SECRET_KEY": "change-me-in-production"})
 
         # Should succeed with long secret
-        settings = SecuritySettings(jwt_secret_key="a" * 32)
+        settings = SecuritySettings(**{"JWT_SECRET_KEY": "a" * 32})
         assert len(settings.jwt_secret_key) == 32
 
     def test_from_env(self, monkeypatch):
@@ -154,12 +161,12 @@ class TestTelemetrySettings:
     def test_prometheus_port_constraint(self):
         """Test Prometheus port constraint."""
         with pytest.raises(ValueError):
-            TelemetrySettings(prometheus_port=0)
+            TelemetrySettings(**{"PROMETHEUS_PORT": 0})
 
         with pytest.raises(ValueError):
-            TelemetrySettings(prometheus_port=65536)
+            TelemetrySettings(**{"PROMETHEUS_PORT": 65536})
 
-        settings = TelemetrySettings(prometheus_port=9091)
+        settings = TelemetrySettings(**{"PROMETHEUS_PORT": 9091})
         assert settings.prometheus_port == 9091
 
 

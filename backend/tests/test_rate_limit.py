@@ -63,17 +63,18 @@ class TestRateLimitDecorator:
         mock_request = MagicMock(spec=Request)
         mock_request.client.host = "127.0.0.1"
 
-        # Create decorated function
-        @rate_limit(max_tokens=10, refill_rate=1, window_seconds=60)
-        async def test_endpoint(request: Request):
-            return {"status": "ok"}
+        # Mock get_rate_limiter BEFORE applying decorator
+        mock_limiter = AsyncMock()
+        mock_limiter.is_allowed = AsyncMock(return_value=True)
+        mock_limiter.get_remaining = AsyncMock(return_value=9)
 
-        # Mock get_rate_limiter to avoid Redis
-        with patch("backend.app.core.decorators.get_rate_limiter") as mock_get_limiter:
-            mock_limiter = AsyncMock()
-            mock_limiter.is_allowed = AsyncMock(return_value=True)
-            mock_limiter.get_remaining = AsyncMock(return_value=9)
-            mock_get_limiter.return_value = mock_limiter
+        with patch(
+            "backend.app.core.decorators.get_rate_limiter", return_value=mock_limiter
+        ):
+            # Apply decorator with patched get_rate_limiter
+            @rate_limit(max_tokens=10, refill_rate=1, window_seconds=60)
+            async def test_endpoint(request: Request):
+                return {"status": "ok"}
 
             result = await test_endpoint(request=mock_request)
 
@@ -85,21 +86,23 @@ class TestRateLimitDecorator:
         """Test rate_limit decorator returns 429 when limit exceeded."""
         from unittest.mock import MagicMock
 
-        from fastapi import Request
+        from fastapi import HTTPException, Request
 
         mock_request = MagicMock(spec=Request)
         mock_request.client.host = "127.0.0.1"
 
-        @rate_limit(max_tokens=5)
-        async def test_endpoint(request: Request):
-            return {"status": "ok"}
+        # Mock get_rate_limiter BEFORE applying decorator
+        mock_limiter = AsyncMock()
+        mock_limiter.is_allowed = AsyncMock(return_value=False)  # Rate limited
+        mock_limiter.get_remaining = AsyncMock(return_value=0)
 
-        from fastapi import HTTPException
-
-        with patch("backend.app.core.decorators.get_rate_limiter") as mock_get_limiter:
-            mock_limiter = AsyncMock()
-            mock_limiter.is_allowed = AsyncMock(return_value=False)  # Rate limited
-            mock_get_limiter.return_value = mock_limiter
+        with patch(
+            "backend.app.core.decorators.get_rate_limiter", return_value=mock_limiter
+        ):
+            # Apply decorator with patched get_rate_limiter
+            @rate_limit(max_tokens=5)
+            async def test_endpoint(request: Request):
+                return {"status": "ok"}
 
             with pytest.raises(HTTPException):
                 await test_endpoint(request=mock_request)
