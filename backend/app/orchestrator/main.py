@@ -1,15 +1,47 @@
 """Main FastAPI application factory."""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.app.auth.routes import router as auth_router
+from backend.app.core.middleware import RequestIDMiddleware
+from backend.app.core.settings import get_settings
 
 
 def create_app() -> FastAPI:
-    """Create and configure FastAPI application."""
+    """Create and configure FastAPI application.
+    
+    Initializes:
+    - FastAPI app with metadata
+    - CORS middleware
+    - Request ID middleware for tracing
+    - Authentication routes
+    - Health check endpoints
+    
+    Returns:
+        FastAPI: Configured application instance
+    """
+    settings = get_settings()
+    
     app = FastAPI(
         title="Trading Signal Platform",
         version="0.1.0",
         description="Production trading signal platform with Telegram integration",
     )
+
+    # Add middlewares
+    app.add_middleware(RequestIDMiddleware)
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # TODO: Restrict in production
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Include routers
+    app.include_router(auth_router)
 
     @app.get("/health")
     async def health_check() -> dict:

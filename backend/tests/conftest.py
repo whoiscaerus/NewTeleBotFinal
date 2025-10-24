@@ -62,7 +62,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 async def client(db_session: AsyncSession):
     """Create test FastAPI client."""
     from httpx import ASGITransport
-    from backend.app.main import app
+    from backend.app.orchestrator.main import app
     from backend.app.core.db import get_db
     
     async def override_get_db():
