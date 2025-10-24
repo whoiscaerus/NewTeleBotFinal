@@ -4764,7 +4764,105 @@ CMD ["uvicorn", "backend.app.orchestrator.main:app", ...]  # ✅ Works from /app
 
 ---
 
-## ✅ COMPLETE LESSONS CHECKLIST (40 Comprehensive Lessons)
+### 42. Docker Multi-Stage Build Package Dependencies (pyproject.toml)
+
+**Problem**: Builder stage pip install fails with "package directory 'backend' does not exist"
+
+**Root Cause**: `pyproject.toml` declares `packages = ["backend"]` but builder stage only has pyproject.toml, not the backend/ directory
+
+```toml
+# pyproject.toml - Declares what packages to build
+[tool.setuptools]
+packages = ["backend"]  # ← Setuptools will look for backend/ directory
+```
+
+**Wrong Pattern** (pyproject.toml packages not available):
+```dockerfile
+FROM python:3.11-slim as builder
+WORKDIR /build
+COPY pyproject.toml .                              # ✗ Missing: backend/ dir
+RUN python -m pip install --user --no-cache-dir .  # ✗ FAILS - can't find backend/
+```
+
+**Error Message**:
+```
+error: subprocess-exited-with-error
+× Getting requirements to build wheel did not run successfully.
+│ exit code: 1
+│ error: package directory 'backend' does not exist
+```
+
+**Correct Pattern** (all packages declared in pyproject.toml must exist):
+```dockerfile
+FROM python:3.11-slim as builder
+WORKDIR /build
+COPY pyproject.toml .                              # ✓ Config
+COPY backend/ /build/backend/                      # ✓ ALL packages from pyproject.toml
+RUN python -m pip install --user --no-cache-dir .  # ✓ SUCCESS - backend/ exists
+```
+
+**Why This Matters**:
+- Multi-stage builds have different working directories
+- Each stage starts fresh with clean context
+- pip needs ALL packages referenced in pyproject.toml to be present
+- Local builds work (you have files everywhere) but CI/CD has strict root context
+
+**Prevention Checklist**:
+1. **Check pyproject.toml** - Does `[tool.setuptools]` have `packages = [...]`? If yes, all must be COPYed in builder
+2. **Order matters** - Copy source files BEFORE pip install
+3. **Test locally first** - `docker build -f docker/backend.Dockerfile --target builder .` catches this immediately
+4. **Absolute paths in COPY** - `COPY backend/ /build/backend/` not `COPY backend/ backend/`
+5. **Document in Dockerfile** - Add comments showing what gets copied where
+
+**Real-World Example**:
+```dockerfile
+# Stage 1: Builder - compiles Python packages
+FROM python:3.11-slim as builder
+WORKDIR /build
+
+# Install compile-time tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy source files referenced in pyproject.toml BEFORE pip install
+COPY pyproject.toml .
+COPY backend/ /build/backend/          # ← Must include everything setuptools expects
+COPY README.md .                        # If pyproject.toml references it
+
+# Now pip can successfully build wheels
+RUN python -m pip install --user --no-cache-dir .
+
+# Stage 2: Runtime - uses pre-built packages
+FROM python:3.11-slim as production
+WORKDIR /app
+
+# Install runtime deps only (not build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy pre-built packages from builder
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Copy app code for runtime
+COPY --chown=appuser:appuser backend/ /app/
+```
+
+**When This Happens**:
+- First time setting up Docker multi-stage builds with setuptools
+- Modifying pyproject.toml to include new packages without updating Dockerfile
+- Local development works (files exist) but CI/CD fails (strict build context)
+
+**How to Debug**:
+1. Read error: "package directory 'X' does not exist"
+2. Find declared packages: `grep "packages = " pyproject.toml`
+3. Verify each package is COPYed in builder: `grep "COPY" Dockerfile | grep builder -A 20`
+4. Test locally: `docker build -f Dockerfile --target builder .`
+
+---
+
+## ✅ COMPLETE LESSONS CHECKLIST (42 Comprehensive Lessons)
 
 ## ✅ COMPLETE LESSONS CHECKLIST (41 Comprehensive Lessons)
 
@@ -4794,6 +4892,7 @@ CMD ["uvicorn", "backend.app.orchestrator.main:app", ...]  # ✅ Works from /app
 
 ### Docker & Infrastructure (Must Know)
 - [ ] **Lesson 41:** Multi-stage build paths, COPY context, test before pushing
+- [ ] **Lesson 42:** pyproject.toml packages must be COPYed in builder stage, test locally
 
 ### Environment & Setup (Must Know)
 - [ ] **Lesson 4:** DATABASE_URL set in conftest.py BEFORE imports
