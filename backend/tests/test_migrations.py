@@ -87,6 +87,8 @@ async def test_users_table_enforces_email_unique(db_session):
     await db_session.commit()
 
     # Try to create duplicate email
+    from sqlalchemy.exc import IntegrityError
+
     user2 = User(
         id="user-2",
         email="test@example.com",
@@ -95,7 +97,7 @@ async def test_users_table_enforces_email_unique(db_session):
     )
     db_session.add(user2)
 
-    with pytest.raises(Exception):  # IntegrityError
+    with pytest.raises(IntegrityError):
         await db_session.commit()
 
 

@@ -132,6 +132,8 @@ class TestUserModel:
     @pytest.mark.asyncio
     async def test_user_unique_email(self, db_session: AsyncSession):
         """Test User email uniqueness constraint."""
+        from sqlalchemy.exc import IntegrityError
+
         user1 = User(email="duplicate@example.com", password_hash="hash1")
         db_session.add(user1)
         await db_session.commit()
@@ -139,7 +141,7 @@ class TestUserModel:
         user2 = User(email="duplicate@example.com", password_hash="hash2")
         db_session.add(user2)
 
-        with pytest.raises(Exception):  # IntegrityError
+        with pytest.raises(IntegrityError):
             await db_session.commit()
 
 

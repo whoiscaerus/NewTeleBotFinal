@@ -220,7 +220,7 @@ class TestAuditActions:
 
     def test_audit_actions_have_descriptions(self):
         """Test all actions have descriptions."""
-        for action, description in AUDIT_ACTIONS.items():
+        for _action, description in AUDIT_ACTIONS.items():
             assert isinstance(description, str)
             assert len(description) > 0
             assert len(description) < 200  # Reasonable limit

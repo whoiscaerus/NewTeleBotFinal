@@ -120,10 +120,8 @@ class TestMetricsInstrumentation:
     def test_http_request_instrumentation(self):
         """Test HTTP requests can be instrumented."""
         with patch("backend.app.observability.metrics.CollectorRegistry"):
-            with patch("backend.app.observability.metrics.Counter") as mock_counter:
-                with patch(
-                    "backend.app.observability.metrics.Histogram"
-                ) as mock_histogram:
+            with patch("backend.app.observability.metrics.Counter"):
+                with patch("backend.app.observability.metrics.Histogram"):
                     collector = MetricsCollector()
 
                     # Simulate multiple requests

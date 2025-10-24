@@ -10,7 +10,6 @@ from backend.app.core.errors import (
     problem_detail_exception_handler,
 )
 from backend.app.core.middleware import RequestIDMiddleware
-from backend.app.core.settings import get_settings
 
 
 def create_app() -> FastAPI:
@@ -27,8 +26,6 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: Configured application instance
     """
-    settings = get_settings()
-
     app = FastAPI(
         title="Trading Signal Platform",
         version="0.1.0",

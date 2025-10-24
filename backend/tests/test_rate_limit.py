@@ -94,12 +94,14 @@ class TestRateLimitDecorator:
         async def test_endpoint(request: Request):
             return {"status": "ok"}
 
+        from fastapi import HTTPException
+
         with patch("backend.app.core.decorators.get_rate_limiter") as mock_get_limiter:
             mock_limiter = AsyncMock()
             mock_limiter.is_allowed = AsyncMock(return_value=False)  # Rate limited
             mock_get_limiter.return_value = mock_limiter
 
-            with pytest.raises(Exception):  # HTTPException
+            with pytest.raises(HTTPException):
                 await test_endpoint(request=mock_request)
 
 
@@ -202,7 +204,7 @@ class TestLoginAbusePrevention:
     async def test_login_throttle_after_failures(self, client: AsyncClient):
         """Test login endpoint throttles after repeated failures."""
         # Try invalid login
-        for i in range(3):
+        for _i in range(3):
             response = await client.post(
                 "/api/v1/auth/login",
                 json={"email": "nonexistent@example.com", "password": "wrong"},

@@ -10,10 +10,10 @@ try:
         Histogram,
         generate_latest,
     )
-except ImportError:
+except ImportError as e:
     raise ImportError(
         "prometheus-client not installed. Install with: pip install prometheus-client"
-    )
+    ) from e
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,6 @@
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Optional
 
 from fastapi import Request, status
 from pydantic import BaseModel, Field
