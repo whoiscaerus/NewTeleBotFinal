@@ -22,6 +22,7 @@ from backend.app.auth.utils import (
 )
 from backend.app.core.db import get_db
 from backend.app.core.decorators import abuse_throttle, rate_limit
+from backend.app.core.errors import AuthenticationError
 from backend.app.core.logging import get_logger
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -171,7 +172,7 @@ async def login(
         logger.warning(
             "Login failed: invalid credentials", extra={"email": login_req.email}
         )
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise AuthenticationError(detail="Invalid email or password")
 
     # Generate token
     token = create_access_token(subject=user.id, role=user.role.value)

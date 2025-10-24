@@ -1,13 +1,16 @@
 """Main FastAPI application factory."""
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.auth.routes import router as auth_router
 from backend.app.core.errors import (
     APIException,
     generic_exception_handler,
+    permission_error_handler,
     problem_detail_exception_handler,
+    pydantic_validation_exception_handler,
 )
 from backend.app.core.middleware import RequestIDMiddleware
 
@@ -45,6 +48,10 @@ def create_app() -> FastAPI:
 
     # Add exception handlers (RFC 7807 error responses)
     app.add_exception_handler(APIException, problem_detail_exception_handler)
+    app.add_exception_handler(PermissionError, permission_error_handler)
+    app.add_exception_handler(
+        RequestValidationError, pydantic_validation_exception_handler
+    )
     app.add_exception_handler(Exception, generic_exception_handler)
 
     # Include routers

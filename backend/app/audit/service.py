@@ -217,3 +217,36 @@ class AuditService:
             ip_address=ip_address,
             status="error",
         )
+
+    # Alias methods for backward compatibility with tests
+    @staticmethod
+    async def record_registration(
+        db: AsyncSession,
+        user_id: str,
+        email: str,
+        ip_address: str | None = None,
+    ) -> AuditLog:
+        """Alias for record_register for backward compatibility."""
+        return await AuditService.record_register(
+            db=db,
+            user_id=user_id,
+            email=email,
+            ip_address=ip_address,
+        )
+
+    @staticmethod
+    async def record_failure(
+        db: AsyncSession,
+        action: str,
+        target: str,
+        error: str,
+        ip_address: str | None = None,
+    ) -> AuditLog:
+        """Alias for record_error for backward compatibility."""
+        return await AuditService.record_error(
+            db=db,
+            action=action,
+            target=target,
+            error=error,
+            ip_address=ip_address,
+        )

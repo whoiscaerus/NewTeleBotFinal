@@ -7,13 +7,9 @@ from uuid import uuid4
 from sqlalchemy import DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
-
-class Base(DeclarativeBase):
-    """Declarative base for typed SQLAlchemy ORM (SQLAlchemy 1.4+/2.0 style)."""
-
-    pass
+from backend.app.core.db import Base
 
 
 class UserRole(str, Enum):
@@ -48,6 +44,12 @@ class User(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+
+    def __init__(self, **kwargs):
+        """Initialize User with default role."""
+        if "role" not in kwargs:
+            kwargs["role"] = UserRole.USER
+        super().__init__(**kwargs)
 
     def __repr__(self) -> str:
         return f"<User {self.email} ({self.role})>"

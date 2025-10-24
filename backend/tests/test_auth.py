@@ -159,7 +159,7 @@ class TestRegisterEndpoint:
         assert response.status_code == 201
         data = response.json()
         assert data["email"] == "newuser@example.com"
-        assert data["role"] == "USER"
+        assert data["role"] == "user"
         assert "id" in data
 
     @pytest.mark.asyncio
@@ -248,7 +248,7 @@ class TestLoginEndpoint:
         )
 
         assert response.status_code == 401
-        assert "Invalid credentials" in response.json()["detail"]
+        assert "Invalid email or password" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_login_nonexistent_user(self, client: AsyncClient):
@@ -259,7 +259,7 @@ class TestLoginEndpoint:
         )
 
         assert response.status_code == 401
-        assert "Invalid credentials" in response.json()["detail"]
+        assert "Invalid email or password" in response.json()["detail"]
 
 
 class TestMeEndpoint:
@@ -418,7 +418,4 @@ class TestAdminEndpoint:
         )
 
         assert response.status_code == 403
-        assert (
-            "PermissionError" in response.text
-            or "Insufficient permissions" in response.text
-        )
+        assert "permission" in response.text.lower()

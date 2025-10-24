@@ -6,8 +6,12 @@ from functools import wraps
 from backend.app.auth.models import UserRole
 
 
-def require_roles(*roles: UserRole) -> Callable:
-    """Decorator to require specific roles."""
+def require_roles(*roles: str | UserRole) -> Callable:
+    """Decorator to require specific roles.
+
+    Args:
+        *roles: Acceptable roles (can be strings or UserRole enums)
+    """
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -16,7 +20,18 @@ def require_roles(*roles: UserRole) -> Callable:
             if not current_user:
                 raise PermissionError("User not authenticated")
 
-            if current_user.role not in roles:
+            # Convert all roles to lowercase strings for comparison
+            allowed_roles = {
+                role.value.lower() if isinstance(role, UserRole) else str(role).lower()
+                for role in roles
+            }
+            user_role = (
+                current_user.role.value.lower()
+                if isinstance(current_user.role, UserRole)
+                else str(current_user.role).lower()
+            )
+
+            if user_role not in allowed_roles:
                 raise PermissionError(f"User role {current_user.role} not in {roles}")
 
             return await func(*args, **kwargs)

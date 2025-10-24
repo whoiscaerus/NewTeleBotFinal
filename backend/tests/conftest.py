@@ -17,6 +17,11 @@ os.environ["DB_DSN"] = "postgresql+psycopg://user:pass@localhost:5432/test_app"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["HMAC_PRODUCER_ENABLED"] = "false"
 
+from backend.app.audit.models import AuditLog  # noqa: F401, E402
+
+# Import all models so they're registered with Base.metadata
+from backend.app.auth.models import User  # noqa: F401, E402
+
 
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():

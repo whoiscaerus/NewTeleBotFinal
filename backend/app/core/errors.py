@@ -5,7 +5,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +50,8 @@ class ProblemDetail(BaseModel):
         None, description="Field-level validation errors"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "type": "https://api.example.com/errors/validation",
                 "title": "Validation Error",
@@ -63,6 +63,7 @@ class ProblemDetail(BaseModel):
                 "errors": [{"field": "email", "message": "Invalid email format"}],
             }
         }
+    )
 
 
 # Error type URIs (use consistent domain for your API)
@@ -319,6 +320,45 @@ async def pydantic_validation_exception_handler(request: Request, exc: Exception
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=problem_detail.model_dump(exclude_none=True),
+    )
+
+
+async def permission_error_handler(request: Request, exc: PermissionError):
+    """Handle PermissionError and convert to RFC 7807 403 response.
+
+    Args:
+        request: HTTP request
+        exc: PermissionError instance
+
+    Returns:
+        JSONResponse: RFC 7807 formatted 403 error response
+    """
+    from fastapi.responses import JSONResponse
+
+    request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
+
+    logger.warning(
+        "Permission denied",
+        extra={
+            "request_id": request_id,
+            "path": request.url.path,
+            "error": str(exc),
+        },
+    )
+
+    problem_detail = ProblemDetail(
+        type=ERROR_TYPES["authorization"],
+        title="Insufficient Permissions",
+        status=status.HTTP_403_FORBIDDEN,
+        detail=str(exc) or "Insufficient permissions to access this resource",
+        instance=request.url.path,
+        request_id=request_id,
+        timestamp=datetime.now(UTC).isoformat(),
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
         content=problem_detail.model_dump(exclude_none=True),
     )
 
