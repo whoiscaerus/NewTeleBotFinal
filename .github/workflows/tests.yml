@@ -63,7 +63,7 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Run mypy type checker
-        run: python -m mypy backend/app --ignore-missing-imports --explicit-package-bases
+        run: python -m mypy backend/app --config-file=mypy.ini
 
   tests:
     name: Unit Tests
