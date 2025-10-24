@@ -122,6 +122,9 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 plugins = ["pydantic.mypy"]
+explicit_package_bases = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR/backend"
+namespace_packages = true
 
 [tool.pytest.ini_options]
 pythonpath = "."
