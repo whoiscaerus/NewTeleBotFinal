@@ -34,10 +34,8 @@ ENV PATH=/home/appuser/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Copy application code
-COPY --chown=appuser:appuser backend/ backend/
-COPY --chown=appuser:appuser alembic/ alembic/
-COPY --chown=appuser:appuser alembic.ini .
+# Copy application code (backend contains app/, alembic/, alembic.ini)
+COPY --chown=appuser:appuser backend/ /app/
 
 USER appuser
 
