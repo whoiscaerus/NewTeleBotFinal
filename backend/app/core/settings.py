@@ -3,7 +3,7 @@
 import os
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -20,12 +20,12 @@ class AppSettings(BaseSettings):
     )
     debug: bool = Field(default=False, alias="DEBUG")
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow"
+    )
 
 
 class DbSettings(BaseSettings):
@@ -37,6 +37,13 @@ class DbSettings(BaseSettings):
     max_overflow: int = Field(default=10, ge=0, le=50)
     pool_pre_ping: bool = Field(default=True)
     pool_recycle: int = Field(default=3600, ge=300)
+
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow"
+    )
 
     @field_validator("url", mode="after")
     @classmethod
@@ -61,13 +68,6 @@ class DbSettings(BaseSettings):
 
         return v
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-
 
 class RedisSettings(BaseSettings):
     """Redis cache settings."""
@@ -75,12 +75,12 @@ class RedisSettings(BaseSettings):
     url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     enabled: bool = Field(default=True)
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow"
+    )
 
 
 class SecuritySettings(BaseSettings):
@@ -94,12 +94,12 @@ class SecuritySettings(BaseSettings):
     argon2_memory_cost: int = Field(default=65536, alias="ARGON2_MEMORY_COST", ge=1024)
     argon2_parallelism: int = Field(default=4, alias="ARGON2_PARALLELISM", ge=1)
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow"
+    )
 
     @field_validator("jwt_secret_key", mode="after")
     @classmethod
@@ -123,12 +123,12 @@ class TelemetrySettings(BaseSettings):
     prometheus_enabled: bool = Field(default=True, alias="PROMETHEUS_ENABLED")
     prometheus_port: int = Field(default=9090, alias="PROMETHEUS_PORT", ge=1, le=65535)
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow"
+    )
 
 
 class Settings(BaseSettings):
@@ -140,12 +140,12 @@ class Settings(BaseSettings):
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow"
+    )
 
 
 def get_settings() -> Settings:

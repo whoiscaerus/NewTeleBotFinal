@@ -7,6 +7,14 @@ from typing import Optional
 
 from backend.app.core.settings import get_settings
 
+# Import python-dotenv functions to re-export for tests
+try:
+    from dotenv import dotenv_values, load_dotenv, set_key
+except ImportError:
+    dotenv_values = None  # type: ignore
+    load_dotenv = None  # type: ignore
+    set_key = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 
@@ -318,3 +326,17 @@ async def get_secret_manager() -> SecretManager:
     if _manager is None:
         _manager = SecretManager()
     return _manager
+
+
+# Export python-dotenv functions for tests and external use
+__all__ = [
+    "SecretProvider",
+    "DotenvProvider",
+    "EnvProvider",
+    "VaultProvider",
+    "SecretManager",
+    "get_secret_manager",
+    "dotenv_values",
+    "load_dotenv",
+    "set_key",
+]

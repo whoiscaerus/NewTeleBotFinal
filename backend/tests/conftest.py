@@ -19,6 +19,31 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["HMAC_PRODUCER_ENABLED"] = "false"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def apply_migrations():
+    """Run alembic migrations once before test session starts."""
+    try:
+        from alembic.config import Config
+        from alembic import command
+        
+        # Get path to alembic.ini (one level up from backend/tests)
+        alembic_ini_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "alembic.ini"
+        )
+        
+        if os.path.exists(alembic_ini_path):
+            alembic_cfg = Config(alembic_ini_path)
+            # Run migrations
+            command.upgrade(alembic_cfg, "head")
+    except Exception as e:
+        # Log but don't fail - migrations may not be needed for in-memory SQLite tests
+        import logging
+        logging.warning(f"Could not run migrations: {e}")
+    yield
+
+
 @pytest.fixture(autouse=True)
 def reset_context():
     """Reset logging context before each test."""
@@ -42,7 +67,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         connect_args={"check_same_thread": False},
     )
     
-    # Create all tables
+    # Create all tables from Base.metadata
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
@@ -52,7 +77,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         yield session
     
-    # Cleanup
+    # Cleanup - drop all tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
