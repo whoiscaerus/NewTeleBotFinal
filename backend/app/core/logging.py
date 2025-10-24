@@ -149,10 +149,11 @@ def get_logger(name: str) -> logging.LoggerAdapter:
 # Configure on import
 configure_logging()
 
-# Expose symbol for tests that import it directly
+# Expose symbols for tests that import them directly
 __all__ = [
     "JSONFormatter",
     "configure_logging",
     "get_logger",
     "_request_id_context",
+    "_request_id_var",
 ]

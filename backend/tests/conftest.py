@@ -22,11 +22,11 @@ os.environ["HMAC_PRODUCER_ENABLED"] = "false"
 @pytest.fixture(autouse=True)
 def reset_context():
     """Reset logging context before each test."""
-    from backend.app.core.logging import _request_id_context
+    from backend.app.core.logging import _request_id_var
 
-    _request_id_context.set("unknown")
+    token = _request_id_var.set("unknown")
     yield
-    _request_id_context.set("unknown")
+    _request_id_var.reset(token)
 
 
 @pytest_asyncio.fixture(scope="function")

@@ -5,6 +5,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import redis.asyncio as aioredis
+
 from backend.app.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -41,9 +43,7 @@ class RateLimiter:
             return
 
         try:
-            import redis.asyncio as redis
-
-            self.redis_client = redis.from_url(settings.redis.url, decode_responses=True)
+            self.redis_client = aioredis.from_url(settings.redis.url, decode_responses=True)
             await self.redis_client.ping()
             self._initialized = True
             logger.info("Redis rate limiter initialized")
