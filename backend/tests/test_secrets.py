@@ -23,19 +23,23 @@ class TestDotenvProvider:
         env_file = tmp_path / ".env"
         env_file.write_text("TEST_SECRET=secret_value\n")
 
-        # Mock dotenv_values to return our test content
-        with patch("backend.app.core.secrets.dotenv_values") as mock_dotenv:
+        # Patch at SOURCE (dotenv module), not the re-export
+        # DotenvProvider does local import: from dotenv import dotenv_values
+        # So we must patch 'dotenv.dotenv_values', not 'backend.app.core.secrets.dotenv_values'
+        with patch("dotenv.dotenv_values") as mock_dotenv:
             mock_dotenv.return_value = {"TEST_SECRET": "secret_value"}
 
+            # Create provider INSIDE patch context
             provider = DotenvProvider()
             result = await provider.get_secret("TEST_SECRET")
 
             assert result == "secret_value"
+            mock_dotenv.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_dotenv_get_secret_not_found(self):
         """Test getting non-existent secret raises error."""
-        with patch("backend.app.core.secrets.dotenv_values") as mock_dotenv:
+        with patch("dotenv.dotenv_values") as mock_dotenv:
             mock_dotenv.return_value = {}
 
             provider = DotenvProvider()
@@ -249,13 +253,14 @@ class TestSecretProviderSwitching:
             del os.environ["KEY1"]
             del os.environ["SECRETS_PROVIDER"]
 
-        # Now create with dotenv
+        # Now create with dotenv (patch at SOURCE before creating manager)
         os.environ["SECRETS_PROVIDER"] = "dotenv"
 
         try:
-            with patch("backend.app.core.secrets.dotenv_values") as mock_dotenv:
+            with patch("dotenv.dotenv_values") as mock_dotenv:
                 mock_dotenv.return_value = {"KEY2": "dotenv_value"}
 
+                # Create manager INSIDE patch context
                 manager2 = SecretManager()
                 result2 = await manager2.get_secret("KEY2")
                 assert result2 == "dotenv_value"
