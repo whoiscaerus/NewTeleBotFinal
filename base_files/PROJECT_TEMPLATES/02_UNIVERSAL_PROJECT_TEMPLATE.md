@@ -2054,7 +2054,233 @@ Apply these lessons from Day 1:
 - **Black Docs:** https://black.readthedocs.io/
 - **Ruff Docs:** https://docs.astral.sh/ruff/
 
+---
+
+## 📚 LESSONS LEARNED - Phase 1 Linting & Ruff Errors
+
+### 26. Exception Chaining with `from e` (B904 Ruff Error)
+
+#### Problem
+- **Symptom:** Ruff B904 error: "Within an `except` clause, raise exceptions with `raise ... from err`"
+- **Root Cause:** Re-raising different exception without chaining loses original traceback
+- **Why It Happens:** Exception context chain is broken, making debugging harder
+
+#### Solution
+```python
+# ❌ WRONG (loses original exception context)
+except ValueError as e:
+    logger.warning("Token validation failed")
+    raise HTTPException(status_code=401) from None  # Lost ValueError!
+
+# ✅ CORRECT (preserves exception chaining for debugging)
+except ValueError as e:
+    logger.warning("Token validation failed")
+    raise HTTPException(status_code=401) from e  # ValueError available in __cause__
+
+# ✅ ALSO CORRECT (intentionally hide original - use only when needed)
+except ValueError as e:
+    logger.warning("Token validation failed")
+    raise HTTPException(status_code=401) from None  # Explicitly suppresses
+```
+
+#### Prevention
+- Always use `from e` to preserve context
+- Use `from None` only when intentionally suppressing
+- Test exception handling in unit tests
+- Document why exception is re-raised
+
+---
+
+### 27. Specific Exception Types in Tests (B017 Ruff Error)
+
+#### Problem
+- **Symptom:** Ruff B017 error: "Do not assert blind exception: `Exception`"
+- **Root Cause:** Generic `Exception` in `pytest.raises()` masks specific errors
+- **Why It Happens:** Tests should assert exact exception type
+
+#### Solution
+```python
+# ❌ WRONG (too generic)
+with pytest.raises(Exception):  # Could be ANY exception
+    await db_session.commit()
+
+# ✅ CORRECT (specific exception type)
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
+
+with pytest.raises(IntegrityError):
+    await db_session.commit()
+
+with pytest.raises(HTTPException):
+    await endpoint()
+```
+
+#### Prevention
+- Import specific exception class before using
+- Never use bare `Exception` in tests
+- Document expected exception type in comment
+- Run code locally to see exact exception type
+
+---
+
+### 28. Ruff vs isort Import Conflicts (I001 Ruff Error)
+
+#### Problem
+- **Symptom:** Ruff I001 error: "Import block is un-sorted" conflicts with isort
+- **Root Cause:** Both tools reformat imports differently
+- **Why It Happens:** Ruff wants to merge imports, isort wants to separate them
+
+#### Solution
+```toml
+# In pyproject.toml - disable ruff I001, prefer isort
+[tool.ruff]
+ignore = [
+    "E501",   # line too long (Black handles)
+    "E401",   # multiple imports on one line (isort handles)
+    "I001",   # isort conflicts (prefer isort for this)
+]
+
+# Keep isort as-is
+[tool.isort]
+profile = "black"
+line_length = 88
+```
+
+#### Tool Execution Order
+```bash
+1. isort          # Organize imports
+2. black          # Format code
+3. ruff check     # Validate (skips I001)
+```
+
+#### Prevention
+- Add `I001` to ruff ignore list ALWAYS
+- Use isort as single source of truth for imports
+- Run tools in correct order
+- Pin versions: `isort==7.0.0`, `black==25.9.0`, `ruff==0.14.2+`
+
+---
+
+### 29. Unused Variables & Loop Variables (F841, B007 Ruff Errors)
+
+#### Problem
+- **Symptom:** Ruff F841/B007: "assigned but never used" or "loop variable not used"
+- **Root Cause:** Variable created but never referenced
+- **Why It Happens:** Dead code, unnecessary assignments, or placeholder variables
+
+#### Solution
+```python
+# ❌ WRONG (F841: unused)
+settings = get_settings()  # Never used
+app = FastAPI(...)
+
+# ✅ CORRECT (remove)
+app = FastAPI(...)
+
+# ❌ WRONG (B007: loop var unused)
+for i in range(3):
+    make_request()  # i never used
+
+# ✅ CORRECT (rename to _i)
+for _i in range(3):
+    make_request()  # Explicitly unused
+```
+
+#### Prevention
+- Remove unused variables immediately
+- Rename truly unused to `_var` to signal intent
+- Review unit test variables regularly
+- Use IDE: VS Code/PyCharm highlight unused
+
+---
+
+### 30. Python Tool Version Mismatches (ruff, black, isort, mypy)
+
+#### Problem
+- **Symptom:** Local ruff 0.1.8 works different than CI/CD ruff 0.14.2
+- **Root Cause:** Tool versions not pinned
+- **Why It Happens:** pip install uses old global version
+
+#### Solution
+```bash
+# ❌ WRONG (uses system ruff, may be outdated)
+ruff check backend/
+
+# ✅ CORRECT (uses Python module with version control)
+python -m ruff check backend/
+
+# ✅ WINDOWS (use py launcher)
+py -3.11 -m ruff check backend/
+
+# Verify versions match CI/CD
+py -3.11 -m ruff --version      # Should match pyproject.toml
+py -3.11 -m black --version     # Should match pyproject.toml
+py -3.11 -m isort --version     # Should match pyproject.toml
+```
+
+#### Pin in pyproject.toml
+```toml
+[project]
+dependencies = [
+    "black>=23.12.1",
+    "ruff>=0.14.2",
+    "isort>=5.13.2",
+    "mypy>=1.7.1",
+]
+```
+
+#### Prevention
+- ALWAYS run via `python -m` or `py -3.11 -m`
+- Pin versions in `pyproject.toml`
+- Verify local versions match CI/CD
+- Document versions in README
+
+---
+
+### 31. Windows Python File Association Issues
+
+#### Problem
+- **Symptom:** Windows shows "Pick an application" dialog, blocks Python commands
+- **Root Cause:** PowerShell mishandling `python` command as file
+- **Why It Happens:** File association exists but not working in terminal context
+
+#### Solution
+```powershell
+# ❌ WRONG (triggers popup dialog on Windows)
+python -m black backend/    # PowerShell shows app picker
+
+# ✅ CORRECT (use Python launcher - works everywhere)
+py -3.11 -m black backend/  # No popup, instant execution
+
+# ✅ PERMANENT (create PowerShell profile)
+# File: C:\Users\YourName\OneDrive\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+
+# Add aliases:
+Set-Alias -Name python -Value "py -3.11" -Option AllScope
+Set-Alias -Name black -Value "py -3.11 -m black" -Option AllScope
+Set-Alias -Name ruff -Value "py -3.11 -m ruff" -Option AllScope
+Set-Alias -Name pytest -Value "py -3.11 -m pytest" -Option AllScope
+Set-Alias -Name mypy -Value "py -3.11 -m mypy" -Option AllScope
+
+# Then just type: python -m black backend/
+```
+
+#### Why This Works
+- `py` is Windows Python launcher (native, no file association)
+- `-3.11` specifies exact version
+- `-m` runs module (like `python -m`)
+- No popups, instant, cross-compatible
+
+#### Prevention
+- Use `py -3.11 -m` for ALL Python commands on Windows
+- Create PowerShell profile for permanent aliases
+- Document in README: "On Windows, use: `py -3.11 -m <tool>`"
+- For CI/CD: use `python -m` (Linux agents don't have `py`)
+
+---
+
 ### Getting Help
+
 
 1. Check this template documentation
 2. Review CI/CD implementation guide
@@ -2079,8 +2305,14 @@ This template gives you everything needed to build a production-ready project fr
 ---
 
 **Last Updated:** October 24, 2025
-**Version:** 2.0.0 (Phase 0 CI/CD Lessons Added)
+**Version:** 2.1.0 (Phase 1 Linting Lessons Added)
 **Maintained By:** Your Team
+
+**Changes in v2.1.0:**
+- Added 6 new linting lessons (Lessons 26-31) from Phase 1 implementation
+- Lessons cover: Exception chaining (B904), specific exceptions in tests (B017), ruff vs isort conflicts (I001), unused variables (F841/B007), tool version mismatches, Windows Python issues
+- Production-proven patterns from real CI/CD pipeline debugging
+- Ready to copy-paste into any Python project
 
 **Changes in v2.0.0:**
 - Added 8 comprehensive CI/CD lessons (Lessons 18-25) from Phase 0 implementation
