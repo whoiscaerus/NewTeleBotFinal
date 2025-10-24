@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, String, Integer, DateTime, Index, JSON
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from backend.app.core.db import Base
@@ -113,6 +114,9 @@ class Signal(Base):
         Index("ix_signals_instrument_time", "instrument", "time"),
         Index("ix_signals_status", "status"),
     )
+
+    # Relationships
+    approvals = relationship("Approval", back_populates="signal", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         """Return string representation of signal."""
