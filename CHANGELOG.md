@@ -7,7 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.4.0] - 2025-10-24 - PR-4: Approvals Domain v1 ✅ PRODUCTION READY
+## [Unreleased]
+
+### Upcoming
+
+- **P0 Foundation** (PR-001 to PR-010): Infrastructure, auth, logging, observability
+- **P1 Trading Core** (PR-011 to PR-036): Signals, approvals, MT5 execution, Telegram, payments
+- **P1 New Features** (PR-023): Account reconciliation & risk management
+- **P1 New Features** (PR-024): Affiliate & referral system
+- **P2 Mini App** (PR-037 to PR-070): Web UX, copy-trading, analytics
+- **P3 Scale** (PR-071 to PR-104): AI, education, automation, web platform
+
+---
+
+## [0.1.0] - 2025-10-24 - Project Fresh Start ✨
+
+### Project Initialization
+
+**New Master Documentation:**
+- Created `Final_Master_Prs.md`: 104-PR roadmap (P0-P3 complete)
+- Created `Enterprise_System_Build_Plan.md`: Updated phase roadmap with new PRs
+- Created `FULL_BUILD_TASK_BOARD.md`: Complete task checklist with all 104 PRs organized by phase
+- Deprecated old 256-PR system; consolidating to focused 104-PR build plan
+
+**New Features Added to Roadmap:**
+- **PR-023**: Account Reconciliation & Trade Monitoring (position sync, drawdown guards, auto-close)
+- **PR-024**: Affiliate & Referral System (tracking, payouts, fraud detection)
+
+**Strategic Decisions:**
+- Staying MT5-only (NOT multi-broker) for P0-P2: Simpler execution, better automation, legal protection
+- Single strategy focus (Fib-RSI locked): Faster launch, can expand later
+- No inter-client communication: Simpler compliance, one-way copy-trading model
+- Organic growth emphasis: Affiliate system prioritized over paid marketing
+
+**Documentation Updates:**
+- Copilot instructions updated to reference new master documents
+- Enterprise build plan dependency graph reflects new PRs
+- Phase timelines: P0 (6-8w), P1 (12-16w), P2 (16-20w), P3 (20-24w)
+
+**Previous Work (Pre-Consolidation):**
+- PR-2 equivalent: Central Config & Logging (DONE)
+- PR-3 equivalent: Signals Domain (DONE) 
+- PR-4 equivalent: Approvals Domain (DONE)
 
 ### Added
 

@@ -14,7 +14,8 @@
 
 ### Step 2: Identify Target PR (3 minutes)
 ```
-□ Read master document: /base_files/New_Master_Prs.md
+□ Read master document: /base_files/Final_Master_Prs.md (104 PRs - PRIMARY SOURCE)
+□ OR use quick reference: /base_files/FULL_BUILD_TASK_BOARD.md (organized by phase)
 □ Find exact PR specification in master doc (search "PR-XXX:")
 □ Copy complete PR spec including: goal, files, dependencies, acceptance criteria
 □ Note all dependencies (other PRs this depends on)
@@ -34,11 +35,10 @@
 ```
 
 ### Step 4: Project Files Reference (Always available)
-- ✅ **Master PR Document**: `/base_files/New_Master_Prs.md` (256 PRs, PRIMARY SOURCE)
-- ✅ **New PRs to Add**: `/base_files/NEW_PRS_TO_ADD.md` (6 additional PRs)
-- ✅ **Quick Reference**: `/base_files/QUICK_REFERENCE_6_NEW_PRS.md` (Fast lookup)
-- ✅ **Update Summary**: `/base_files/MASTER_UPDATE_SUMMARY.md` (What changed in v1.5)
-- ✅ **Integration Status**: `/base_files/INTEGRATION_COMPLETE.md` (Quality checklist)
+- ✅ **Master PR Document**: `/base_files/Final_Master_Prs.md` (104 PRs, PRIMARY SOURCE)
+- ✅ **Enterprise Build Plan**: `/base_files/Enterprise_System_Build_Plan.md` (Phase roadmap + dependencies)
+- ✅ **Full Task Board**: `/base_files/FULL_BUILD_TASK_BOARD.md` (Complete checklist by phase)
+- ✅ **Universal Template**: `/base_files/PROJECT_TEMPLATES/02_UNIVERSAL_PROJECT_TEMPLATE.md` (Reusable patterns)
 
 ---
 
