@@ -4,6 +4,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.auth.routes import router as auth_router
+from backend.app.core.errors import (
+    APIException,
+    problem_detail_exception_handler,
+    generic_exception_handler,
+)
 from backend.app.core.middleware import RequestIDMiddleware
 from backend.app.core.settings import get_settings
 
@@ -15,6 +20,7 @@ def create_app() -> FastAPI:
     - FastAPI app with metadata
     - CORS middleware
     - Request ID middleware for tracing
+    - Error handlers (RFC 7807)
     - Authentication routes
     - Health check endpoints
     
@@ -39,6 +45,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add exception handlers (RFC 7807 error responses)
+    app.add_exception_handler(APIException, problem_detail_exception_handler)
+    app.add_exception_handler(Exception, generic_exception_handler)
 
     # Include routers
     app.include_router(auth_router)
