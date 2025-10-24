@@ -9,8 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install
+# Copy application code and requirements
 COPY pyproject.toml .
+COPY backend/ /build/backend/
 RUN python -m pip install --user --no-cache-dir .
 
 # Stage 2: Runtime (production)
