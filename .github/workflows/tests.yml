@@ -33,7 +33,7 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Run Black formatter check
-        run: python -m black --check backend/
+        run: python -m black --check --diff backend/
 
       - name: Run Ruff linter
         run: python -m ruff check backend/
