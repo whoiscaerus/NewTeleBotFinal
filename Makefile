@@ -33,7 +33,7 @@ lint: ## Run linting checks (ruff)
 	@echo "✅ Linting passed!"
 
 typecheck: ## Run type checks (mypy)
-	python -m mypy backend/app --ignore-missing-imports
+	cd backend && python -m mypy app --config-file=../mypy.ini
 	@echo "✅ Type checks passed!"
 
 quality: fmt lint typecheck ## Run all code quality checks
