@@ -2058,6 +2058,245 @@ Apply these lessons from Day 1:
 
 ## 📚 LESSONS LEARNED - Phase 1 Linting & Ruff Errors
 
+### 24. Complete Linting & Formatting Workflow (Black + Ruff + isort + mypy)
+
+#### Problem
+- **Symptom:** Running each tool separately creates conflicts; GitHub Actions fails with different errors than local
+- **Root Cause:** Tools run in wrong order or with conflicting configurations
+- **Why It Happens:** No standardized workflow defined for local vs CI/CD
+
+#### Complete Solution - The Exact Workflow That Works
+
+**Step 1: Run isort (Organize imports)**
+```bash
+py -3.11 -m isort backend/app backend/tests --profile black
+```
+
+**Step 2: Run Black (Format code to 88 chars)**
+```bash
+py -3.11 -m black backend/app backend/tests --line-length 88
+```
+
+**Step 3: Run Ruff (Lint, with I001 ignored to avoid isort conflicts)**
+```bash
+py -3.11 -m ruff check backend/ --fix
+```
+
+**Step 4: Run MyPy (Type check from backend directory)**
+```bash
+cd backend && py -3.11 -m mypy app --config-file=../mypy.ini --strict
+cd ..
+```
+
+**Step 5: Verify all pass (no errors)**
+```bash
+py -3.11 -m isort --check-only backend/
+py -3.11 -m black --check backend/
+py -3.11 -m ruff check backend/
+cd backend && py -3.11 -m mypy app --config-file=../mypy.ini ; cd ..
+```
+
+**pyproject.toml Configuration (Required)**
+```toml
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = [".venv/*", "venv/*"]
+known_first_party = ["backend"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "W", "F", "I", "C", "B", "UP"]
+ignore = [
+    "E501",   # line too long (Black handles)
+    "E401",   # multiple imports (isort handles)
+    "C901",   # complex function (allowed for decorators)
+    "I001",   # isort (MUST ignore to avoid conflicts with isort!)
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+```
+
+#### Complete Pre-Commit Configuration
+
+**.pre-commit-config.yaml**
+```yaml
+repos:
+  # Trim trailing whitespace
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: fix-end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-for-merge-conflicts
+      - id: debug-statements
+      - id: detect-private-key
+
+  # isort - organize imports
+  - repo: https://github.com/PyCPA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+        stages: [commit]
+
+  # Black - format code
+  - repo: https://github.com/psf/black
+    rev: 25.9.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: ["--line-length=88"]
+        stages: [commit]
+
+  # Ruff - lint code (local hook from backend/)
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: bash -c 'cd backend && py -3.11 -m ruff check app --fix; cd ..'
+        language: system
+        types: [python]
+        stages: [commit]
+        pass_filenames: false
+
+  # MyPy - type check (local hook from backend/)
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: bash -c 'cd backend && py -3.11 -m mypy app --config-file=../mypy.ini; cd ..'
+        language: system
+        types: [python]
+        files: ^backend/app/
+        exclude: ^backend/tests/
+        stages: [commit]
+        pass_filenames: false
+```
+
+#### GitHub Actions Workflow (Matches Local)
+
+**.github/workflows/lint.yml**
+```yaml
+name: Lint Code (3.11)
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+
+      - name: "isort (organize imports)"
+        run: python -m isort --check-only backend/
+
+      - name: "Black (format check, with --diff)"
+        run: python -m black --check --diff backend/
+
+      - name: "Ruff (lint)"
+        run: python -m ruff check backend/
+
+      - name: "MyPy (type check from backend/)"
+        run: cd backend && python -m mypy app --config-file=../mypy.ini ; cd ..
+```
+
+#### Prevention Checklist
+- [ ] Copy all 4 tool configurations to `pyproject.toml`
+- [ ] Create `.pre-commit-config.yaml` with exact hooks shown above
+- [ ] Create `.github/workflows/lint.yml` with exact steps
+- [ ] Run **exact order locally** before pushing: isort → black → ruff → mypy
+- [ ] Verify all 4 checks pass locally BEFORE git commit
+- [ ] Update README with: "Run `pre-commit run --all-files` before committing"
+- [ ] Pin all versions in `pyproject.toml`: `black>=23.12.1`, `ruff>=0.14.2`, etc.
+
+---
+
+### 25. Black Formatting: The Complete Process
+
+#### Problem
+- **Symptom:** GitHub Actions Black check fails with 10+ files needing reformatting
+- **Root Cause:** Black wasn't run locally before pushing
+- **Why It Happens:** Different versions or line-length settings
+
+#### Complete Solution
+
+**Step 1: Run Black on all backend files**
+```bash
+py -3.11 -m black backend/app/ backend/tests/ --line-length 88
+```
+
+**Step 2: Verify all files pass**
+```bash
+py -3.11 -m black --check backend/
+```
+
+**Expected Output (Success)**
+```
+All done! ✨ 🍰 ✨
+42 files would be left unchanged.
+```
+
+**Step 3: If files were reformatted**
+```bash
+# Files were automatically fixed - just add and commit
+git add backend/
+git commit -m "style: apply Black formatting (88-char lines)"
+```
+
+#### Common Black Issues & Solutions
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Lines over 88 chars | Manual wrapping | Run `black` to auto-wrap |
+| Docstring spacing | Extra blank lines | Black normalizes (auto-fix) |
+| Import line length | Long imports | Black splits across lines (auto-fix) |
+| Function signatures | Too long | Black wraps parameters (auto-fix) |
+
+#### Black Configuration (in pyproject.toml)
+```toml
+[tool.black]
+line-length = 88              # Must match ruff line-length
+target-version = ['py311']    # Must match ruff target-version
+extend-exclude = '''
+/(
+  | \.venv
+  | venv
+  | build
+  | dist
+)/
+'''
+```
+
+#### Prevention
+- Run Black before EVERY commit: `py -3.11 -m black backend/`
+- Use VS Code Black extension (auto-format on save)
+- Always verify with: `py -3.11 -m black --check backend/`
+- Pin version: `black>=23.12.1` in `pyproject.toml`
+- Add pre-commit hook to run before commit
+
+---
+
 ### 26. Exception Chaining with `from e` (B904 Ruff Error)
 
 #### Problem
@@ -2088,6 +2327,832 @@ except ValueError as e:
 - Use `from None` only when intentionally suppressing
 - Test exception handling in unit tests
 - Document why exception is re-raised
+
+---
+
+### 27. Windows Python Launcher: Fixing "Pick an Application" Popups
+
+#### Problem
+- **Symptom:** On Windows, running `python -m black` or `python -m ruff` shows "Pick an application to open this file"
+- **Root Cause:** PowerShell file association issue - treats `python` as file path, not command
+- **Why It Happens:** Windows Python installation has file association but PowerShell doesn't resolve it
+
+#### The Immediate Solution (Works Every Time)
+```powershell
+# ❌ DON'T DO THIS (causes popup)
+python -m black backend/
+
+# ✅ DO THIS INSTEAD (native Windows Python launcher)
+py -3.11 -m black backend/
+py -3.11 -m ruff check backend/
+py -3.11 -m isort backend/
+```
+
+**Why `py` works:**
+- `py` is native Windows Python launcher (included with Python 3.3+)
+- Searches %PATH% and Windows registry for Python installations
+- Directly executes Python command without file association
+- Supports version selection: `py -3.11` for Python 3.11
+
+#### The Permanent Solution (PowerShell Alias Profile)
+
+**Step 1: Create/Edit PowerShell Profile**
+```powershell
+# Check if profile exists
+Test-Path $PROFILE
+
+# Create profile if missing
+New-Item -ItemType File -Path $PROFILE -Force
+
+# Edit profile
+notepad $PROFILE
+```
+
+**Step 2: Add aliases to profile**
+```powershell
+# Windows PowerShell Profile Aliases
+# Location: C:\Users\YourName\OneDrive\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+
+# Map 'python' to 'py -3.11' everywhere
+Set-Alias python "py -3.11" -Option AllScope -Force
+
+# Map common tools
+Set-Alias black "py -3.11 -m black" -Option AllScope -Force
+Set-Alias ruff "py -3.11 -m ruff" -Option AllScope -Force
+Set-Alias isort "py -3.11 -m isort" -Option AllScope -Force
+Set-Alias pytest "py -3.11 -m pytest" -Option AllScope -Force
+Set-Alias mypy "py -3.11 -m mypy" -Option AllScope -Force
+```
+
+**Step 3: Save and reload profile**
+```powershell
+# Reload profile (or restart PowerShell)
+. $PROFILE
+
+# Verify aliases work
+python --version        # Should show Python 3.11.x
+black --version         # Should show Black version
+```
+
+#### Complete Windows Development Setup
+
+**Makefile (for Windows):**
+```makefile
+.PHONY: format lint type-check test install-dev clean
+
+install-dev:
+	py -3.11 -m pip install -e ".[dev]"
+
+format:
+	py -3.11 -m isort backend/
+	py -3.11 -m black backend/
+
+lint:
+	py -3.11 -m ruff check backend/
+
+type-check:
+	cd backend && py -3.11 -m mypy app --config-file=../mypy.ini ; cd ..
+
+test:
+	cd backend && py -3.11 -m pytest tests/ -v ; cd ..
+
+test-coverage:
+	cd backend && py -3.11 -m pytest tests/ --cov=app --cov-report=html ; cd ..
+
+clean:
+	find backend -type d -name __pycache__ -exec rmdir {} +
+	find backend -type f -name "*.pyc" -delete
+	rm -rf backend/htmlcov backend/.coverage
+```
+
+#### Prevention
+- Always use `py -3.11 -m <tool>` on Windows (never just `python`)
+- Add PowerShell aliases to permanent profile
+- Add alias commands to project's Makefile or README
+- Document Windows setup in CONTRIBUTING.md
+- CI/CD (Linux): uses `python` directly (file association not an issue)
+
+---
+
+### 28. Tool Version Mismatches: ruff 0.1.8 vs 0.14.2
+
+#### Problem
+- **Symptom:** Ruff check passes locally but GitHub Actions fails with different errors (or vice versa)
+- **Root Cause:** Local tool version (0.1.8) != CI/CD tool version (0.14.2)
+- **Why It Happens:** Version pinning missing; tools auto-update to latest
+
+#### Complete Solution
+
+**Step 1: Check local versions**
+```bash
+py -3.11 -m ruff --version          # Note: current version
+py -3.11 -m black --version
+py -3.11 -m isort --version
+py -3.11 -m mypy --version
+```
+
+**Step 2: Pin versions in pyproject.toml**
+```toml
+[project]
+name = "telebot"
+version = "1.0.0"
+dependencies = [
+    "fastapi>=0.104.0",
+    "sqlalchemy>=2.0.0",
+    "pydantic>=2.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.12.1",      # Pin Black version
+    "ruff>=0.14.2",        # Pin Ruff version (major version matters!)
+    "isort>=5.13.2",       # Pin isort version
+    "mypy>=1.7.0",         # Pin MyPy version
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
+
+# CRITICAL: Minimum versions in GitHub Actions workflow too!
+```
+
+**Step 3: Update GitHub Actions workflow**
+```yaml
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # Install exact versions from pyproject.toml
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      # Verify versions match
+      - name: Check tool versions
+        run: |
+          python -m ruff --version       # Should be >= 0.14.2
+          python -m black --version      # Should be >= 23.12.1
+          python -m isort --version      # Should be >= 5.13.2
+
+      - name: Black check
+        run: python -m black --check backend/
+
+      - name: Ruff check
+        run: python -m ruff check backend/
+
+      - name: MyPy check
+        run: cd backend && python -m mypy app --config-file=../mypy.ini ; cd ..
+```
+
+#### Why Version Pinning Matters
+
+| Scenario | Local | CI/CD | Result |
+|----------|-------|-------|--------|
+| ❌ No pinning | ruff 0.1.8 | ruff 0.14.2 | Different rule sets! |
+| ❌ Partial pinning | ruff 0.1.8 (old) | ruff latest (auto) | Mismatch |
+| ✅ Tight pinning | ruff >=0.14.2 | ruff >=0.14.2 | Same rules |
+
+#### Prevention
+- Run `pip list` locally and note all versions
+- Pin ALL dev dependencies in `pyproject.toml` [project.optional-dependencies]
+- Use format: `package>=X.Y.Z` (not `package==X.Y.Z` for flexibility)
+- Run `pip install -e ".[dev]"` locally to get exact versions
+- Commit `pyproject.toml` to git
+- Add CI/CD step to verify versions with `--version` commands
+- Document in README: "Install with `pip install -e '.[dev]'`"
+
+---
+
+### 29. Ruff vs isort Import Conflict (I001 Ignore)
+
+#### Problem
+- **Symptom:** isort fixes imports, then ruff complains with I001 error, then isort fixes again = loop
+- **Root Cause:** Ruff has import sorting rules that conflict with isort
+- **Why It Happens:** Both tools modify imports, different rule priorities
+
+#### Solution
+```toml
+# In pyproject.toml [tool.ruff]
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "W", "F", "I", "C", "B", "UP"]
+ignore = [
+    "E501",   # line too long (Black handles)
+    "E401",   # multiple imports (isort handles)
+    "C901",   # complex function
+    "I001",   # MUST IGNORE: isort order (let isort handle all import sorting!)
+]
+
+# In pyproject.toml [tool.isort]
+[tool.isort]
+profile = "black"           # Match Black's formatting
+line_length = 88            # Match Black and Ruff
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+```
+
+#### The Rule
+**Let isort be the source of truth for import organization:**
+1. Run isort FIRST
+2. Run Black
+3. Run Ruff WITH I001 ignored
+
+#### Prevention
+- Always set `I001` in ruff ignore list
+- Keep `.isort.cfg` or isort config in `pyproject.toml`
+- Use `profile = "black"` in isort (ensures compatibility)
+- Run in order: isort → black → ruff
+- Document in README: "isort is the import source of truth"
+
+---
+
+### 30. Unused Exceptions in Tests (B017 Error)
+
+#### Problem
+- **Symptom:** Ruff B017: "Avoid catching blind exception; specify exceptions explicitly"
+- **Root Cause:** Test catches generic `Exception` instead of specific exception type
+- **Why It Happens:** Makes tests fragile; what if unexpected exception is raised?
+
+#### Solution
+```python
+# ❌ WRONG (catches ANY exception, hides bugs)
+def test_signal_creation_fails():
+    with pytest.raises(Exception):  # Too generic!
+        create_signal(invalid_data)
+# If function passes but raises different error = test still passes (bug!)
+
+# ✅ CORRECT (catches specific exception)
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
+
+def test_duplicate_signal_raises_integrity_error():
+    """Duplicate signal violates unique constraint."""
+    create_signal(data)
+    with pytest.raises(IntegrityError):  # Specific!
+        create_signal(data)  # Duplicate
+
+def test_invalid_instrument_raises_http_exception():
+    """Invalid instrument returns 400."""
+    with pytest.raises(HTTPException) as exc_info:
+        create_signal(instrument="INVALID")
+    assert exc_info.value.status_code == 400
+```
+
+#### Common Exception Types to Use in Tests
+
+```python
+# FastAPI
+from fastapi import HTTPException
+
+# SQLAlchemy
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
+
+# Pydantic
+from pydantic import ValidationError
+
+# Standard library
+from ValueError
+from TypeError
+from KeyError
+import io
+```
+
+#### Prevention
+- Identify which specific exception SHOULD be raised (from docstring)
+- Import that specific exception class
+- Use `with pytest.raises(SpecificException):`
+- Add assertion to verify exception message if needed
+- Test both happy path AND error path
+- Never use bare `Exception` in production or tests
+
+---
+
+### 31. Unused Variables & Loop Variables (F841, B007)
+
+#### Problem
+- **Symptom 1 (F841):** Ruff error: "Local variable assigned but never used"
+- **Symptom 2 (B007):** Ruff error: "Loop control variable never used"
+- **Root Cause:** Variable declared but not referenced in code
+- **Why It Happens:** Refactoring removes code but leaves variable, or extracting logic leaves unused args
+
+#### Solution
+
+**For unused variables (F841):**
+```python
+# ❌ WRONG (assigned but never used)
+def process_signals():
+    settings = get_settings()  # Never used!
+    signals = get_signals()
+    return signals
+
+# ✅ CORRECT (delete if never used)
+def process_signals():
+    signals = get_signals()
+    return signals
+
+# ✅ ALSO CORRECT (if you plan to use it later)
+def process_signals():
+    settings = get_settings()
+    signals = get_signals()
+    logger.info(f"Processing {len(signals)} signals using {settings.mode}")
+    return signals
+```
+
+**For unused loop variables (B007):**
+```python
+# ❌ WRONG (loop variable never used)
+for action in signal_actions:  # 'action' never used in loop!
+    execute_default_behavior()
+
+# ✅ CORRECT (rename to underscore)
+for _action in signal_actions:  # '_' prefix = intentionally unused
+    execute_default_behavior()
+
+# ✅ ALSO CORRECT (if you need the variable)
+for action in signal_actions:
+    logger.debug(f"Executing action: {action.type}")
+    execute_default_behavior()
+
+# ✅ OR USE RANGE (if just counting)
+for _i in range(5):
+    process_item()
+```
+
+#### Prevention
+- Use IDE warnings to catch before pushing
+- Enable `F841` and `B007` in your linter
+- Rename unused to `_var` (Python convention = intentional)
+- Delete truly unused variables
+- Before refactoring, search for all uses of variable
+- Test that code still works after removing variable
+
+---
+
+### 32. Complete Tool Orchestration: The Full Linting Pipeline
+
+#### Problem
+- **Symptom:** Running tools individually takes time; easy to forget one tool
+- **Root Cause:** No single command to run all tools in correct order
+- **Why It Happens:** Tools have dependencies and must run in sequence
+
+#### Complete Solution - Single Command for All Tools
+
+**Option 1: Make target (Recommended)**
+```makefile
+# In Makefile
+.PHONY: lint format type-check lint-all
+
+# Step 1: Format code (isort + Black)
+format:
+	@echo "🔄 Running isort..."
+	py -3.11 -m isort backend/ --profile black
+	@echo "✅ isort complete"
+	@echo "🔄 Running Black..."
+	py -3.11 -m black backend/ --line-length 88
+	@echo "✅ Black complete"
+
+# Step 2: Lint code (Ruff)
+lint:
+	@echo "🔄 Running Ruff..."
+	py -3.11 -m ruff check backend/ --fix
+	@echo "✅ Ruff complete"
+
+# Step 3: Type check (MyPy)
+type-check:
+	@echo "🔄 Running MyPy..."
+	cd backend && py -3.11 -m mypy app --config-file=../mypy.ini
+	cd ..
+	@echo "✅ MyPy complete"
+
+# Combined: Format -> Lint -> Type check
+lint-all: format lint type-check
+	@echo "✨ All linting tools complete!"
+```
+
+**Usage:**
+```bash
+make lint-all  # Runs isort → black → ruff → mypy in sequence
+```
+
+**Option 2: Bash script (Linux/Mac/WSL)**
+```bash
+#!/bin/bash
+# scripts/lint-all.sh
+
+set -e  # Exit on first error
+
+echo "🔄 Step 1: Organizing imports with isort..."
+python -m isort backend/ --profile black
+
+echo "🔄 Step 2: Formatting code with Black..."
+python -m black backend/ --line-length 88
+
+echo "🔄 Step 3: Linting with Ruff..."
+python -m ruff check backend/ --fix
+
+echo "🔄 Step 4: Type checking with MyPy..."
+cd backend
+python -m mypy app --config-file=../mypy.ini
+cd ..
+
+echo "✨ All linting complete!"
+```
+
+**Usage:**
+```bash
+bash scripts/lint-all.sh
+```
+
+**Option 3: PowerShell script (Windows)**
+```powershell
+# scripts/lint-all.ps1
+
+Write-Host "🔄 Step 1: Organizing imports with isort..." -ForegroundColor Cyan
+py -3.11 -m isort backend/ --profile black
+
+Write-Host "🔄 Step 2: Formatting code with Black..." -ForegroundColor Cyan
+py -3.11 -m black backend/ --line-length 88
+
+Write-Host "🔄 Step 3: Linting with Ruff..." -ForegroundColor Cyan
+py -3.11 -m ruff check backend/ --fix
+
+Write-Host "🔄 Step 4: Type checking with MyPy..." -ForegroundColor Cyan
+Push-Location backend
+py -3.11 -m mypy app --config-file=../mypy.ini
+Pop-Location
+
+Write-Host "✨ All linting complete!" -ForegroundColor Green
+```
+
+**Usage:**
+```powershell
+.\scripts\lint-all.ps1
+```
+
+#### Verification Script (Check without fixing)
+```bash
+#!/bin/bash
+# scripts/verify-lint.sh - Check without making changes
+
+echo "🔍 Checking isort..."
+python -m isort --check-only backend/
+
+echo "🔍 Checking Black..."
+python -m black --check backend/
+
+echo "🔍 Checking Ruff..."
+python -m ruff check backend/
+
+echo "🔍 Checking MyPy..."
+cd backend
+python -m mypy app --config-file=../mypy.ini
+cd ..
+
+echo "✅ All checks passed!"
+```
+
+#### Prevention
+- Create Make target or script for complete linting workflow
+- Document in README.md: "Run `make lint-all` before pushing"
+- Add script to git: `git add scripts/lint-all.sh`
+- Make script executable: `chmod +x scripts/lint-all.sh`
+- Add to CI/CD and pre-commit (runs automatically)
+- Add note in CONTRIBUTING.md with exact command
+
+---
+
+### 33. MyPy Configuration: Strict Type Checking
+
+#### Problem
+- **Symptom:** MyPy passes locally but GitHub Actions fails with type errors
+- **Root Cause:** MyPy config differs between local and CI/CD; no strict mode
+- **Why It Happens:** Different strictness levels; missing types not caught
+
+#### Complete Solution
+
+**mypy.ini configuration:**
+```ini
+[mypy]
+# Python version
+python_version = 3.11
+
+# Strict mode (non-negotiable for production code)
+strict = True
+
+# Warn on any
+warn_return_any = True
+warn_unused_configs = True
+warn_redundant_casts = True
+warn_unused_ignores = True
+warn_no_return = True
+
+# Type checking
+disallow_untyped_defs = True       # All functions must have types
+disallow_any_generics = True       # No bare Any in generics
+disallow_incomplete_defs = True    # No incomplete function signatures
+check_untyped_defs = True          # Check untyped library code
+
+# Imports
+no_implicit_optional = True        # Explicit None in Optional
+no_implicit_reexport = True        # Explicit re-exports
+
+# Error messages
+show_error_codes = True
+show_error_context = True
+show_column_numbers = True
+show_absolute_path = True
+
+# Files and exclusions
+[mypy-tests.*]
+disallow_untyped_defs = False      # Tests can be more lenient
+disallow_incomplete_defs = False
+
+[mypy-alembic.*]
+ignore_errors = True               # Migrations are auto-generated
+
+[mypy-dependencies_not_installed]
+ignore_missing_imports = True      # External packages without stubs
+```
+
+#### Using MyPy in Strict Mode
+
+**Step 1: Run with full output**
+```bash
+# Windows
+cd backend
+py -3.11 -m mypy app --config-file=../mypy.ini --show-error-codes
+cd ..
+
+# Linux/Mac
+cd backend
+python -m mypy app --config-file=../mypy.ini --show-error-codes
+cd ..
+```
+
+**Step 2: Fix each error**
+```python
+# ❌ Error: Function lacks return type annotation
+def create_signal(data):  # No return type!
+    return Signal(**data)
+
+# ✅ Fixed: Add explicit return type
+def create_signal(data: dict[str, Any]) -> Signal:
+    return Signal(**data)
+
+# ❌ Error: Function parameter lacks type
+def process(user):  # No type!
+    return user.name
+
+# ✅ Fixed: Add explicit type
+from models import User
+def process(user: User) -> str:
+    return user.name
+```
+
+**Step 3: Use type hints everywhere**
+```python
+from typing import Optional, Dict, List, Tuple, Callable, Any
+from functools import wraps
+from datetime import datetime
+
+# Function with complete types
+def create_and_save_signal(
+    instrument: str,
+    side: str,
+    price: float,
+    db_session: AsyncSession,
+) -> Signal | None:
+    """Create and save signal to database.
+
+    Args:
+        instrument: Trading instrument (GOLD, EUR/USD, etc.)
+        side: Trade direction (buy or sell)
+        price: Entry price
+        db_session: Database session
+
+    Returns:
+        Created Signal or None if validation fails
+
+    Raises:
+        ValueError: If instrument is invalid
+    """
+    try:
+        signal = Signal(
+            instrument=instrument,
+            side=side,
+            price=price,
+        )
+        db_session.add(signal)
+        db_session.commit()
+        return signal
+    except ValueError as e:
+        logger.error(f"Signal validation failed: {e}")
+        return None
+
+# Decorator with complete types
+def requires_auth(func: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        user = get_current_user()
+        if not user:
+            raise HTTPException(status_code=401)
+        return func(*args, **kwargs)
+    return wrapper
+```
+
+#### Prevention
+- Enable strict mode from project start
+- Check MyPy before committing: `cd backend && python -m mypy app --config-file=../mypy.ini`
+- Add return type to EVERY function
+- Add type to EVERY parameter
+- Use `from typing import ...` for complex types
+- Test with CI/CD to verify configuration
+- Update README with MyPy command
+
+---
+
+### 34. Complete Linting Integration Guide
+
+#### Problem
+- **Symptom:** Tools seem to conflict; running one breaks another
+- **Root Cause:** Tools aren't properly integrated; configuration mismatched
+- **Why It Happens:** Each tool has default behavior; no alignment
+
+#### The Correct Integration
+
+**1. Configuration Alignment (All in pyproject.toml)**
+
+```toml
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+include_trailing_comma = true
+use_parentheses = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+ignore = ["E501", "I001", "E401", "C901"]  # I001 = isort handles imports
+
+[tool.mypy]
+python_version = "3.11"
+strict = True
+```
+
+**2. Execution Order (This is critical)**
+
+```
+Step 1: isort (organize imports)
+   └─ Sorts imports into: stdlib, third-party, local
+Step 2: Black (format code)
+   └─ Wraps lines, fixes spacing, normalizes syntax
+Step 3: Ruff (lint for logic errors)
+   └─ Finds unused imports, variables, etc. (with I001 ignored)
+Step 4: MyPy (type check)
+   └─ Ensures all types are correct
+```
+
+**Why this order:**
+- isort first: Black might reformat imports
+- Black before Ruff: Ruff checks formatted code
+- Ruff before MyPy: MyPy needs clean code
+
+**3. Pre-commit Hook Automation**
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/PyCPA/isort
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/psf/black
+    hooks:
+      - id: black
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.2
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+```
+
+**What happens:** `git commit` automatically runs isort → black → ruff
+
+**4. GitHub Actions Workflow**
+
+```yaml
+# .github/workflows/lint.yml
+jobs:
+  lint:
+    steps:
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run isort
+        run: python -m isort --check-only backend/
+
+      - name: Run Black
+        run: python -m black --check backend/
+
+      - name: Run Ruff
+        run: python -m ruff check backend/
+
+      - name: Run MyPy
+        run: cd backend && python -m mypy app --config-file=../mypy.ini ; cd ..
+```
+
+**What happens:** On every push, GitHub automatically runs all 4 tools
+
+**5. Local Development Workflow**
+
+```bash
+# Before pushing:
+make lint-all  # Runs all 4 tools locally
+
+# After `git push`:
+# GitHub Actions automatically runs all 4 tools
+# If any fails: git pull, fix locally, push again
+```
+
+#### Complete Troubleshooting Matrix
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Ruff complains about imports | I001 not ignored | Add I001 to ruff ignore list |
+| Tools conflict on formatting | Different line-length | Set line-length=88 everywhere |
+| Black passes, Ruff fails | Ruff running on unformatted | Run Black first |
+| MyPy fails but others pass | Missing type hints | Add function signatures |
+| CI/CD fails, local passes | Version mismatch | Pin versions in pyproject.toml |
+| Pre-commit skips hooks | Hooks in wrong order | Place isort → black → ruff → mypy |
+
+#### Prevention - The 4-Part Setup
+1. **pyproject.toml:** All tools configured with matching line-length (88)
+2. **.pre-commit-config.yaml:** 4 hooks in order: isort → black → ruff → mypy
+3. **Makefile:** `make lint-all` runs all 4 tools
+4. **.github/workflows/lint.yml:** CI/CD runs same 4 tools
+
+---
+
+## 🎯 COMPREHENSIVE PREVENTATIVE CHECKLIST
+
+**Apply to EVERY project - Copy and Use:**
+
+### Phase 1: Project Setup
+- [ ] Create virtual environment: `python -m venv venv`
+- [ ] Activate environment
+- [ ] Install dev packages: `pip install -e ".[dev]"`
+- [ ] Verify Python 3.11: `python --version`
+- [ ] Install pre-commit: `pip install pre-commit`
+- [ ] Setup pre-commit: `pre-commit install`
+
+### Phase 2: Configuration Files (Copy from Universal Template)
+- [ ] Create/copy `pyproject.toml` with ALL tool configurations
+- [ ] Create/copy `.pre-commit-config.yaml` with 4 hooks
+- [ ] Create/copy `mypy.ini` with strict mode
+- [ ] Create/copy `Makefile` with lint-all target
+- [ ] Verify configs: Run `make lint-all` and verify all pass
+
+### Phase 3: Local Development
+- [ ] Before EVERY commit: `make lint-all`
+- [ ] After every change: `make lint-all`
+- [ ] Before pushing: `make lint-all`
+- [ ] Wait for all 4 tools to pass
+
+### Phase 4: CI/CD Integration
+- [ ] Copy `.github/workflows/lint.yml` from template
+- [ ] Verify GitHub Actions runs on push
+- [ ] Monitor CI/CD results on GitHub
+- [ ] Fix any failures: pull, fix locally, push again
+
+### Phase 5: Team Documentation
+- [ ] Add to README.md: "Run `make lint-all` before pushing"
+- [ ] Add to CONTRIBUTING.md: "All 4 linting tools must pass locally"
+- [ ] Document Windows setup: Use `py -3.11 -m <tool>`
+- [ ] Document PowerShell aliases for permanent setup
+
+### Phase 6: Continuous Improvement
+- [ ] Run `make lint-all` on all existing code
+- [ ] Fix all errors before allowing new code
+- [ ] Monitor CI/CD for version mismatches
+- [ ] Update version pins quarterly
+- [ ] Add new lessons to universal template
+
 
 ---
 
