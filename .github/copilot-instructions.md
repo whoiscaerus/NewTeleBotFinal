@@ -35,8 +35,9 @@
 ```
 
 ### Step 4: Project Files Reference (Always available)
-- ✅ **Master PR Document**: `/base_files/Final_Master_Prs.md` (104 PRs, PRIMARY SOURCE)
-- ✅ **Enterprise Build Plan**: `/base_files/Enterprise_System_Build_Plan.md` (Phase roadmap + dependencies)
+- ✅ **Master PR Document**: `/base_files/Final_Master_Prs.md` (102+ PRs, PRIMARY SOURCE)
+- ✅ **Complete Build Plan**: `/base_files/COMPLETE_BUILD_PLAN_ORDERED.md` (Logical execution order, dependencies, effort estimates) ← **START HERE**
+- ✅ **Enterprise Build Plan**: `/base_files/Enterprise_System_Build_Plan.md` (Phase roadmap, repo layout, conventions)
 - ✅ **Full Task Board**: `/base_files/FULL_BUILD_TASK_BOARD.md` (Complete checklist by phase)
 - ✅ **Universal Template**: `/base_files/PROJECT_TEMPLATES/02_UNIVERSAL_PROJECT_TEMPLATE.md` (Reusable patterns)
 

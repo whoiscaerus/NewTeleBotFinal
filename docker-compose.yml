@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: trading_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-trading_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trading_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: trading_cache
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    networks:
+      - trading_net
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+      target: development
+    container_name: trading_backend
+    command: uvicorn backend.app.orchestrator.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/trading_db
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: ${DEBUG:-false}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./scripts:/app/scripts
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - trading_net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  trading_net:
+    driver: bridge
