@@ -1,7 +1,5 @@
-"""Application settings and configuration using Pydantic v2."""
-
 import os
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,7 +18,7 @@ class AppSettings(BaseSettings):
     )
     debug: bool = Field(default=False, alias="DEBUG")
 
-    model_config: SettingsConfigDict = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -38,7 +36,7 @@ class DbSettings(BaseSettings):
     pool_pre_ping: bool = Field(default=True)
     pool_recycle: int = Field(default=3600, ge=300)
 
-    model_config: SettingsConfigDict = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -75,7 +73,7 @@ class RedisSettings(BaseSettings):
     url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     enabled: bool = Field(default=True)
 
-    model_config: SettingsConfigDict = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -96,7 +94,7 @@ class SecuritySettings(BaseSettings):
     argon2_memory_cost: int = Field(default=65536, alias="ARGON2_MEMORY_COST", ge=1024)
     argon2_parallelism: int = Field(default=4, alias="ARGON2_PARALLELISM", ge=1)
 
-    model_config: SettingsConfigDict = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -123,7 +121,7 @@ class TelemetrySettings(BaseSettings):
     prometheus_enabled: bool = Field(default=True, alias="PROMETHEUS_ENABLED")
     prometheus_port: int = Field(default=9090, alias="PROMETHEUS_PORT", ge=1, le=65535)
 
-    model_config: SettingsConfigDict = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
@@ -140,7 +138,7 @@ class Settings(BaseSettings):
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
 
-    model_config: SettingsConfigDict = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,

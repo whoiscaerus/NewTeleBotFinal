@@ -3,7 +3,12 @@
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from backend.app.core.settings import get_settings
@@ -20,7 +25,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     settings = get_settings()
     engine: AsyncEngine = create_async_engine(settings.db.url, echo=settings.app.debug)
-    async_session: sessionmaker[AsyncSession] = sessionmaker(
+    async_session = async_sessionmaker(
         bind=engine, class_=AsyncSession, expire_on_commit=False
     )
 

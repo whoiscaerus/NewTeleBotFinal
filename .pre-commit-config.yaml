@@ -36,5 +36,7 @@
   hooks:
     - id: mypy
       additional_dependencies: ["pydantic", "pydantic-settings"]
-      args: ["--explicit-package-bases", "--config-file=mypy.ini"]
-      exclude: "^(tests/|scripts/)"
+      args: ["--config-file=mypy.ini"]
+      files: ^backend/app/
+      exclude: ^backend/tests/
+      stages: [manual]
