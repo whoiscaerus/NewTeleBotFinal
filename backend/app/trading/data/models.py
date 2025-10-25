@@ -378,10 +378,7 @@ class DataPullLog(Base):
     )
 
     # Indexes
-    __table_args__ = (
-        Index("ix_data_pull_logs_symbol_status", "symbol", "status"),
-        Index("ix_data_pull_logs_timestamp", "timestamp"),
-    )
+    __table_args__ = (Index("ix_data_pull_logs_symbol_status", "symbol", "status"),)
 
     def __repr__(self) -> str:
         """String representation of pull log."""

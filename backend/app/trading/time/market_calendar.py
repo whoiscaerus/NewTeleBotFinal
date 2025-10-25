@@ -231,13 +231,13 @@ class MarketCalendar:
                 from_dt = pytz.UTC.localize(from_dt)
             elif from_dt.tzinfo != pytz.UTC:
                 from_dt = from_dt.astimezone(pytz.UTC)
-
         session = MarketCalendar.get_session(symbol)
         market_tz = pytz.timezone(session.timezone)
 
         # Start from next day if market is closed now
-        # Type narrowing: from_dt is guaranteed to be datetime (not None) after the check above
-        check_dt: datetime = from_dt + timedelta(days=1)  # type: ignore
+        # Type assertion: from_dt guaranteed to be datetime after null check above
+        assert from_dt is not None
+        check_dt: datetime = from_dt + timedelta(days=1)
 
         # Find next trading day
         while check_dt.weekday() not in session.trading_days:
