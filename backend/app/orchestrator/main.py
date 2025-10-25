@@ -16,6 +16,7 @@ from backend.app.core.errors import (
     pydantic_validation_exception_handler,
 )
 from backend.app.core.middleware import RequestIDMiddleware
+from backend.app.telegram.webhook import router as telegram_router
 
 
 def create_app() -> FastAPI:
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(affiliates_router)
     app.include_router(devices_router)
     app.include_router(exec_router)
+    app.include_router(telegram_router)
 
     @app.get("/health")
     async def health_check() -> dict:
