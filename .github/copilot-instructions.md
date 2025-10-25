@@ -43,6 +43,66 @@
 
 ---
 
+## ⚠️ CRITICAL: PYTHON EXECUTION ENVIRONMENT ISSUE (READ EVERY TIME)
+
+**KNOWN ISSUE**: When running `python` or `python -m pytest` commands via terminal:
+- A dialog box appears: "Select an app to open 'python'"
+- This causes the command to hang/timeout
+- By the time a selection is made, the tool call has already failed
+
+**SOLUTIONS** (in order of preference):
+
+**Option 1: Use Full Python Executable Path** ✅ PREFERRED
+```powershell
+# WRONG: This triggers the dialog
+python -m pytest backend/tests/test_file.py
+
+# CORRECT: Use full path to python.exe in .venv
+.venv/Scripts/python.exe -m pytest backend/tests/test_file.py
+
+# OR use the exact path
+c:\Users\FCumm\NewTeleBotFinal\.venv\Scripts\python.exe -m pytest backend/tests/test_file.py
+```
+
+**Option 2: Use PowerShell Invocation Operator**
+```powershell
+& python -m pytest backend/tests/test_file.py
+```
+
+**Option 3: Use run_in_terminal with isBackground=true**
+For long-running tests, use background mode and retrieve output later:
+```
+run_in_terminal(
+    command=".venv/Scripts/python.exe -m pytest ...",
+    isBackground=true
+)
+```
+
+**IMPLEMENTATION RULE**:
+- ✅ ALWAYS use `.venv/Scripts/python.exe` instead of `python`
+- ✅ NEVER use bare `python` command
+- ✅ Verify the full path exists before using
+- ✅ Add this to every Python command in run_in_terminal
+
+**EXAMPLES**:
+
+Testing:
+```powershell
+.venv/Scripts/python.exe -m pytest backend/tests/test_file.py -v
+```
+
+Linting:
+```powershell
+.venv/Scripts/python.exe -m black backend/app/ --check
+```
+
+Running scripts:
+```powershell
+.venv/Scripts/python.exe scripts/verify/verify-pr-XXX.py
+```
+
+---
+
 ## 📋 PROJECT CONTEXT
 
 ### Tech Stack (Non-Negotiable)

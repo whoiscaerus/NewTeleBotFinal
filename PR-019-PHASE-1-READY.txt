@@ -1,0 +1,209 @@
+████████████████████████████████████████████████████████████████████████████████
+█                                                                              █
+█  🚀 PR-019 READY TO START - Live Trading Bot Enhancements                   █
+█                                                                              █
+█  Phase 1: Planning ✅ COMPLETE                                              █
+█  Status: Ready for Phase 2 (Implementation)                                 █
+█  Date: October 25, 2025                                                     █
+█                                                                              █
+████████████████████████████████████████████████████████████████████████████████
+
+═════════════════════════════════════════════════════════════════════════════════
+  WHAT IS PR-019?
+═════════════════════════════════════════════════════════════════════════════════
+
+Live Trading Bot Enhancements add critical safety and monitoring features:
+
+1. HEARTBEAT MECHANISM
+   ├─ Trading loop emits health check every 10 seconds
+   ├─ Includes: signal count, trade count, error count
+   ├─ Enables: Monitoring if loop is "alive"
+   └─ Alert: Telegram alert if heartbeat stops >60 seconds
+
+2. DRAWDOWN CAPS
+   ├─ Monitor account equity in real-time
+   ├─ Close ALL positions when drawdown exceeds threshold (e.g., 20%)
+   ├─ Prevents: Catastrophic losses from bad streaks
+   └─ Alert: Telegram notification when cap triggers
+
+3. ANALYTICS HOOKS
+   ├─ Track signal → execution latency
+   ├─ Monitor draw-down recovery patterns
+   ├─ Enable: Performance optimization based on real data
+   └─ Provide: Instrumentation for future dashboards
+
+═════════════════════════════════════════════════════════════════════════════════
+  DEPENDENCIES - ALL VERIFIED COMPLETE ✅
+═════════════════════════════════════════════════════════════════════════════════
+
+Required PRs:
+  ✅ PR-011: Strategy Engine Bootstrap (MT5 integration)
+  ✅ PR-014: Approval Workflows (signal approvals)
+  ✅ PR-015: Performance Optimization (order management)
+  ✅ PR-017: HMAC Signing & Serialization (signal posting)
+  ✅ PR-018: Resilient Retries & Alerts (retry + Telegram)
+
+Status: ✅ ALL DEPENDENCIES COMPLETE - READY TO PROCEED
+
+═════════════════════════════════════════════════════════════════════════════════
+  PHASE 1: PLANNING - COMPLETE ✅
+═════════════════════════════════════════════════════════════════════════════════
+
+Created: docs/prs/PR-019-IMPLEMENTATION-PLAN.md (2,000+ lines)
+
+Includes:
+  ✅ Problem statement (no heartbeat, no drawdown protection, no analytics)
+  ✅ Solution architecture (loop, drawdown guard, events)
+  ✅ File structure (2 production + 3 test files)
+  ✅ Dependencies (PR-011, PR-014, PR-015, PR-017, PR-018)
+  ✅ 9 acceptance criteria (all with test cases)
+  ✅ Testing strategy (unit, integration, E2E)
+  ✅ Risk assessment (deadlocks, false triggers, performance)
+  ✅ Timeline (5-5.5 hours total for all phases)
+  ✅ Success criteria (all measurable)
+
+═════════════════════════════════════════════════════════════════════════════════
+  WHAT'S NEXT? PHASE 2: IMPLEMENTATION
+═════════════════════════════════════════════════════════════════════════════════
+
+When ready, Phase 2 will create:
+
+Production Code Files:
+  1. backend/app/trading/runtime/loop.py (600-700 lines)
+     ├─ TradingLoop class
+     ├─ Main trading loop logic
+     ├─ Signal processing
+     ├─ Heartbeat emission
+     └─ Event publishing
+
+  2. backend/app/trading/runtime/drawdown.py (400-500 lines)
+     ├─ DrawdownGuard class
+     ├─ Equity tracking
+     ├─ Drawdown calculation
+     ├─ Position closing logic
+     └─ Alert triggering
+
+Test Files:
+  3. backend/tests/test_trading_loop.py (20 tests)
+  4. backend/tests/test_drawdown_guard.py (20 tests)
+  5. backend/tests/test_runtime_integration.py (15-20 tests)
+
+Code Quality Target:
+  ✅ 100% type hints
+  ✅ 100% docstrings
+  ✅ 100% Black formatted
+  ✅ 55-60 tests
+  ✅ ≥80% coverage
+  ✅ 0 TODOs/FIXMEs
+
+═════════════════════════════════════════════════════════════════════════════════
+  KEY FILES & LOCATIONS
+═════════════════════════════════════════════════════════════════════════════════
+
+Planning Document:
+  📄 docs/prs/PR-019-IMPLEMENTATION-PLAN.md
+
+Implementation Will Create:
+  📄 backend/app/trading/runtime/loop.py (main loop)
+  📄 backend/app/trading/runtime/drawdown.py (drawdown guard)
+  📄 backend/tests/test_trading_loop.py (loop tests)
+  📄 backend/tests/test_drawdown_guard.py (drawdown tests)
+  📄 backend/tests/test_runtime_integration.py (integration tests)
+
+Documentation Will Create:
+  📄 docs/prs/PR-019-IMPLEMENTATION-COMPLETE.md
+  📄 docs/prs/PR-019-ACCEPTANCE-CRITERIA.md
+  📄 docs/prs/PR-019-BUSINESS-IMPACT.md
+
+═════════════════════════════════════════════════════════════════════════════════
+  ACCEPTANCE CRITERIA (9 Total) - All with Test Cases
+═════════════════════════════════════════════════════════════════════════════════
+
+✓ Heartbeat emitted every 10 seconds
+✓ Heartbeat includes signal/trade/error counts
+✓ Drawdown calculated accurately (£10k → £8k = 20%)
+✓ Drawdown cap enforced (25% drawdown > 20% cap = positions close)
+✓ Telegram alert sent when cap triggered
+✓ Events logged at key points (signal received, approved, executed)
+✓ Latency tracked (signal → execution time)
+✓ Errors recovered gracefully with retries
+✓ Loop stops cleanly on shutdown
+
+═════════════════════════════════════════════════════════════════════════════════
+  TIMELINE
+═════════════════════════════════════════════════════════════════════════════════
+
+Phase 1: Planning              30 min    ✅ COMPLETE
+Phase 2: Implementation        2 hours   ⏳ READY TO START
+Phase 3: Testing               1.5 hours ⏳ READY TO START
+Phase 4: Verification          30 min    ⏳ READY TO START
+Phase 5: Documentation         1 hour    ⏳ READY TO START
+────────────────────────────────────────────────────
+TOTAL                          5-5.5 hrs ⏳ ~5.5 HOURS REMAINING
+
+═════════════════════════════════════════════════════════════════════════════════
+  PHASE 1A PROGRESS UPDATE
+═════════════════════════════════════════════════════════════════════════════════
+
+After PR-018 (Just Completed):
+  ✅ PR-011 through PR-018: COMPLETE (8/10 PRs)
+  ❌ PR-019: Just starting (this one)
+  ❌ PR-020: Not started
+  Status: Phase 1A = 80%
+
+After PR-019 (This Session):
+  ✅ PR-011 through PR-019: COMPLETE (9/10 PRs)
+  ❌ PR-020: Not started
+  Status: Phase 1A = 90%
+
+After PR-020:
+  ✅ PR-011 through PR-020: COMPLETE (10/10 PRs)
+  Status: Phase 1A = 100% ✅
+
+═════════════════════════════════════════════════════════════════════════════════
+  QUICK START GUIDE
+═════════════════════════════════════════════════════════════════════════════════
+
+When Ready to Start Phase 2:
+
+1. Open planning document:
+   📄 docs/prs/PR-019-IMPLEMENTATION-PLAN.md
+
+2. Reference the file structure section:
+   ├─ Shows exact files to create
+   ├─ Shows line count targets
+   ├─ Shows what each file contains
+
+3. Start creating production files:
+   ├─ backend/app/trading/runtime/loop.py
+   ├─ backend/app/trading/runtime/drawdown.py
+
+4. Key implementation tips:
+   ✅ Use PR-018 retry decorator for MT5 calls
+   ✅ Use PR-018 Telegram alerts for drawdown cap
+   ✅ Emit events for analytics hooks
+   ✅ 100% type hints required
+   ✅ 100% docstrings required
+
+5. Run tests frequently:
+   .venv/Scripts/python.exe -m pytest backend/tests/test_trading_loop.py -v
+
+6. Format with Black:
+   .venv/Scripts/python.exe -m black backend/app/trading/runtime/ --line-length=88
+
+═════════════════════════════════════════════════════════════════════════════════
+
+Status: ✅ PHASE 1 COMPLETE
+Ready For: Phase 2 (Implementation) - 2 hours
+Ready For: Full PR completion - 5.5 hours total
+
+Command when ready: Continue to Phase 2 (type "continue" or "phase 2")
+
+████████████████████████████████████████████████████████████████████████████████
+█                                                                              █
+█  Next Step: Phase 2 Implementation                                          █
+█  Files to Create: loop.py + drawdown.py (1,000-1,200 production lines)      █
+█  Tests to Create: 55-60 comprehensive tests                                 █
+█  ETA: 5-5.5 hours total for complete PR                                    █
+█                                                                              █
+████████████████████████████████████████████████████████████████████████████████

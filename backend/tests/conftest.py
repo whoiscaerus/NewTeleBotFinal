@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -21,28 +20,20 @@ from backend.app.audit.models import AuditLog  # noqa: F401, E402
 
 # Import all models so they're registered with Base.metadata
 from backend.app.auth.models import User  # noqa: F401, E402
+from backend.app.trading.store.models import (  # noqa: F401, E402
+    EquityPoint,
+    Position,
+    Trade,
+    ValidationLog,
+)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():
-    """Run alembic migrations once before test session starts."""
-    try:
-        from alembic import command
-        from alembic.config import Config
-
-        # Get path to alembic.ini (one level up from backend/tests)
-        alembic_ini_path = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
-
-        if os.path.exists(alembic_ini_path):
-            alembic_cfg = Config(alembic_ini_path)
-            # Run migrations
-            command.upgrade(alembic_cfg, "head")
-    except Exception as e:
-        # Log but don't fail - migrations may not be needed for in-memory SQLite tests
-        import logging
-
-        logging.warning(f"Could not run migrations: {e}")
-    yield
+    """Skip migrations for in-memory SQLite tests - tables created directly."""
+    # For in-memory SQLite, we use Base.metadata.create_all() instead of migrations
+    # This is faster and cleaner for unit/integration tests
+    pass
 
 
 @pytest.fixture(autouse=True)
@@ -64,13 +55,16 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         echo=False,
-        poolclass=pool.StaticPool,
         connect_args={"check_same_thread": False},
     )
 
+    # Drop any existing tables first (in case metadata is cached)
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda c: Base.metadata.drop_all(c))
+
     # Create all tables from Base.metadata
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(lambda c: Base.metadata.create_all(c))
 
     # Create session factory
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -78,10 +72,16 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         yield session
 
-    # Cleanup - drop all tables
+    # Cleanup: drop all tables
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(lambda c: Base.metadata.drop_all(c))
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db(db_session: AsyncSession) -> AsyncSession:
+    """Alias for db_session for backward compatibility."""
+    return db_session
 
 
 @pytest_asyncio.fixture
@@ -151,3 +151,161 @@ def producer_id() -> str:
 def hmac_secret() -> str:
     """Return test HMAC secret."""
     return "test-hmac-secret-key-12345678"
+
+
+@pytest.fixture
+def mock_mt5_client():
+    """Create mock MT5 client for testing."""
+    from unittest.mock import AsyncMock
+
+    mock = AsyncMock()
+    mock.get_account.return_value = {
+        "equity": 10000.0,
+        "balance": 10000.0,
+        "margin": 5000.0,
+        "free_margin": 5000.0,
+    }
+    mock.get_open_positions.return_value = []
+    mock.place_order.return_value = {"order_id": "test_order_123", "status": "placed"}
+    return mock
+
+
+@pytest.fixture
+def mock_approvals_service():
+    """Create mock approvals service for testing."""
+    from unittest.mock import AsyncMock
+
+    mock = AsyncMock()
+    mock.get_pending.return_value = []
+    return mock
+
+
+@pytest.fixture
+def mock_order_service():
+    """Create mock order service for testing."""
+    from unittest.mock import AsyncMock
+
+    mock = AsyncMock()
+    mock.get_open_positions.return_value = []
+    mock.close_all_positions.return_value = {"closed": 0}
+    mock.place_order.return_value = {"order_id": "test_order_123"}
+    return mock
+
+
+@pytest.fixture
+def mock_alert_service():
+    """Create mock alert service for testing."""
+    from unittest.mock import AsyncMock
+
+    mock = AsyncMock()
+    mock.send_owner_alert.return_value = True
+    return mock
+
+
+@pytest_asyncio.fixture
+async def trading_loop(
+    mock_mt5_client, mock_approvals_service, mock_order_service, mock_alert_service
+):
+    """Create TradingLoop with mocked dependencies."""
+    from backend.app.trading.runtime.loop import TradingLoop
+
+    loop = TradingLoop(
+        mt5_client=mock_mt5_client,
+        approvals_service=mock_approvals_service,
+        order_service=mock_order_service,
+        alert_service=mock_alert_service,
+        loop_id="test_loop_123",
+    )
+    return loop
+
+
+@pytest.fixture
+def drawdown_guard():
+    """Create DrawdownGuard with mocked dependencies."""
+    from backend.app.trading.runtime.drawdown import DrawdownGuard
+
+    guard = DrawdownGuard(
+        max_drawdown_percent=20.0,
+    )
+    return guard
+
+
+# ============================================================================
+# PR-019 Trading Loop and Drawdown Guard Test Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def mock_mt5_client():
+    """Create mock MT5 client for testing."""
+    from unittest.mock import AsyncMock
+
+    mock = AsyncMock()
+    mock.get_account.return_value = {
+        "equity": 10000.0,
+        "balance": 10000.0,
+        "margin": 5000.0,
+        "free_margin": 5000.0,
+    }
+    mock.get_open_positions.return_value = []
+    return mock
+
+
+@pytest.fixture
+def mock_approvals_service():
+    """Create mock approvals service for testing."""
+    from unittest.mock import AsyncMock
+
+    mock = AsyncMock()
+    mock.get_pending.return_value = []
+    return mock
+
+
+@pytest.fixture
+def mock_order_service():
+    """Create mock order service for testing."""
+    from unittest.mock import AsyncMock
+
+    mock = AsyncMock()
+    mock.get_open_positions.return_value = []
+    mock.close_all_positions.return_value = {"closed": 0}
+    mock.place_order.return_value = {"order_id": "test_order_123"}
+    return mock
+
+
+@pytest.fixture
+def mock_alert_service():
+    """Create mock alert service for testing."""
+    from unittest.mock import AsyncMock
+
+    mock = AsyncMock()
+    mock.send_owner_alert.return_value = True
+    return mock
+
+
+@pytest.fixture
+def trading_loop(
+    mock_mt5_client, mock_approvals_service, mock_order_service, mock_alert_service
+):
+    """Create TradingLoop with mocked dependencies."""
+    from backend.app.trading.runtime.loop import TradingLoop
+
+    loop = TradingLoop(
+        mt5_client=mock_mt5_client,
+        approvals_service=mock_approvals_service,
+        order_service=mock_order_service,
+        alert_service=mock_alert_service,
+        loop_id="test_loop_123",
+    )
+    return loop
+
+
+@pytest.fixture
+def drawdown_guard():
+    """Create DrawdownGuard with mocked dependencies."""
+    from backend.app.trading.runtime.drawdown import DrawdownGuard
+
+    guard = DrawdownGuard(
+        max_drawdown_percent=20.0,
+    )
+    return guard
