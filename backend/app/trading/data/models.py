@@ -133,7 +133,7 @@ class SymbolPrice(Base):
         Returns:
             Mid price as (bid + ask) / 2
         """
-        return (self.bid + self.ask) / 2.0
+        return float((self.bid + self.ask) / 2.0)
 
     def get_spread(self) -> float:
         """Calculate bid-ask spread.
@@ -141,7 +141,7 @@ class SymbolPrice(Base):
         Returns:
             Spread as ask - bid
         """
-        return self.ask - self.bid
+        return float(self.ask - self.bid)
 
     def get_spread_percent(self) -> float:
         """Calculate spread as percentage of mid price.
@@ -256,7 +256,7 @@ class OHLCCandle(Base):
         Returns:
             Range as high - low
         """
-        return self.high - self.low
+        return float(self.high - self.low)
 
     def get_change(self) -> float:
         """Calculate open-to-close change.
@@ -264,7 +264,7 @@ class OHLCCandle(Base):
         Returns:
             Change as close - open
         """
-        return self.close - self.open
+        return float(self.close - self.open)
 
     def get_change_percent(self) -> float:
         """Calculate open-to-close change as percentage.
@@ -274,7 +274,7 @@ class OHLCCandle(Base):
         """
         if self.open == 0:
             return 0.0
-        return (self.get_change() / self.open) * 100.0
+        return float((self.get_change() / self.open) * 100.0)
 
     def is_bullish(self) -> bool:
         """Determine if candle is bullish (close > open).
@@ -282,7 +282,7 @@ class OHLCCandle(Base):
         Returns:
             True if close > open, False otherwise
         """
-        return self.close > self.open
+        return bool(self.close > self.open)
 
     def is_bearish(self) -> bool:
         """Determine if candle is bearish (close < open).
@@ -290,7 +290,7 @@ class OHLCCandle(Base):
         Returns:
             True if close < open, False otherwise
         """
-        return self.close < self.open
+        return bool(self.close < self.open)
 
     def get_true_range(self) -> float:
         """Calculate true range (for ATR calculations).
@@ -412,7 +412,7 @@ class DataPullLog(Base):
         Returns:
             True if status is 'error'
         """
-        return self.status == "error"
+        return bool(self.status == "error")
 
     def is_success(self) -> bool:
         """Check if pull succeeded.
@@ -420,4 +420,4 @@ class DataPullLog(Base):
         Returns:
             True if status is 'success'
         """
-        return self.status == "success"
+        return bool(self.status == "success")

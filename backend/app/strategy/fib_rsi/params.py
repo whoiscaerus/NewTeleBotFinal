@@ -87,8 +87,11 @@ class StrategyParams:
     swing_lookback_bars: int = 20
     min_bars_for_analysis: int = 30
 
-    def validate(self) -> None:
+    def validate(self) -> bool:
         """Validate all parameters are within acceptable ranges.
+
+        Returns:
+            True if validation passes
 
         Raises:
             ValueError: If any parameter is invalid
@@ -96,12 +99,13 @@ class StrategyParams:
 
         Example:
             >>> params = StrategyParams(rsi_period=20)
-            >>> params.validate()  # Passes
+            >>> result = params.validate()  # Returns True
+            >>> assert result is True
             >>>
             >>> params = StrategyParams(rsi_period=-5)
             >>> params.validate()  # Raises ValueError
         """
-        errors = []
+        errors: list[str] = []
 
         # RSI validation
         if not isinstance(self.rsi_period, int) or self.rsi_period < 2:
@@ -114,17 +118,25 @@ class StrategyParams:
             errors.append("rsi_overbought must be > rsi_oversold")
 
         # ROC validation
-        if not isinstance(self.roc_period, int) or self.roc_period < 2:
+        roc_period_valid = isinstance(self.roc_period, int) and self.roc_period >= 2
+        if not roc_period_valid:
             errors.append("roc_period must be int >= 2")
-        if not isinstance(self.roc_threshold, (int, float)):
+
+        roc_threshold_valid = isinstance(self.roc_threshold, int | float)
+        if not roc_threshold_valid:
             errors.append("roc_threshold must be numeric")
 
-        # Fibonacci validation
-        if not isinstance(self.fib_levels, list) or len(self.fib_levels) == 0:
+        # Fibonacci validation - check type first
+        fib_is_valid_list: bool = (
+            isinstance(self.fib_levels, list) and len(self.fib_levels) > 0
+        )
+        if not fib_is_valid_list:
             errors.append("fib_levels must be non-empty list")
-        for level in self.fib_levels:
-            if not (0 <= level <= 1):
-                errors.append(f"fib_levels must be between 0 and 1, got {level}")
+
+        if fib_is_valid_list:
+            for level in self.fib_levels:
+                if not (0 <= level <= 1):
+                    errors.append(f"fib_levels must be between 0 and 1, got {level}")
 
         # Risk management validation
         if not (0 < self.risk_per_trade < 1):
@@ -138,7 +150,8 @@ class StrategyParams:
             errors.append("min_stop_distance_points must be int >= 1")
 
         # Market hours validation
-        if not isinstance(self.check_market_hours, bool):
+        check_market_hours_valid = isinstance(self.check_market_hours, bool)
+        if not check_market_hours_valid:
             errors.append("check_market_hours must be boolean")
 
         # Timeout validation
@@ -157,7 +170,7 @@ class StrategyParams:
 
         # ATR multiplier validation
         if (
-            not isinstance(self.atr_multiplier_stop, (int, float))
+            not isinstance(self.atr_multiplier_stop, int | float)
             or self.atr_multiplier_stop < 0.1
         ):
             errors.append("atr_multiplier_stop must be numeric >= 0.1")
@@ -178,6 +191,8 @@ class StrategyParams:
 
         if errors:
             raise ValueError(f"Parameter validation failed: {'; '.join(errors)}")
+
+        return True
 
     def get_rsi_config(self) -> dict[str, Any]:
         """Get RSI-specific configuration.

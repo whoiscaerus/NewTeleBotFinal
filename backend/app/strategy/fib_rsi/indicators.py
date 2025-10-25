@@ -356,7 +356,7 @@ class FibonacciAnalyzer:
         lookback = min(window, len(candles))
         recent = candles[-lookback:]
 
-        max_high = 0
+        max_high = 0.0
         max_idx = 0
         for i, candle in enumerate(recent):
             if candle.get("high", 0) > max_high:
@@ -409,7 +409,7 @@ class FibonacciAnalyzer:
     def calculate_levels(
         swing_high: float,
         swing_low: float,
-        fib_ratios: list[float] = None,
+        fib_ratios: list[float] | None = None,
     ) -> dict[str, float]:
         """Calculate Fibonacci retracement levels.
 

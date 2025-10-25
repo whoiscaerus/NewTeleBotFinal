@@ -23,7 +23,7 @@ import functools
 import logging
 import random
 from collections.abc import Awaitable, Callable, Coroutine
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 
 __all__ = [
     "with_retry",
@@ -140,6 +140,36 @@ def calculate_backoff_delay(
 # ============================================================================
 
 
+@overload
+def with_retry(
+    func: Callable[..., Awaitable[T]],
+    *,
+    max_retries: int = 5,
+    base_delay: float = 5.0,
+    backoff_multiplier: float = 2.0,
+    jitter: bool = True,
+    max_delay: float = 120.0,
+    logger_: logging.Logger | None = None,
+) -> Callable[..., Awaitable[T]]:
+    """Overload: Called without parentheses (@with_retry)."""
+    ...
+
+
+@overload
+def with_retry(
+    func: None = None,
+    *,
+    max_retries: int = 5,
+    base_delay: float = 5.0,
+    backoff_multiplier: float = 2.0,
+    jitter: bool = True,
+    max_delay: float = 120.0,
+    logger_: logging.Logger | None = None,
+) -> Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]:
+    """Overload: Called with parentheses (@with_retry(...))."""
+    ...
+
+
 def with_retry(
     func: Callable[..., Awaitable[T]] | None = None,
     *,
@@ -149,7 +179,10 @@ def with_retry(
     jitter: bool = True,
     max_delay: float = 120.0,
     logger_: logging.Logger | None = None,
-) -> Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]:
+) -> (
+    Callable[..., Awaitable[T]]
+    | Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]
+):
     """Decorator for adding retry logic with exponential backoff.
 
     Retries on any exception. On exhaustion, raises RetryExhaustedError
@@ -250,6 +283,15 @@ def with_retry(
                 )
 
                 await asyncio.sleep(delay)
+
+        # This line should never be reached due to the loop logic,
+        # but mypy requires an explicit return statement
+        raise RetryExhaustedError(
+            message=f"Unexpected state in retry loop for '{operation_name}'",
+            attempts=max_retries + 1,
+            last_error=RuntimeError("Retry loop completed without exception"),
+            operation=operation_name,
+        )
 
     return wrapper
 

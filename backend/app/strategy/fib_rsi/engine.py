@@ -278,7 +278,8 @@ class StrategyEngine:
             >>> is_open = await engine._check_market_hours("EURUSD", now)
         """
         try:
-            return self.market_calendar.is_market_open(instrument, timestamp)
+            result = self.market_calendar.is_market_open(instrument, timestamp)
+            return bool(result)
         except Exception as e:
             self.logger.warning(
                 f"Market hours check failed: {e}",
@@ -392,7 +393,7 @@ class StrategyEngine:
                 },
             )
 
-            return setup
+            return dict(setup) if setup else None
 
         except Exception as e:
             self.logger.error(
@@ -512,7 +513,7 @@ class StrategyEngine:
             t for t in self._last_signal_times[instrument] if t > one_hour_ago
         ]
 
-        return (
+        return bool(
             len(self._last_signal_times[instrument]) >= self.params.max_signals_per_hour
         )
 

@@ -225,21 +225,22 @@ class MarketCalendar:
 
         if from_dt is None:
             from_dt = datetime.now(pytz.UTC)
-
-        if from_dt.tzinfo is None:
-            from_dt = pytz.UTC.localize(from_dt)
-        elif from_dt.tzinfo != pytz.UTC:
-            from_dt = from_dt.astimezone(pytz.UTC)
+        else:
+            # Ensure from_dt is UTC
+            if from_dt.tzinfo is None:
+                from_dt = pytz.UTC.localize(from_dt)
+            elif from_dt.tzinfo != pytz.UTC:
+                from_dt = from_dt.astimezone(pytz.UTC)
 
         session = MarketCalendar.get_session(symbol)
         market_tz = pytz.timezone(session.timezone)
 
         # Start from next day if market is closed now
-        check_dt = from_dt + timedelta(days=1)
+        check_dt: datetime = from_dt + timedelta(days=1)  # type: ignore[assignment]
 
         # Find next trading day
         while check_dt.weekday() not in session.trading_days:
-            check_dt += timedelta(days=1)
+            check_dt = check_dt + timedelta(days=1)
 
         # Create datetime at market open in market timezone
         market_dt = market_tz.localize(
@@ -253,7 +254,8 @@ class MarketCalendar:
         )
 
         # Convert to UTC
-        return market_dt.astimezone(pytz.UTC)
+        utc_dt: datetime = market_dt.astimezone(pytz.UTC)
+        return utc_dt
 
     @staticmethod
     def get_market_status(symbol: str, dt: datetime | None = None) -> dict:
@@ -279,18 +281,20 @@ class MarketCalendar:
             }
         """
         if dt is None:
-            dt = datetime.now(pytz.UTC)
+            dt_to_use: datetime = datetime.now(pytz.UTC)
+        else:
+            dt_to_use = dt
 
-        if dt.tzinfo is None:
-            dt = pytz.UTC.localize(dt)
-        elif dt.tzinfo != pytz.UTC:
-            dt = dt.astimezone(pytz.UTC)
+        if dt_to_use.tzinfo is None:
+            dt_to_use = pytz.UTC.localize(dt_to_use)
+        elif dt_to_use.tzinfo != pytz.UTC:
+            dt_to_use = dt_to_use.astimezone(pytz.UTC)
 
         session = MarketCalendar.get_session(symbol)
-        is_open = MarketCalendar.is_market_open(symbol, dt)
+        is_open = MarketCalendar.is_market_open(symbol, dt_to_use)
 
         market_tz = pytz.timezone(session.timezone)
-        market_dt = dt.astimezone(market_tz)
+        market_dt: datetime = dt_to_use.astimezone(market_tz)
 
         # Get today's market hours
         open_dt = market_tz.localize(

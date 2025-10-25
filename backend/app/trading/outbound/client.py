@@ -200,8 +200,14 @@ class HmacClient:
 
         request_timeout = timeout or self.config.timeout_seconds
 
+        # Ensure session is initialized
+        await self._ensure_session()
+
         try:
             # POST to server
+            if not self._session:
+                raise OutboundClientError("HTTP session not initialized")
+
             response = await self._session.post(
                 endpoint_url,
                 content=request_body_bytes,

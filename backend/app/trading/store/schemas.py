@@ -139,7 +139,7 @@ class TradeStatsOut(BaseModel):
 
     model_config = ConfigDict(
         from_attributes=True,
-        ser_json_schema={
+        json_schema_extra={
             "properties": {
                 "avg_profit": {"type": "string"},
                 "avg_loss": {"type": "string"},
@@ -207,7 +207,7 @@ class PositionSummaryOut(BaseModel):
 
     model_config = ConfigDict(
         from_attributes=True,
-        ser_json_schema={
+        json_schema_extra={
             "properties": {
                 "total_volume": {"type": "string"},
                 "total_unrealized_profit": {"type": "string"},
@@ -244,7 +244,7 @@ class SyncResultOut(BaseModel):
 
     model_config = ConfigDict(
         from_attributes=True,
-        ser_json_schema={
+        json_schema_extra={
             "properties": {
                 "mismatch_details": {
                     "items": {
@@ -279,9 +279,7 @@ class TradeCreateRequest(BaseModel):
     entry_price: Decimal = Field(..., gt=0, description="Entry level")
     stop_loss: Decimal = Field(..., gt=0, description="Stop loss level")
     take_profit: Decimal = Field(..., gt=0, description="Take profit level")
-    volume: Decimal = Field(
-        ..., ge=Decimal("0.01"), le=Decimal("100"), description="Position size"
-    )
+    volume: Decimal = Field(..., ge=0.01, le=100.0, description="Position size")
     strategy: str = Field("manual", description="Strategy name")
     timeframe: str = Field("H1", description="Candle timeframe")
     signal_id: str | None = Field(None, description="Reference to signal")

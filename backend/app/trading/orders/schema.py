@@ -174,16 +174,11 @@ class OrderParams(BaseModel):
 
     def is_buy_order(self) -> bool:
         """Check if this is a buy order."""
-        return (
-            self.order_type == OrderType.PENDING_BUY or self.order_type == "PENDING_BUY"
-        )
+        return self.order_type == OrderType.PENDING_BUY
 
     def is_sell_order(self) -> bool:
         """Check if this is a sell order."""
-        return (
-            self.order_type == OrderType.PENDING_SELL
-            or self.order_type == "PENDING_SELL"
-        )
+        return self.order_type == OrderType.PENDING_SELL
 
 
 class BrokerConstraints(BaseModel):

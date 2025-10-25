@@ -178,7 +178,7 @@ class MT5DataPuller:
             # )
 
             # For now, return empty list (will be populated by integration)
-            candles = []
+            candles: list[dict[str, Any]] = []
 
             # Validate if requested
             if validate and candles:
@@ -241,7 +241,7 @@ class MT5DataPuller:
             # tick = self.session_manager.session.symbol_info_tick(symbol)
 
             # For now, return None (will be populated by integration)
-            price_data = None
+            price_data: dict[str, float] | None = None
 
             if price_data:
                 logger.info(

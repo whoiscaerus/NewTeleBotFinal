@@ -263,7 +263,7 @@ class TradeService:
         stmt = stmt.order_by(desc(Trade.entry_time)).limit(limit).offset(offset)
 
         result = await self.db.execute(stmt)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def get_trade_stats(self, symbol: str | None = None) -> dict:
         """Calculate overall trade statistics.
@@ -379,7 +379,7 @@ class TradeService:
         total_volume = sum((p.volume for p in positions), Decimal("0"))
         total_profit = sum((p.unrealized_profit or Decimal("0")) for p in positions)
 
-        by_symbol = {}
+        by_symbol: dict[str, dict[str, int | Decimal]] = {}
         for pos in positions:
             if pos.symbol not in by_symbol:
                 by_symbol[pos.symbol] = {
@@ -387,9 +387,13 @@ class TradeService:
                     "volume": Decimal("0"),
                     "profit": Decimal("0"),
                 }
-            by_symbol[pos.symbol]["count"] += 1
-            by_symbol[pos.symbol]["volume"] += pos.volume
-            by_symbol[pos.symbol]["profit"] += pos.unrealized_profit or Decimal("0")
+            by_symbol[pos.symbol]["count"] = int(by_symbol[pos.symbol]["count"]) + 1
+            by_symbol[pos.symbol]["volume"] = (
+                Decimal(by_symbol[pos.symbol]["volume"]) + pos.volume
+            )
+            by_symbol[pos.symbol]["profit"] = Decimal(
+                by_symbol[pos.symbol]["profit"]
+            ) + (pos.unrealized_profit or Decimal("0"))
 
         return {
             "total_positions": len(positions),

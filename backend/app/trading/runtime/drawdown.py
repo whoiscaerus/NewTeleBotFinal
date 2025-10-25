@@ -424,10 +424,11 @@ class DrawdownGuard:
                 f"⚠️ Trading paused. Manual intervention required."
             )
 
-            await self.alert_service.send_owner_alert(
-                message=message,
-                severity="CRITICAL",
-            )
+            if self.alert_service:
+                await self.alert_service.send_owner_alert(
+                    message=message,
+                    severity="CRITICAL",
+                )
 
             self.logger.info("Drawdown alert sent to Telegram")
 
@@ -456,7 +457,7 @@ class DrawdownGuard:
             if not mt5_client:
                 return None
 
-            account_info = await mt5_client.get_account_info()
+            account_info: dict[str, Any] | None = await mt5_client.get_account_info()
             return account_info
 
         except Exception as e:

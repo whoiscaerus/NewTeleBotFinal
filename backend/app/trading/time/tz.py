@@ -260,6 +260,9 @@ def get_offset_utc(dt: datetime, tz_name: str) -> str:
 
     # Get offset
     offset = localized.utcoffset()
+    if offset is None:
+        raise ValueError(f"Unable to determine offset for {naive_dt} in {tz_name}")
+
     hours, remainder = divmod(int(offset.total_seconds()), 3600)
     minutes = remainder // 60
 
