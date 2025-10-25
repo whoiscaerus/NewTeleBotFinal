@@ -35,7 +35,6 @@ dependencies = [
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "pytz>=2025.1",
-    "MetaTrader5>=5.0.38",
 ]
 
 [tool.setuptools]
@@ -58,6 +57,12 @@ dev = [
     "types-pyyaml>=6.0.12",
     "types-requests>=2.31.0",
     "types-pytz>=2025.1.0",
+]
+# MetaTrader5 is Windows-only and not available on PyPI for Linux
+# For CI/CD testing, we mock MT5 imports. For Windows production, install separately:
+# pip install MetaTrader5>=5.0.38
+windows = [
+    "MetaTrader5>=5.0.38",
 ]
 
 [tool.black]

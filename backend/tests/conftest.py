@@ -1,8 +1,31 @@
 """Pytest configuration and shared fixtures."""
 
 import os
+import sys
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
+
+# Mock MetaTrader5 BEFORE any imports that might use it
+# MetaTrader5 is Windows-only and not available on Linux/GitHub Actions
+# This allows tests to run in CI/CD environments without errors
+if "MetaTrader5" not in sys.modules:
+    mock_mt5 = MagicMock()
+    mock_mt5.VERSION = "5.0.38"
+    mock_mt5.RES_S_OK = 1
+    mock_mt5.ORDER_TIME_GTC = 0
+    mock_mt5.ORDER_TYPE_BUY = 0
+    mock_mt5.ORDER_TYPE_SELL = 1
+    mock_mt5.ORDER_FILLING_IOC = 1
+    mock_mt5.TIMEFRAME_M5 = 301
+    mock_mt5.TIMEFRAME_M15 = 302
+    mock_mt5.TIMEFRAME_H1 = 16400
+    mock_mt5.TIMEFRAME_D1 = 16408
+    mock_mt5.copy_rates_from_pos.return_value = []
+    mock_mt5.get_account_info.return_value = None
+    mock_mt5.initialize.return_value = True
+    mock_mt5.shutdown.return_value = True
+    sys.modules["MetaTrader5"] = mock_mt5
 
 import pytest
 import pytest_asyncio
