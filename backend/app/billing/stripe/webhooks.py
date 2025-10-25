@@ -47,7 +47,7 @@ def verify_stripe_signature(
             if item.startswith("t="):
                 timestamp = item[2:]
             elif item.startswith("v1="):
-                signature = item[4:]
+                signature = item[3:]
 
         if not timestamp or not signature:
             logger.warning("Invalid signature header format")

@@ -35,6 +35,7 @@ dependencies = [
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "pytz>=2025.1",
+    "stripe>=7.0.0",
 ]
 
 [tool.setuptools]

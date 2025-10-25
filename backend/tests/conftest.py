@@ -32,6 +32,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
 # Set test environment variables BEFORE importing app
 os.environ["APP_ENV"] = "development"
@@ -43,6 +44,7 @@ from backend.app.audit.models import AuditLog  # noqa: F401, E402
 
 # Import all models so they're registered with Base.metadata
 from backend.app.auth.models import User  # noqa: F401, E402
+from backend.app.billing.stripe.models import StripeEvent  # noqa: F401, E402
 from backend.app.trading.store.models import (  # noqa: F401, E402
     EquityPoint,
     Position,
@@ -71,8 +73,13 @@ def reset_context():
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create test database session with fresh schema each test."""
+    """Create test database session with fresh schema each test.
+    
+    Uses in-memory SQLite with checkfirst=True to avoid duplicate index errors.
+    Each test gets a completely fresh database.
+    """
     from backend.app.core.db import Base
+    from sqlalchemy import text
 
     # Create fresh engine for this test
     engine = create_async_engine(
@@ -81,11 +88,77 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         connect_args={"check_same_thread": False},
     )
 
-    # Drop any existing tables first (in case metadata is cached)
+    # Drop all existing tables and indexes
+    async with engine.begin() as conn:
+        # Get list of all tables
+        result = await conn.execute(
+            text(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+        )
+        tables = [row[0] for row in result.fetchall()]
+
+        # Drop all tables (cascade not needed in SQLite for this case)
+        for table in tables:
+            await conn.execute(text(f"DROP TABLE IF EXISTS [{table}]"))
+
+        # Drop all indexes
+        result = await conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='index'")
+        )
+        indexes = [row[0] for row in result.fetchall()]
+        for index in indexes:
+            if not index.startswith("sqlite_"):
+                await conn.execute(text(f"DROP INDEX IF EXISTS [{index}]"))
+
+    # Create all tables from Base.metadata (no checkfirst since DB is fresh)
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda c: Base.metadata.create_all(c))
+
+    # Create session factory
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with async_session() as session:
+        yield session
+
+    # Cleanup: close session and dispose engine
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db_postgres() -> AsyncGenerator[AsyncSession, None]:
+    """Create test database session with REAL PostgreSQL backend.
+    
+    Use this fixture for integration tests that need real database behavior:
+    - Constraint validation
+    - Transaction semantics
+    - Complex query patterns
+    
+    Requires: docker-compose up (PostgreSQL running on localhost:5432)
+    
+    Example:
+        async def test_signal_creation(db_postgres):
+            signal = StripeEvent(...)
+            db_postgres.add(signal)
+            await db_postgres.commit()
+            assert signal.id is not None
+    """
+    from backend.app.core.db import Base
+
+    # Connect to real PostgreSQL (same one as docker-compose)
+    db_url = "postgresql+psycopg_async://postgres:postgres@localhost:5432/trading_db_test"
+    engine = create_async_engine(
+        db_url,
+        echo=False,
+        pool_size=5,
+        max_overflow=10,
+    )
+
+    # Drop all tables first
     async with engine.begin() as conn:
         await conn.run_sync(lambda c: Base.metadata.drop_all(c))
 
-    # Create all tables from Base.metadata
+    # Create all tables fresh
     async with engine.begin() as conn:
         await conn.run_sync(lambda c: Base.metadata.create_all(c))
 
@@ -98,6 +171,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     # Cleanup: drop all tables
     async with engine.begin() as conn:
         await conn.run_sync(lambda c: Base.metadata.drop_all(c))
+
     await engine.dispose()
 
 
@@ -174,6 +248,14 @@ def producer_id() -> str:
 def hmac_secret() -> str:
     """Return test HMAC secret."""
     return "test-hmac-secret-key-12345678"
+
+
+@pytest.fixture
+def stripe_webhook_timestamp():
+    """Return test webhook timestamp."""
+    from datetime import datetime
+
+    return datetime.utcnow()
 
 
 @pytest.fixture

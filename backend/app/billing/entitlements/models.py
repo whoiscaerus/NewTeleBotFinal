@@ -21,11 +21,9 @@ class EntitlementType(Base):
     __tablename__ = "entitlement_types"
 
     id = Column(String(36), primary_key=True)
-    name = Column(String(50), nullable=False, unique=True, index=True)
+    name = Column(String(50), nullable=False, unique=True)
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-
-    __table_args__ = (Index("ix_entitlement_types_name", "name"),)
 
     def __repr__(self) -> str:
         return f"<EntitlementType {self.name}>"
