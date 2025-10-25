@@ -526,7 +526,7 @@ class TestTradeServiceQueries:
         service = TradeService(db)
 
         # Create GOLD trades
-        for i in range(2):
+        for _ in range(2):
             await service.create_trade(
                 symbol="GOLD",
                 trade_type="BUY",
@@ -556,7 +556,7 @@ class TestTradeServiceQueries:
         service = TradeService(db)
 
         # Create and close 2 trades
-        for i in range(2):
+        for _ in range(2):
             trade = await service.create_trade(
                 symbol="GOLD",
                 trade_type="BUY",
@@ -592,7 +592,7 @@ class TestTradeServiceQueries:
         service = TradeService(db)
 
         # Create 5 trades
-        for i in range(5):
+        for _ in range(5):
             await service.create_trade(
                 symbol="GOLD",
                 trade_type="BUY",
@@ -658,7 +658,7 @@ class TestTradeServiceAnalytics:
         service = TradeService(db)
 
         # Create 2 winning trades
-        for i in range(2):
+        for _ in range(2):
             trade = await service.create_trade(
                 symbol="GOLD",
                 trade_type="BUY",
@@ -698,7 +698,7 @@ class TestTradeServiceAnalytics:
         service = TradeService(db)
 
         # Create GOLD trades
-        for i in range(2):
+        for _ in range(2):
             trade = await service.create_trade(
                 symbol="GOLD",
                 trade_type="BUY",
@@ -863,7 +863,7 @@ class TestTradeServiceIntegration:
         service = TradeService(db)
 
         # Create 5 trades: 3 wins, 2 losses
-        for i in range(3):
+        for _ in range(3):
             trade = await service.create_trade(
                 symbol="GOLD",
                 trade_type="BUY",
@@ -877,7 +877,7 @@ class TestTradeServiceIntegration:
                 exit_price=Decimal("1960.00"),  # TP hit
             )
 
-        for i in range(2):
+        for _ in range(2):
             trade = await service.create_trade(
                 symbol="GOLD",
                 trade_type="BUY",

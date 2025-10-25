@@ -19,8 +19,8 @@ Example:
 import asyncio
 import logging
 from dataclasses import asdict, dataclass
-from datetime import datetime, UTC
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -116,10 +116,10 @@ class TradingLoop:
         mt5_client: Any,
         approvals_service: Any,
         order_service: Any,
-        alert_service: Optional[Any] = None,
-        retry_decorator: Optional[Any] = None,
-        db_session: Optional[AsyncSession] = None,
-        logger: Optional[logging.Logger] = None,
+        alert_service: Any | None = None,
+        retry_decorator: Any | None = None,
+        db_session: AsyncSession | None = None,
+        logger: logging.Logger | None = None,
         loop_id: str = "trading_loop_main",
     ) -> None:
         """Initialize trading loop.
@@ -165,7 +165,7 @@ class TradingLoop:
 
     async def start(
         self,
-        duration_seconds: Optional[float] = None,
+        duration_seconds: float | None = None,
     ) -> None:
         """Start the trading loop.
 

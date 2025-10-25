@@ -3,8 +3,8 @@
 import json
 import logging
 import uuid
-from datetime import datetime, UTC
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -58,7 +58,7 @@ class HmacClient:
         """
         self.config = config
         self.logger = logger
-        self._session: Optional[httpx.AsyncClient] = None
+        self._session: httpx.AsyncClient | None = None
 
         # Validate config on initialization
         self.config.validate()
@@ -104,8 +104,8 @@ class HmacClient:
     async def post_signal(
         self,
         signal: SignalCandidate,
-        idempotency_key: Optional[str] = None,
-        timeout: Optional[float] = None,
+        idempotency_key: str | None = None,
+        timeout: float | None = None,
     ) -> SignalIngestResponse:
         """Post a signal to the server with HMAC authentication.
 

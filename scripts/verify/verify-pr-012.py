@@ -69,9 +69,7 @@ def verify_imports():
     print("=" * 60)
 
     try:
-        from backend.app.trading.time import (
-            MarketCalendar,
-        )
+        from backend.app.trading.time import MarketCalendar
 
         print("✅ All imports successful")
 

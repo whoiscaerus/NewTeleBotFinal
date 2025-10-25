@@ -20,7 +20,7 @@ Example:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -60,7 +60,7 @@ class RSIPatternDetector:
     def detect_short_setup(
         self,
         df: pd.DataFrame,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Detect completed SHORT setup (RSI > 70 then RSI <= 40).
 
         SHORT Pattern:
@@ -206,7 +206,7 @@ class RSIPatternDetector:
     def detect_long_setup(
         self,
         df: pd.DataFrame,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Detect completed LONG setup (RSI < 40 then RSI >= 70).
 
         LONG Pattern:
@@ -353,7 +353,7 @@ class RSIPatternDetector:
 
         return None
 
-    def detect_setup(self, df: pd.DataFrame) -> Optional[dict[str, Any]]:
+    def detect_setup(self, df: pd.DataFrame) -> dict[str, Any] | None:
         """Detect any completed setup (SHORT or LONG).
 
         Checks for both SHORT and LONG patterns, preferring the most recent.

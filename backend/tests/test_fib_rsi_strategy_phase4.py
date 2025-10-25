@@ -285,7 +285,7 @@ class TestRSIPatternDetectorShort:
             start_time=base_time,
         )
 
-        setup = pattern_detector.detect_short_setup(df)
+        pattern_detector.detect_short_setup(df)
 
         # Should return None because high (1960) is not > low during same period
         # Actually, this test needs better construction
@@ -600,8 +600,6 @@ class TestRSIPatternDetectorEdgeCases:
 
     def test_setup_age_calculation(self, pattern_detector, base_time):
         """Test setup_age_hours correctly calculated from completion time."""
-        now = base_time + timedelta(hours=5)
-
         df = create_ohlc_dataframe(
             closes=[1945, 1948, 1955, 1953, 1948, 1942],
             highs=[1950, 1952, 1960, 1962, 1960, 1945],
@@ -665,7 +663,7 @@ class TestStrategyEngineSignalGeneration:
             start_time=base_time,
         )
 
-        signal = await engine.generate_signal(df, "EURUSD", base_time)
+        await engine.generate_signal(df, "EURUSD", base_time)
 
         # Signal may or may not be generated depending on additional filters
         # Just verify no exception
@@ -690,7 +688,7 @@ class TestStrategyEngineSignalGeneration:
             start_time=base_time,
         )
 
-        signal = await engine.generate_signal(df, "EURUSD", base_time)
+        await engine.generate_signal(df, "EURUSD", base_time)
 
         # No exception should occur
 

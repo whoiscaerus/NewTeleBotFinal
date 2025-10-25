@@ -255,7 +255,6 @@ class TestSendErrorAlert:
             mock_client.post.return_value = mock_response
             mock_client_class.return_value = mock_client
 
-            signal_id = "sig-123"
             result = await service.send_error_alert(
                 message="Signal post failed",
                 error=RuntimeError("Connection timeout"),
@@ -302,24 +301,18 @@ class TestAlertFormatting:
 
     def test_error_alert_formats_exception_type(self) -> None:
         """Test error alert includes exception type."""
-        service = OpsAlertService(telegram_token="token", telegram_chat_id="chat_id")
-
         error = ValueError("Test error")
         # Verify exception type is accessible
         assert error.__class__.__name__ == "ValueError"
 
     def test_error_alert_includes_attempt_info(self) -> None:
         """Test error alert can include attempt count."""
-        service = OpsAlertService(telegram_token="token", telegram_chat_id="chat_id")
-
         # Test that service accepts attempt info
         attempts = 5
         assert attempts > 0
 
     def test_error_alert_formats_severity(self) -> None:
         """Test severity levels are properly formatted."""
-        service = OpsAlertService(telegram_token="token", telegram_chat_id="chat_id")
-
         severity_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         # Verify severity levels are recognized
         assert "ERROR" in severity_levels

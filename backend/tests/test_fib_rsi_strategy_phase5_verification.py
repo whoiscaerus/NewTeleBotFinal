@@ -13,7 +13,7 @@ Acceptance Criteria:
 6. Window enforcement (100-hour max)
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import numpy as np
@@ -102,7 +102,7 @@ def create_test_ohlc_data(
     closes = []
     current_price = 1950.0
 
-    for i in range(num_candles):
+    for _ in range(num_candles):
         # Random walk
         change = np.random.normal(0, 1.5)  # Mean 0, std 1.5
         current_price = max(1900, current_price + change)  # Prevent going too low
@@ -339,7 +339,6 @@ class TestRiskRewardCalculations:
             add_pattern_at_index=50,
         )
 
-        params = StrategyParams(rr_ratio=3.25)
         detector = RSIPatternDetector()
 
         setup = detector.detect_short_setup(df)
@@ -364,7 +363,6 @@ class TestRiskRewardCalculations:
             base_datetime, num_candles=200, pattern_type="LONG", add_pattern_at_index=50
         )
 
-        params = StrategyParams(rr_ratio=3.25)
         detector = RSIPatternDetector()
 
         setup = detector.detect_long_setup(df)
@@ -448,8 +446,6 @@ class TestEngineCoverageExpansion:
     @pytest.mark.asyncio
     async def test_engine_with_custom_params(self, base_datetime):
         """Test engine with custom strategy parameters."""
-        df = create_test_ohlc_data(base_datetime, num_candles=150)
-
         params = StrategyParams(
             rsi_oversold=35, rsi_overbought=75, rr_ratio=3.5, rsi_period=12
         )

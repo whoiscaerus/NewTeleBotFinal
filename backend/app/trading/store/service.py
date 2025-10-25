@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,13 +47,13 @@ class TradeService:
         stop_loss: Decimal,
         take_profit: Decimal,
         volume: Decimal,
-        entry_time: Optional[datetime] = None,
+        entry_time: datetime | None = None,
         strategy: str = "manual",
         timeframe: str = "H1",
-        signal_id: Optional[str] = None,
-        device_id: Optional[str] = None,
-        setup_id: Optional[str] = None,
-        entry_comment: Optional[str] = None,
+        signal_id: str | None = None,
+        device_id: str | None = None,
+        setup_id: str | None = None,
+        entry_comment: str | None = None,
     ) -> Trade:
         """Create a new trade record.
 
@@ -135,7 +134,7 @@ class TradeService:
         trade_id: str,
         exit_price: Decimal,
         exit_reason: str = "MANUAL_CLOSE",
-        exit_time: Optional[datetime] = None,
+        exit_time: datetime | None = None,
     ) -> Trade:
         """Close an open trade.
 
@@ -202,7 +201,7 @@ class TradeService:
 
         return trade
 
-    async def get_trade(self, trade_id: str) -> Optional[Trade]:
+    async def get_trade(self, trade_id: str) -> Trade | None:
         """Fetch a single trade by ID.
 
         Args:
@@ -217,11 +216,11 @@ class TradeService:
 
     async def list_trades(
         self,
-        symbol: Optional[str] = None,
-        status: Optional[str] = None,
-        strategy: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        symbol: str | None = None,
+        status: str | None = None,
+        strategy: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[Trade]:
@@ -266,7 +265,7 @@ class TradeService:
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
-    async def get_trade_stats(self, symbol: Optional[str] = None) -> dict:
+    async def get_trade_stats(self, symbol: str | None = None) -> dict:
         """Calculate overall trade statistics.
 
         Args:
@@ -500,7 +499,7 @@ class TradeService:
         trade_id: str,
         event_type: str,
         message: str,
-        details: Optional[str] = None,
+        details: str | None = None,
     ) -> ValidationLog:
         """Internal method to log validation events.
 

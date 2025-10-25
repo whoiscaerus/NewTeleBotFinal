@@ -21,10 +21,9 @@ Examples:
 """
 
 import logging
-from typing import Optional
+from datetime import UTC
 
 import httpx
-from datetime import UTC
 
 __all__ = [
     "send_owner_alert",
@@ -80,9 +79,9 @@ class OpsAlertService:
 
     def __init__(
         self,
-        telegram_token: Optional[str] = None,
-        telegram_chat_id: Optional[str] = None,
-        logger_: Optional[logging.Logger] = None,
+        telegram_token: str | None = None,
+        telegram_chat_id: str | None = None,
+        logger_: logging.Logger | None = None,
     ) -> None:
         """Initialize alert service with Telegram credentials.
 
@@ -183,9 +182,9 @@ class OpsAlertService:
     async def send_error_alert(
         self,
         message: str,
-        error: Optional[Exception] = None,
-        attempts: Optional[int] = None,
-        operation: Optional[str] = None,
+        error: Exception | None = None,
+        attempts: int | None = None,
+        operation: str | None = None,
         timeout: float = 10.0,
     ) -> bool:
         """Send a structured error alert with context.
@@ -230,7 +229,7 @@ class OpsAlertService:
         return await self.send(full_message, severity="CRITICAL", timeout=timeout)
 
     @classmethod
-    def from_env(cls, logger_: Optional[logging.Logger] = None) -> "OpsAlertService":
+    def from_env(cls, logger_: logging.Logger | None = None) -> "OpsAlertService":
         """Create alert service from environment variables.
 
         Environment variables:
@@ -257,7 +256,7 @@ class OpsAlertService:
 # ============================================================================
 
 
-_alert_service: Optional[OpsAlertService] = None
+_alert_service: OpsAlertService | None = None
 
 
 def _get_alert_service() -> OpsAlertService:
@@ -278,7 +277,7 @@ def _get_alert_service() -> OpsAlertService:
 async def send_owner_alert(
     message: str,
     severity: str = "ERROR",
-    logger_: Optional[logging.Logger] = None,
+    logger_: logging.Logger | None = None,
 ) -> bool:
     """Send alert to ops team via Telegram.
 
@@ -319,7 +318,7 @@ async def send_signal_delivery_error(
     error: Exception,
     attempts: int,
     operation: str = "post_signal",
-    logger_: Optional[logging.Logger] = None,
+    logger_: logging.Logger | None = None,
 ) -> bool:
     """Send signal delivery error alert to ops team.
 

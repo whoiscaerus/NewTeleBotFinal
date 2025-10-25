@@ -1,7 +1,6 @@
 """Response models for signal ingest endpoint."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -39,10 +38,10 @@ class SignalIngestResponse(BaseModel):
     server_timestamp: datetime = Field(
         ..., description="Server timestamp when signal was ingested"
     )
-    message: Optional[str] = Field(
+    message: str | None = Field(
         None, description="Optional server message (e.g., error description)"
     )
-    errors: Optional[list[str]] = Field(
+    errors: list[str] | None = Field(
         None, description="List of validation errors if rejected"
     )
 

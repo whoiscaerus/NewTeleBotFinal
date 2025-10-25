@@ -193,8 +193,8 @@ def is_dst_transition(dt: datetime, tz_name: str) -> bool:
 
     try:
         tz = pytz.timezone(tz_name)
-    except pytz.exceptions.UnknownTimeZoneError:
-        raise ValueError(f"Unknown timezone: {tz_name}")
+    except pytz.exceptions.UnknownTimeZoneError as e:
+        raise ValueError(f"Unknown timezone: {tz_name}") from e
 
     # Create naive datetime for this timezone
     naive_dt = dt.replace(tzinfo=None)
@@ -246,8 +246,8 @@ def get_offset_utc(dt: datetime, tz_name: str) -> str:
 
     try:
         tz = pytz.timezone(tz_name)
-    except pytz.exceptions.UnknownTimeZoneError:
-        raise ValueError(f"Unknown timezone: {tz_name}")
+    except pytz.exceptions.UnknownTimeZoneError as e:
+        raise ValueError(f"Unknown timezone: {tz_name}") from e
 
     # Localize naive datetime
     naive_dt = dt.replace(tzinfo=None)

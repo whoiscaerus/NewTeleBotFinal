@@ -33,7 +33,7 @@ Example:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from backend.app.trading.mt5 import MT5SessionManager
 from backend.app.trading.time import MarketCalendar
@@ -202,7 +202,7 @@ class MT5DataPuller:
     async def get_symbol_data(
         self,
         symbol: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Pull current price data for a symbol.
 
         Retrieves current bid/ask prices for a symbol from MT5 market watch.
@@ -265,7 +265,7 @@ class MT5DataPuller:
 
     async def get_all_symbols_data(
         self,
-        symbols: Optional[list[str]] = None,
+        symbols: list[str] | None = None,
     ) -> dict[str, dict[str, Any]]:
         """Pull price data for multiple symbols.
 

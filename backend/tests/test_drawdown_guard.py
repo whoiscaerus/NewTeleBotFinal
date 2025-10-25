@@ -259,7 +259,7 @@ class TestCheckAndEnforce:
 
         orders = AsyncMock()
 
-        state = await guard.check_and_enforce(mt5_client=mt5, order_service=orders)
+        await guard.check_and_enforce(mt5_client=mt5, order_service=orders)
 
         # Entry equity should be set from balance
         assert guard._entry_equity == 10000.0
@@ -320,7 +320,7 @@ class TestAlertTriggering:
         orders = AsyncMock()
         orders.close_all_positions = AsyncMock()
 
-        state = await guard.check_and_enforce(mt5_client=mt5, order_service=orders)
+        await guard.check_and_enforce(mt5_client=mt5, order_service=orders)
 
         # Alert should be called if implemented
         # (depends on guard._enforce_cap implementation)
@@ -332,7 +332,6 @@ class TestPositionClosing:
     @pytest.mark.asyncio
     async def test_close_all_positions_empty_list(self):
         """Test closing positions with no open positions."""
-        guard = DrawdownGuard(max_drawdown_percent=20.0)
         orders = AsyncMock()
         orders.close_all_positions = AsyncMock(return_value=0)
 

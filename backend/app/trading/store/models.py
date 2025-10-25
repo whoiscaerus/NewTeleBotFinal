@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import Index, String
@@ -60,18 +59,14 @@ class Trade(Base):
     )
 
     # Foreign Keys
-    signal_id: Mapped[Optional[str]] = mapped_column(
-        String(36), nullable=True, index=True
-    )
-    device_id: Mapped[Optional[str]] = mapped_column(
-        String(36), nullable=True, index=True
-    )
+    signal_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    device_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
 
     # Trade Metadata
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     strategy: Mapped[str] = mapped_column(String(50), nullable=False)
     timeframe: Mapped[str] = mapped_column(String(10), nullable=False)
-    setup_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    setup_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     # Trade Direction & Type
     trade_type: Mapped[str] = mapped_column(String(10), nullable=False)  # BUY, SELL
@@ -80,12 +75,12 @@ class Trade(Base):
     # Entry Details
     entry_price: Mapped[Decimal] = mapped_column(nullable=False)
     entry_time: Mapped[datetime] = mapped_column(nullable=False)
-    entry_comment: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    entry_comment: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Exit Details
-    exit_price: Mapped[Optional[Decimal]] = mapped_column(nullable=True)
-    exit_time: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    exit_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    exit_price: Mapped[Decimal | None] = mapped_column(nullable=True)
+    exit_time: Mapped[datetime | None] = mapped_column(nullable=True)
+    exit_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Risk Management
     stop_loss: Mapped[Decimal] = mapped_column(nullable=False)
@@ -93,10 +88,10 @@ class Trade(Base):
     volume: Mapped[Decimal] = mapped_column(nullable=False)
 
     # Performance Metrics
-    profit: Mapped[Optional[Decimal]] = mapped_column(nullable=True)
-    pips: Mapped[Optional[Decimal]] = mapped_column(nullable=True)
-    risk_reward_ratio: Mapped[Optional[Decimal]] = mapped_column(nullable=True)
-    percent_equity_return: Mapped[Optional[Decimal]] = mapped_column(nullable=True)
+    profit: Mapped[Decimal | None] = mapped_column(nullable=True)
+    pips: Mapped[Decimal | None] = mapped_column(nullable=True)
+    risk_reward_ratio: Mapped[Decimal | None] = mapped_column(nullable=True)
+    percent_equity_return: Mapped[Decimal | None] = mapped_column(nullable=True)
 
     # Trade State
     status: Mapped[str] = mapped_column(
@@ -104,7 +99,7 @@ class Trade(Base):
     )  # OPEN, CLOSED, CANCELLED
 
     # Duration
-    duration_hours: Mapped[Optional[float]] = mapped_column(nullable=True)
+    duration_hours: Mapped[float | None] = mapped_column(nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -152,9 +147,7 @@ class Position(Base):
     position_id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid4())
     )
-    trade_id: Mapped[Optional[str]] = mapped_column(
-        String(36), nullable=True, index=True
-    )
+    trade_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
 
     # Position Details
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
@@ -244,7 +237,7 @@ class ValidationLog(Base):
         String(50), nullable=False
     )  # CREATED, EXECUTED, CLOSED, ERROR, etc.
     message: Mapped[str] = mapped_column(String(500), nullable=False)
-    details: Mapped[Optional[str]] = mapped_column(nullable=True)  # JSON string
+    details: Mapped[str | None] = mapped_column(nullable=True)  # JSON string
 
     __table_args__ = (Index("ix_validation_logs_trade_time", "trade_id", "timestamp"),)
 

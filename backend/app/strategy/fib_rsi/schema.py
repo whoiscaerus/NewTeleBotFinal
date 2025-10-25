@@ -26,7 +26,7 @@ Example:
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, validator
 
@@ -255,7 +255,7 @@ class ExecutionPlan(BaseModel):
     risk_amount: float = Field(..., ge=0)
     reward_amount: float = Field(..., ge=0)
     risk_reward_ratio: float = Field(..., gt=0, le=10)
-    expiry_time: Optional[datetime] = None
+    expiry_time: datetime | None = None
     max_holding_hours: int = Field(default=24, ge=1, le=240)
     entry_confirm_seconds: int = Field(default=5, ge=1, le=60)
 

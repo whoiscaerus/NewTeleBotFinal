@@ -16,7 +16,6 @@ Example:
 
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
-from typing import Optional
 
 import pytz
 
@@ -198,7 +197,7 @@ class MarketCalendar:
         return MarketCalendar.SESSIONS[session_key]
 
     @staticmethod
-    def get_next_open(symbol: str, from_dt: Optional[datetime] = None) -> datetime:
+    def get_next_open(symbol: str, from_dt: datetime | None = None) -> datetime:
         """Get next market open time for symbol.
 
         Args:
@@ -257,7 +256,7 @@ class MarketCalendar:
         return market_dt.astimezone(pytz.UTC)
 
     @staticmethod
-    def get_market_status(symbol: str, dt: Optional[datetime] = None) -> dict:
+    def get_market_status(symbol: str, dt: datetime | None = None) -> dict:
         """Get market status for symbol.
 
         Args:

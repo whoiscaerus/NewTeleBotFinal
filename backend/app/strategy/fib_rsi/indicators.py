@@ -57,7 +57,7 @@ class RSICalculator:
         deltas = [prices[i + 1] - prices[i] for i in range(len(prices) - 1)]
 
         # First period has no RSI (set to 50.0)
-        for i in range(period):
+        for _ in range(period):
             rsi_values.append(50.0)
 
         if len(deltas) < period:

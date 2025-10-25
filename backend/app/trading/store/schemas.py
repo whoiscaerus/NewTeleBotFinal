@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,25 +31,23 @@ class TradeOut(BaseModel):
     trade_type: str = Field(..., description="BUY or SELL")
     entry_price: Decimal = Field(..., description="Entry level")
     entry_time: datetime = Field(..., description="Entry timestamp")
-    entry_comment: Optional[str] = Field(None, description="Entry comment")
-    exit_price: Optional[Decimal] = Field(None, description="Exit level")
-    exit_time: Optional[datetime] = Field(None, description="Exit timestamp")
-    exit_reason: Optional[str] = Field(None, description="Reason for exit")
+    entry_comment: str | None = Field(None, description="Entry comment")
+    exit_price: Decimal | None = Field(None, description="Exit level")
+    exit_time: datetime | None = Field(None, description="Exit timestamp")
+    exit_reason: str | None = Field(None, description="Reason for exit")
     stop_loss: Decimal = Field(..., description="Stop loss level")
     take_profit: Decimal = Field(..., description="Take profit level")
     volume: Decimal = Field(..., description="Position size in lots")
-    profit: Optional[Decimal] = Field(None, description="Realized profit/loss in GBP")
-    pips: Optional[Decimal] = Field(None, description="Pips gained/lost")
-    duration_hours: Optional[float] = Field(None, description="Trade duration in hours")
-    risk_reward_ratio: Optional[Decimal] = Field(
-        None, description="Risk to reward ratio"
-    )
+    profit: Decimal | None = Field(None, description="Realized profit/loss in GBP")
+    pips: Decimal | None = Field(None, description="Pips gained/lost")
+    duration_hours: float | None = Field(None, description="Trade duration in hours")
+    risk_reward_ratio: Decimal | None = Field(None, description="Risk to reward ratio")
     strategy: str = Field(..., description="Strategy name")
     timeframe: str = Field(..., description="Candle timeframe")
     status: str = Field(..., description="OPEN, CLOSED, or CANCELLED")
-    signal_id: Optional[str] = Field(None, description="Reference to signal PR-015")
-    device_id: Optional[str] = Field(None, description="Device that created trade")
-    setup_id: Optional[str] = Field(None, description="Setup identifier")
+    signal_id: str | None = Field(None, description="Reference to signal PR-015")
+    device_id: str | None = Field(None, description="Device that created trade")
+    setup_id: str | None = Field(None, description="Setup identifier")
     created_at: datetime = Field(..., description="Record creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
 
@@ -81,7 +78,7 @@ class PositionOut(BaseModel):
     current_price: Decimal = Field(..., description="Current price")
     stop_loss: Decimal = Field(..., description="Stop loss level")
     take_profit: Decimal = Field(..., description="Take profit level")
-    unrealized_profit: Optional[Decimal] = Field(None, description="Unrealized P&L")
+    unrealized_profit: Decimal | None = Field(None, description="Unrealized P&L")
     duration_hours: float = Field(..., description="Hours position open")
     opened_at: datetime = Field(..., description="Position open timestamp")
     trade_ids: list[str] = Field(default_factory=list, description="Related trade IDs")
@@ -138,7 +135,7 @@ class TradeStatsOut(BaseModel):
     largest_win: Decimal = Field(..., description="Largest single profit")
     largest_loss: Decimal = Field(..., description="Largest single loss")
     total_profit: Decimal = Field(..., description="Total profit/loss")
-    symbol: Optional[str] = Field(None, description="Filtered by symbol if provided")
+    symbol: str | None = Field(None, description="Filtered by symbol if provided")
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -173,7 +170,7 @@ class DrawdownOut(BaseModel):
     trough_time: datetime = Field(..., description="Time of trough")
     trough_equity: Decimal = Field(..., description="Trough equity value")
     drawdown_pct: float = Field(..., description="Drawdown percentage")
-    recovery_time: Optional[datetime] = Field(
+    recovery_time: datetime | None = Field(
         None, description="Recovery time if applicable"
     )
 
@@ -287,11 +284,9 @@ class TradeCreateRequest(BaseModel):
     )
     strategy: str = Field("manual", description="Strategy name")
     timeframe: str = Field("H1", description="Candle timeframe")
-    signal_id: Optional[str] = Field(None, description="Reference to signal")
-    device_id: Optional[str] = Field(None, description="Device creating trade")
-    entry_comment: Optional[str] = Field(
-        None, max_length=500, description="Entry comment"
-    )
+    signal_id: str | None = Field(None, description="Reference to signal")
+    device_id: str | None = Field(None, description="Device creating trade")
+    entry_comment: str | None = Field(None, max_length=500, description="Entry comment")
 
 
 class TradeCloseRequest(BaseModel):

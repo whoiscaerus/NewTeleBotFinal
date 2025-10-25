@@ -17,9 +17,9 @@ Example:
 """
 
 import time
+from collections.abc import Awaitable, Callable
 from enum import Enum
 from typing import Any, TypeVar
-from collections.abc import Awaitable, Callable
 
 from backend.app.trading.mt5.errors import MT5CircuitBreakerOpen
 

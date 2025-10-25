@@ -603,7 +603,7 @@ class TestStrategyEngine:
     ):
         """Test signal generation with valid data."""
         engine = StrategyEngine(default_params, mock_market_calendar_async)
-        signal = await engine.generate_signal(
+        await engine.generate_signal(
             sample_dataframe,
             "EURUSD",
             datetime.utcnow(),
@@ -669,7 +669,6 @@ class TestStrategyEngine:
         mock_market_calendar_async,
     ):
         """Test DataFrame validation rejects missing columns."""
-        engine = StrategyEngine(default_params, mock_market_calendar_async)
         df = pd.DataFrame({"open": [1.0], "high": [1.1]})
 
         with pytest.raises(ValueError, match="missing required columns"):
@@ -682,7 +681,6 @@ class TestStrategyEngine:
         mock_market_calendar_async,
     ):
         """Test DataFrame validation rejects NaN values."""
-        engine = StrategyEngine(default_params, mock_market_calendar_async)
         df = pd.DataFrame(
             {
                 "open": [1.0, float("nan")],

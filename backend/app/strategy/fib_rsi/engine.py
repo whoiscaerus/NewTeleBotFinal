@@ -37,7 +37,7 @@ Example:
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -77,7 +77,7 @@ class StrategyEngine:
         self,
         params: StrategyParams,
         market_calendar: MarketCalendar,
-        logger: Optional[logging.Logger] = None,
+        logger: logging.Logger | None = None,
     ):
         """Initialize strategy engine.
 
@@ -114,7 +114,7 @@ class StrategyEngine:
         df: pd.DataFrame,
         instrument: str,
         current_time: datetime,
-    ) -> Optional[SignalCandidate]:
+    ) -> SignalCandidate | None:
         """Generate trading signal from OHLC data.
 
         This is the main method that orchestrates the entire signal generation process:
@@ -320,11 +320,11 @@ class StrategyEngine:
 
             # Fibonacci levels
             swing_high, _ = FibonacciAnalyzer.find_swing_high(
-                [{"high": h, "low": l} for h, l in zip(highs, lows)],
+                [{"high": h, "low": low} for h, low in zip(highs, lows, strict=False)],
                 window=self.params.swing_lookback_bars,
             )
             swing_low, _ = FibonacciAnalyzer.find_swing_low(
-                [{"high": h, "low": l} for h, l in zip(highs, lows)],
+                [{"high": h, "low": low} for h, low in zip(highs, lows, strict=False)],
                 window=self.params.swing_lookback_bars,
             )
 
@@ -344,13 +344,13 @@ class StrategyEngine:
             }
 
         except Exception as e:
-            raise ValueError(f"Indicator calculation failed: {e}")
+            raise ValueError(f"Indicator calculation failed: {e}") from e
 
     async def _detect_setup(
         self,
         df: pd.DataFrame,
         indicators: dict[str, Any],
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Detect RSI pattern setup.
 
         Detects SHORT patterns (RSI > 70 then ≤ 40) and LONG patterns
@@ -490,7 +490,7 @@ class StrategyEngine:
                 extra={"error": str(e), "setup": setup},
                 exc_info=True,
             )
-            raise ValueError(f"Entry price calculation failed: {e}")
+            raise ValueError(f"Entry price calculation failed: {e}") from e
 
     def _is_rate_limited(self, instrument: str) -> bool:
         """Check if instrument is rate limited.

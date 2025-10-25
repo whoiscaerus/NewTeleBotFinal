@@ -71,18 +71,20 @@ class TestLoopInitialization:
         approvals = AsyncMock()
         orders = AsyncMock()
         alerts = AsyncMock()
-        retry = lambda f: f
+
+        def retry_decorator(f):
+            return f
 
         loop = TradingLoop(
             mt5_client=mt5,
             approvals_service=approvals,
             order_service=orders,
             alert_service=alerts,
-            retry_decorator=retry,
+            retry_decorator=retry_decorator,
         )
 
         assert loop.alert_service is alerts
-        assert loop.retry_decorator is retry
+        assert loop.retry_decorator is retry_decorator
 
     def test_init_default_loop_id(self):
         """Test that default loop_id is set."""
@@ -290,7 +292,7 @@ class TestLoopLifecycle:
         # After task completes, _running should be False
         try:
             await asyncio.wait_for(task, timeout=1.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
     @pytest.mark.asyncio
@@ -327,7 +329,7 @@ class TestErrorHandling:
 
         try:
             await loop._loop_iteration()
-        except:
+        except Exception:
             pass
 
         assert loop._error_count_interval >= 1

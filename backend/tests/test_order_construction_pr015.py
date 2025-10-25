@@ -143,7 +143,9 @@ class TestOrderParamsSchema:
 
     def test_order_params_rr_ratio_validation(self, base_datetime):
         """Test R:R ratio must be >= 1.0."""
-        with pytest.raises(Exception):  # Pydantic validation error
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             OrderParams(
                 signal_id="sig-001",
                 symbol="GOLD",
@@ -177,7 +179,9 @@ class TestOrderParamsSchema:
 
     def test_order_params_volume_validation(self, base_datetime):
         """Test volume must be positive and <= 100."""
-        with pytest.raises(Exception):  # Pydantic validation error
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             OrderParams(
                 signal_id="sig-001",
                 symbol="GOLD",

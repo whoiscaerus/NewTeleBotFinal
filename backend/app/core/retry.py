@@ -22,8 +22,8 @@ import asyncio
 import functools
 import logging
 import random
-from typing import Any, TypeVar
 from collections.abc import Awaitable, Callable, Coroutine
+from typing import Any, TypeVar
 
 __all__ = [
     "with_retry",

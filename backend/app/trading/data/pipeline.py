@@ -34,7 +34,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from backend.app.trading.data.mt5_puller import MT5DataPuller
 
@@ -82,10 +82,10 @@ class PipelineStatus:
     total_pulls: int = 0
     successful_pulls: int = 0
     failed_pulls: int = 0
-    last_pull_time: Optional[datetime] = None
-    next_pull_time: Optional[datetime] = None
+    last_pull_time: datetime | None = None
+    next_pull_time: datetime | None = None
     active_symbols: list[str] = field(default_factory=list)
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class DataPipeline:
@@ -142,7 +142,7 @@ class DataPipeline:
         # Background tasks
         self._pull_tasks: dict[str, asyncio.Task] = {}
         self._shutdown_event = asyncio.Event()
-        self._start_time: Optional[datetime] = None
+        self._start_time: datetime | None = None
 
         logger.info("DataPipeline initialized", extra={"service": "pipeline"})
 
@@ -277,7 +277,7 @@ class DataPipeline:
         )
 
         # Check for exceptions
-        for task_name, result in zip(self._pull_tasks.keys(), results):
+        for task_name, result in zip(self._pull_tasks.keys(), results, strict=False):
             if isinstance(result, asyncio.CancelledError):
                 logger.debug(f"Pull task {task_name} cancelled")
             elif isinstance(result, Exception):

@@ -1,6 +1,5 @@
 """Integration tests for retry + alert workflows."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -35,8 +34,6 @@ class TestRetryAlertIntegration:
     @pytest.mark.asyncio
     async def test_retry_with_alert_context(self) -> None:
         """Test retry operation with alert context variables."""
-        signal_id = "sig-456"
-        operation_name = "post_signal"
         attempt_count = 0
 
         @with_retry(max_retries=2, base_delay=0.01)
@@ -241,7 +238,7 @@ class TestAlertTriggering:
             mock_client.post.return_value = mock_response
             mock_client_class.return_value = mock_client
 
-            error = asyncio.TimeoutError("Request timeout")
+            error = TimeoutError("Request timeout")
             result = await service.send_error_alert(
                 message="Timeout error",
                 error=error,

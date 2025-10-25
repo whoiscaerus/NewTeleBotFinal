@@ -25,8 +25,8 @@ Example:
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, UTC
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 
 class DrawdownCapExceededError(Exception):
@@ -112,8 +112,8 @@ class DrawdownGuard:
     def __init__(
         self,
         max_drawdown_percent: float = 20.0,
-        alert_service: Optional[Any] = None,
-        logger: Optional[logging.Logger] = None,
+        alert_service: Any | None = None,
+        logger: logging.Logger | None = None,
     ) -> None:
         """Initialize drawdown guard.
 
@@ -141,7 +141,7 @@ class DrawdownGuard:
         self.logger = logger or logging.getLogger(__name__)
 
         # Runtime state
-        self._entry_equity: Optional[float] = None
+        self._entry_equity: float | None = None
         self._cap_triggered = False
         self._positions_closed_count = 0
 
@@ -438,7 +438,7 @@ class DrawdownGuard:
                 exc_info=True,
             )
 
-    async def _get_account_info(self, mt5_client: Any) -> Optional[dict[str, Any]]:
+    async def _get_account_info(self, mt5_client: Any) -> dict[str, Any] | None:
         """Get account information from MT5.
 
         Args:

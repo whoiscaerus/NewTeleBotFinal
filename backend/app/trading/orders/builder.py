@@ -1,16 +1,11 @@
 """Order building logic - convert signals to complete trade parameters."""
 
 from datetime import datetime
-from typing import Optional
 
 from backend.app.strategy.fib_rsi.params import StrategyParams
 from backend.app.strategy.fib_rsi.schema import SignalCandidate
 
-from .constraints import (
-    apply_min_stop_distance,
-    round_to_tick,
-    validate_rr_ratio,
-)
+from .constraints import apply_min_stop_distance, round_to_tick, validate_rr_ratio
 from .expiry import compute_expiry
 from .schema import BrokerConstraints, OrderParams, OrderType, get_constraints
 
@@ -24,8 +19,8 @@ class OrderBuildError(Exception):
 async def build_order(
     signal: SignalCandidate,
     params: StrategyParams,
-    broker_constraints: Optional[BrokerConstraints] = None,
-    current_time: Optional[datetime] = None,
+    broker_constraints: BrokerConstraints | None = None,
+    current_time: datetime | None = None,
 ) -> OrderParams:
     """
     Build a complete order from a signal with constraint enforcement.
@@ -195,8 +190,8 @@ async def build_order(
 async def build_orders_batch(
     signals: list[SignalCandidate],
     params: StrategyParams,
-    broker_constraints: Optional[BrokerConstraints] = None,
-    current_time: Optional[datetime] = None,
+    broker_constraints: BrokerConstraints | None = None,
+    current_time: datetime | None = None,
 ) -> dict:
     """
     Build multiple orders from a batch of signals.
