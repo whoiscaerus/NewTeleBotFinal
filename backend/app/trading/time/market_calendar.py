@@ -237,8 +237,7 @@ class MarketCalendar:
 
         # Start from next day if market is closed now
         # Type narrowing: from_dt is guaranteed to be datetime (not None) after the check above
-        dt_to_use: datetime = from_dt
-        check_dt: datetime = dt_to_use + timedelta(days=1)
+        check_dt: datetime = from_dt + timedelta(days=1)  # type: ignore
 
         # Find next trading day
         while check_dt.weekday() not in session.trading_days:

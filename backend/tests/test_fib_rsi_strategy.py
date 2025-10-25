@@ -116,9 +116,9 @@ class TestStrategyParams:
         params = StrategyParams()
         assert params.rsi_period == 14
         assert params.rsi_overbought == 70.0
-        assert params.rsi_oversold == 30.0
-        assert params.roc_period == 14
-        assert params.rr_ratio == 2.0
+        assert params.rsi_oversold == 40.0
+        assert params.roc_period == 24
+        assert params.rr_ratio == 3.25
         assert params.risk_per_trade == 0.02
 
     def test_custom_initialization(self):
@@ -161,13 +161,13 @@ class TestStrategyParams:
         config = params.get_rsi_config()
         assert config["period"] == 14
         assert config["overbought"] == 70.0
-        assert config["oversold"] == 30.0
+        assert config["oversold"] == 40.0
 
     def test_get_roc_config(self):
         """Test get_roc_config returns correct structure."""
         params = StrategyParams()
         config = params.get_roc_config()
-        assert config["period"] == 14
+        assert config["period"] == 24
         assert config["threshold"] == 0.5
 
     def test_get_fib_config(self):
@@ -181,7 +181,7 @@ class TestStrategyParams:
         """Test get_risk_config returns correct structure."""
         params = StrategyParams()
         config = params.get_risk_config()
-        assert config["rr_ratio"] == 2.0
+        assert config["rr_ratio"] == 3.25
         assert config["risk_per_trade"] == 0.02
 
     def test_to_dict(self):

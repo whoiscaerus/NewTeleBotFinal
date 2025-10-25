@@ -202,8 +202,6 @@ class EquityPoint(Base):
     drawdown_percent: Mapped[Decimal] = mapped_column(nullable=False)
     trades_open: Mapped[int] = mapped_column(nullable=False, default=0)
 
-    __table_args__ = (Index("ix_equity_points_timestamp", "timestamp"),)
-
     def __repr__(self) -> str:
         """String representation of equity point."""
         return f"<EquityPoint {self.timestamp}: £{self.equity} (dd: {self.drawdown_percent}%)>"
