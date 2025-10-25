@@ -5723,8 +5723,216 @@ This template gives you everything needed to build a production-ready project fr
 
 ---
 
+### 48. Missing Runtime Dependencies in pyproject.toml (CI/CD vs Local Mismatch)
+
+#### Problem
+- **Symptom:** Tests pass locally but GitHub Actions pytest fails with `ModuleNotFoundError` during test collection
+- **Example:** `ERROR: Could not find a module named 'pandas'` on Line 23 of test_fib_rsi_strategy.py
+- **Root Cause:** Production code imports package not listed in `dependencies` (only in dev)
+- **Why It Happens:** Developer's local machine has package installed globally; CI/CD uses fresh environment with only pyproject.toml dependencies
+
+#### Solution
+```python
+# ❌ WRONG (pandas only in dev, not in main dependencies)
+[project.optional-dependencies]
+dev = ["pytest", "pandas>=2.0.0"]  # Breaks CI/CD!
+
+# ✅ CORRECT (production imports must be in main dependencies)
+dependencies = [
+    "pandas>=2.0.0",  # Used by strategy/fib_rsi/engine.py
+    "numpy>=1.24.0",  # Used by calculations
+    "pytz>=2025.1",   # Used by market calendar
+]
+[project.optional-dependencies]
+dev = ["pytest", "types-pytz>=2025.1.0"]  # Type stubs only in dev
+```
+
+#### Prevention Checklist
+- [ ] Search production code for ALL imports: `grep -r "^import\|^from" backend/app/ | grep -v "backend.app"`
+- [ ] Verify each imported package is in main `dependencies` (not just dev)
+- [ ] Test in fresh environment: `pip install -e ".[dev]" && pytest`
+- [ ] Test on Linux if deploying to Linux-based CI/CD (containers, cloud)
+
+#### Key Distinction
+- **Runtime packages** (production code needs them): Main `dependencies`
+- **Type stubs** (mypy only): `dev` dependencies
+- **Test utilities** (only tests use them): `dev` dependencies
+
+**Related:** Lessons 49, 50 - Platform-specific packages
+
+---
+
+### 49. Platform-Specific Packages: Windows-Only Libraries (MetaTrader5, pywin32)
+
+#### Problem
+- **Symptom:** CI/CD fails with `ERROR: Could not find a version that satisfies the requirement MetaTrader5>=5.0.38`
+- **Specific Error:** `ERROR: No matching distribution found for MetaTrader5>=5.0.38`
+- **Root Cause:** Package only available for Windows; not on PyPI for Linux/macOS
+- **Why It Happens:** `pip install -e ".[dev]"` on Ubuntu fails because MetaTrader5 doesn't exist on Linux
+
+#### Solution: Platform-Specific Optional Dependencies + Mocking
+
+**Step 1: Remove from main dependencies**
+```toml
+# ❌ WRONG (breaks Linux CI/CD)
+dependencies = [
+    "MetaTrader5>=5.0.38",  # Windows-only!
+]
+
+# ✅ CORRECT (platform-specific)
+dependencies = [
+    # MT5 removed - see optional windows group
+]
+```
+
+**Step 2: Create windows optional group**
+```toml
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+windows = [
+    "MetaTrader5>=5.0.38",  # Only install on Windows
+]
+```
+
+**Installation:**
+```bash
+# Linux/CI/CD (no MetaTrader5 - uses mock)
+pip install -e ".[dev]"
+
+# Windows production (includes MetaTrader5)
+pip install -e ".[dev,windows]"
+```
+
+**Step 3: Mock for testing on Linux**
+```python
+# backend/tests/conftest.py
+import sys
+from unittest.mock import MagicMock
+
+# Inject mock BEFORE any imports that use MetaTrader5
+if "MetaTrader5" not in sys.modules:
+    mock_mt5 = MagicMock()
+    mock_mt5.VERSION = "5.0.38"
+    mock_mt5.ORDER_TYPE_BUY = 0
+    mock_mt5.ORDER_TYPE_SELL = 1
+    mock_mt5.initialize.return_value = True
+    sys.modules["MetaTrader5"] = mock_mt5
+
+# Now safe to import modules that use MT5
+from backend.app.trading.mt5.session import MT5SessionManager
+```
+
+#### Why Mocking BEFORE Imports?
+- Module import happens only once (cached in sys.modules)
+- If `import MetaTrader5` runs before mock, it fails permanently
+- Mock injection before any imports guarantees success on Linux
+
+#### Prevention Checklist
+- [ ] Check PyPI availability: `pip search MetaTrader5` or PyPI.org
+- [ ] If Windows-only: Create `windows` optional dependency group
+- [ ] Create mock in conftest.py (inject BEFORE imports)
+- [ ] Test on multiple platforms (Windows + Linux + macOS)
+- [ ] Document platform-specific setup in README
+
+#### Common Windows-Only Packages
+| Package | Platform | Solution |
+|---------|----------|----------|
+| MetaTrader5 | Windows only | Optional + mock |
+| pywin32 | Windows only | Optional + mock |
+| ctypes.windll | Windows only | Conditional import |
+| winreg | Windows only | Conditional import |
+| pywinauto | Windows only | Optional + mock |
+
+**Related:** Lesson 48 - Missing dependencies, Lesson 50 - Dependency resolution troubleshooting
+
+---
+
+### 50. Dependency Resolution Troubleshooting: The 3-Environment Test
+
+#### Problem
+- **Symptom:** Package installs locally, fails in CI/CD, works in Docker - different results in each environment
+- **Root Cause:** Environment differences not tested before committing
+- **Why It Happens:** Developers only test locally; CI/CD uses fresh system; Docker uses different base
+
+#### The 3-Environment Test Protocol
+
+**Environment 1: Local Fresh venv (Simulates CI/CD)**
+```bash
+# Create fresh virtual environment (simulates CI/CD fresh environment)
+python -m venv .test_env
+source .test_env/bin/activate  # Windows: .test_env\Scripts\activate
+
+# Install only what's in pyproject.toml
+pip install -e ".[dev]"
+
+# Run tests (must pass with NO global package fallback)
+pytest backend/tests -v
+
+# Verify specific imports work
+python -c "import pandas; import pytz; print('✅ All imports work')"
+
+# Cleanup
+deactivate
+rm -rf .test_env
+```
+
+**Environment 2: CI/CD Simulation (Linux in Docker)**
+```bash
+# Use same OS/Python as GitHub Actions (Ubuntu + Python 3.11)
+docker run -it --rm -v $(pwd):/workspace -w /workspace python:3.11-slim bash
+
+# Inside container
+pip install -e ".[dev]"
+pytest backend/tests -v
+```
+
+**Environment 3: Production Deploy Target**
+```bash
+# Use your actual deployment target
+# (Docker in cloud, Kubernetes, etc.)
+# Verify app starts and can import all modules
+```
+
+#### Quick Checklist Before Committing
+```bash
+# 1. Check local works
+pytest backend/tests -v
+
+# 2. Check fresh venv works (catches missing deps)
+python -m venv .test_env
+source .test_env/bin/activate
+pip install -e ".[dev]"
+pytest backend/tests -v
+deactivate
+rm -rf .test_env
+
+# 3. If all pass, safe to commit (CI/CD will likely pass)
+git push origin main
+```
+
+#### Common Dependency Problems Caught by 3-Environment Test
+
+| Problem | Local? | CI/CD? | Docker? | Cause |
+|---------|--------|--------|---------|-------|
+| Missing package | ✅ | ❌ | ❌ | Not in pyproject.toml |
+| Wrong Python version | ✅ | ❌ | ❌ | requires-python mismatch |
+| Platform-specific (Windows-only) | ✅ | ❌ | ❌ | Not on PyPI for Linux |
+| Conflicting versions | ✅ | ❌ | ✅ | Version constraint too loose |
+| Network timeout | ✅ | ✅ | ❌ | Firewall in container |
+| File path wrong | ✅ | ✅ | ❌ | Relative path not absolute |
+
+#### Prevention Strategy
+- Always test in fresh environment before committing
+- Use GitHub Actions locally for exact CI/CD simulation: `act -j tests`
+- Document all platform-specific setup in README
+- Add dependency verification to pre-commit: `pip check`
+
+**Related:** Lessons 48, 49 - Specific dependency issues
+
+---
+
 **Last Updated:** October 25, 2025
-**Version:** 2.6.0 (Phase 1B+ - MyPy Type-Checking Production Fixes + Lessons 43-47 Added)
+**Version:** 2.7.0 (Phase 1B+ - Complete CI/CD Dependency Fixes + Lessons 48-50 Added)
 **Maintained By:** Your Team
 
 **Changes in v2.6.0 (Phase 1B+ - MyPy Type-Checking & Type Safety Production Fixes):**
@@ -5810,3 +6018,26 @@ This template gives you everything needed to build a production-ready project fr
 - Lessons cover: Pre-commit configuration, Pydantic v2 inheritance, SQLAlchemy 2.0 async patterns, type casting, CI/CD parity validation, and environment setup
 - Updated comprehensive checklist with 12 new preventative measures
 - All lessons follow production-proven patterns from real project implementation
+
+**Changes in v2.7.0 (Phase 1B+ - Complete CI/CD Dependency Fixes + Lessons 48-50 Added):**
+- **Added 3 comprehensive production lessons (Lessons 48-50) from GitHub Actions dependency failures → resolution**
+- **Lesson 48 - Missing Runtime Dependencies:** Production code imports package not in pyproject.toml dependencies
+  - Real scenario: Code imports pandas/numpy/pytz but only listed in dev dependencies
+  - Local tests pass (packages installed globally), GitHub Actions fails (fresh environment)
+  - Solution: Distinguish runtime dependencies (main) vs type stubs (dev)
+  - Prevention checklist: Search all production imports, verify in main dependencies, test in fresh venv
+- **Lesson 49 - Platform-Specific Packages:** Windows-only packages (MetaTrader5, pywin32) not on PyPI for Linux
+  - Real issue: MetaTrader5 available Windows-only, breaks GitHub Actions Ubuntu runner
+  - Solution: Create windows optional dependency group + mock for testing on Linux
+  - Critical insight: Mock must be injected BEFORE imports to prevent ModuleNotFoundError
+  - Pattern applicable to: pywin32, pywinauto, ctypes.windll (all Windows-only)
+- **Lesson 50 - Dependency Resolution Troubleshooting:** The 3-Environment Test Protocol
+  - Local environment ≠ CI/CD environment ≠ Docker environment (all can have different results)
+  - Solution: Test in fresh venv (simulates CI/CD), Docker container (Linux), and production target
+  - Checklist: Missing packages, wrong Python version, platform-specific, conflicting versions
+  - Prevention: Always test in fresh environment before committing
+- **Real-world scope:** Complete MetaTrader5 platform-specific package handling from production GitHub Actions failures
+- **Knowledge preserved:** Dependency resolution patterns for cross-platform Python projects
+- **Template now covers:** 50 comprehensive lessons across 9 areas (new Dependency area + 8 previous)
+- **Applicable to:** Any Python project with cross-platform requirements or external API integrations (Windows trading terminals, etc.)
+- **Future value:** Next team dealing with platform-specific packages or CI/CD dependency mismatches has complete solutions
