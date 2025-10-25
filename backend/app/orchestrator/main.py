@@ -4,7 +4,10 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.affiliates.routes import router as affiliates_router
 from backend.app.auth.routes import router as auth_router
+from backend.app.clients.devices.routes import router as devices_router
+from backend.app.clients.exec.routes import router as exec_router
 from backend.app.core.errors import (
     APIException,
     generic_exception_handler,
@@ -56,6 +59,9 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(auth_router)
+    app.include_router(affiliates_router)
+    app.include_router(devices_router)
+    app.include_router(exec_router)
 
     @app.get("/health")
     async def health_check() -> dict:
