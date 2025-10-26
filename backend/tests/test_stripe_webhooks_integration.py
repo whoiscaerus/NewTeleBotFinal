@@ -17,7 +17,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.billing.stripe.handlers import StripeEventHandler
 from backend.app.billing.stripe.models import StripeEvent
 from backend.app.billing.stripe.webhooks import verify_stripe_signature
 
@@ -50,9 +49,6 @@ class TestStripeWebhookIntegration:
         event_id = "evt_test_charge_succeeded_001"
         customer_id = "cus_test_customer_001"
         amount_cents = 5000  # $50.00
-
-        # Create handler with db session
-        handler = StripeEventHandler(db=db_session)
 
         # Mock the EntitlementService to track calls
         with patch(

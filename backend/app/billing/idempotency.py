@@ -14,7 +14,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Optional
+from typing import Any
 
 import redis
 from pydantic import BaseModel, Field
@@ -91,7 +91,7 @@ class IdempotencyHandler:
         self.redis = redis_client
         self.ttl = ttl_seconds
 
-    async def get_cached(self, key: str) -> Optional[dict[str, Any]]:
+    async def get_cached(self, key: str) -> dict[str, Any] | None:
         """
         Retrieve cached response if exists.
 

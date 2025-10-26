@@ -1,7 +1,6 @@
 """Stripe checkout and customer portal session management."""
 
 import logging
-from typing import Optional
 from uuid import UUID
 
 import stripe
@@ -215,7 +214,7 @@ class StripeCheckoutService:
         self,
         user_id: UUID,
         email: str,
-        name: Optional[str] = None,
+        name: str | None = None,
     ) -> str:
         """Get or create Stripe customer for user.
 

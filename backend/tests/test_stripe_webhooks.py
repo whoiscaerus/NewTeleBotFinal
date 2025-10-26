@@ -434,7 +434,7 @@ class TestErrorHandling:
         }
 
         # Should not raise, should log
-        with patch("backend.app.billing.stripe.handlers.logger") as mock_logger:
+        with patch("backend.app.billing.stripe.handlers.logger"):
             await handler.handle(event_data)
 
             # Might log that event type is not handled

@@ -11,7 +11,6 @@ Implements:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -141,7 +140,7 @@ class AccountLinkOut(BaseModel):
     mt5_account_id: str
     broker_name: str
     is_primary: bool
-    verified_at: Optional[datetime]
+    verified_at: datetime | None
     created_at: datetime
 
     class Config:
@@ -151,12 +150,12 @@ class AccountLinkOut(BaseModel):
 class AccountInfoOut(BaseModel):
     """Current account info snapshot."""
 
-    balance: Optional[float]
-    equity: Optional[float]
-    free_margin: Optional[float]
-    margin_used: Optional[float]
-    margin_level: Optional[float]
-    drawdown_percent: Optional[float]
+    balance: float | None
+    equity: float | None
+    free_margin: float | None
+    margin_used: float | None
+    margin_level: float | None
+    drawdown_percent: float | None
     open_positions_count: int
     last_updated: datetime
 
@@ -294,7 +293,7 @@ class AccountLinkingService:
         )
         return result.scalars().all()
 
-    async def get_primary_account(self, user_id: str) -> Optional[AccountLink]:
+    async def get_primary_account(self, user_id: str) -> AccountLink | None:
         """Get user's primary account."""
         result = await self.db.execute(
             select(AccountLink).where(

@@ -122,8 +122,8 @@ async def telegram_webhook(
         webhook_event.status = 2  # success
         webhook_event.handler_response_time_ms = elapsed_ms
 
-        session.add(webhook_event)
-        await session.commit()
+        db.add(webhook_event)
+        await db.commit()
 
         logger.info(
             f"Webhook processed successfully in {elapsed_ms}ms",

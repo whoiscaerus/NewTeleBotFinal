@@ -14,7 +14,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.billing.stripe.models import StripeEvent
-from backend.app.telegram.payments import TelegramPaymentHandler
 
 
 class TestTelegramPaymentIntegration:
@@ -30,21 +29,11 @@ class TestTelegramPaymentIntegration:
         amount = 500  # Stars
         payment_charge_id = "payment_tg_001"
 
-        handler = TelegramPaymentHandler()
-
         # Mock EntitlementService
         with patch("backend.app.telegram.payments.EntitlementService") as mock_service:
             mock_instance = AsyncMock()
             mock_service.return_value = mock_instance
             mock_instance.grant_premium_tier = AsyncMock(return_value=True)
-
-            # Simulate payment event
-            payment_data = {
-                "user_id": user_id,
-                "amount": amount,
-                "currency": "XTR",  # Telegram Stars currency
-                "charge_id": payment_charge_id,
-            }
 
             # Create event in database
             event = StripeEvent(
@@ -245,7 +234,7 @@ class TestTelegramPaymentIntegration:
             return evt.status
 
         # Update status concurrently (simulated)
-        results = await asyncio.gather(
+        await asyncio.gather(
             update_status(1),  # First update: status = processed
         )
 

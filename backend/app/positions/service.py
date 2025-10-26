@@ -10,7 +10,6 @@ Implements:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -98,12 +97,12 @@ class PositionOut(BaseModel):
     volume: float
     entry_price: float
     current_price: float
-    stop_loss: Optional[float]
-    take_profit: Optional[float]
+    stop_loss: float | None
+    take_profit: float | None
     pnl_points: float
     pnl_usd: float
     pnl_percent: float
-    opened_at: Optional[datetime]
+    opened_at: datetime | None
 
     class Config:
         from_attributes = True
@@ -116,8 +115,8 @@ class PortfolioOut(BaseModel):
     balance: float
     equity: float
     free_margin: float
-    margin_level: Optional[float]
-    drawdown_percent: Optional[float]
+    margin_level: float | None
+    drawdown_percent: float | None
     open_positions_count: int
     total_pnl_usd: float
     total_pnl_percent: float
@@ -184,8 +183,8 @@ class PositionsService:
             ValidationError: If MT5 fetch fails
         """
         try:
-            # Get account link
-            link = await self.accounts.get_account(account_link_id)
+            # Get account link (validates account exists)
+            await self.accounts.get_account(account_link_id)
 
             # Get account info (balance, equity, drawdown)
             account_info = await self.accounts.get_account_info(

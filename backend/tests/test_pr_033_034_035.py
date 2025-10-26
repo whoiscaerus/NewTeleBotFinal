@@ -297,13 +297,6 @@ class TestTelegramPayments:
 
         handler = TelegramPaymentHandler(db_session)
 
-        update_data = {
-            "telegram_payment_charge_id": "tg_charge_123",
-            "provider_payment_charge_id": "provider_charge_456",
-            "invoice_payload": "premium_monthly",
-            "total_amount": 500,  # in Telegram Stars
-        }
-
         with patch(
             "backend.app.billing.entitlements.service.EntitlementService.grant_entitlement",
             new_callable=AsyncMock,
@@ -345,13 +338,6 @@ class TestTelegramPayments:
         )
         db_session.add(existing_event)
         await db_session.commit()
-
-        update_data = {
-            "telegram_payment_charge_id": "tg_charge_123",
-            "provider_payment_charge_id": "provider_charge_456",
-            "invoice_payload": "premium_monthly",
-            "total_amount": 500,
-        }
 
         with patch(
             "backend.app.billing.entitlements.service.EntitlementService.grant_entitlement",
@@ -562,7 +548,7 @@ class TestPaymentIntegration:
 
             assert response.status_code == 201
             checkout_data = response.json()
-            session_id = checkout_data["session_id"]
+            assert checkout_data["session_id"]  # Verify session created
 
             # Step 2: Simulate webhook callback
             from backend.app.billing.stripe.handlers import StripeEventHandler
