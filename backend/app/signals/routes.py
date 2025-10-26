@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.rbac import get_current_user
+from backend.app.auth.dependencies import get_current_user
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
 from backend.app.signals.schema import SignalCreate, SignalListOut, SignalOut

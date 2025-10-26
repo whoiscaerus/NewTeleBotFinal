@@ -12,11 +12,10 @@ import hashlib
 import hmac
 import time
 from datetime import datetime
-from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.billing.stripe.models import StripeEvent
 from backend.app.billing.stripe.webhooks import verify_stripe_signature

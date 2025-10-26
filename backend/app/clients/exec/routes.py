@@ -5,6 +5,8 @@ from typing import cast
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.models import User
 from backend.app.clients.exec.schema import (
     ExecutionAckRequest,
     ExecutionErrorRequest,
@@ -14,8 +16,6 @@ from backend.app.clients.exec.schema import (
 from backend.app.clients.exec.service import ExecutionService
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
-from backend.app.core.security import get_current_user
-from backend.app.users.models import User
 
 router = APIRouter(prefix="/api/v1", tags=["executions"])
 

@@ -44,25 +44,25 @@ datetime last_poll_time = 0;
 int OnInit()
 {
     Print("[Caerus EA] Initializing EA - Device: ", DEVICE_ID);
-    
+
     // Initialize authentication
     auth.Initialize(DEVICE_ID, DEVICE_SECRET, API_BASE);
-    
+
     // Create HTTP client
     if(http_client != NULL)
         delete http_client;
-    
+
     http_client = new CaerusHttpClient(API_BASE, auth.GetAuthHeader());
-    
+
     if(http_client == NULL)
     {
         Print("[ERROR] Failed to create HTTP client");
         return INIT_FAILED;
     }
-    
+
     Print("[Caerus EA] Mode: ", (AUTO_EXECUTE_COPY_TRADING ? "COPY-TRADING (Auto)" : "APPROVAL (Manual)"));
     Print("[Caerus EA] Polling interval: ", POLL_INTERVAL_SECONDS, " seconds");
-    
+
     return INIT_SUCCEEDED;
 }
 
@@ -77,7 +77,7 @@ void OnDeinit(const int reason)
         delete http_client;
         http_client = NULL;
     }
-    
+
     Print("[Caerus EA] Deinitialized - Reason: ", reason);
 }
 
@@ -93,7 +93,7 @@ void OnTick()
         PollForSignals();
         last_poll_time = TimeCurrent();
     }
-    
+
     // Process pending signals based on mode
     ProcessSignals();
 }
@@ -106,20 +106,20 @@ void PollForSignals()
 {
     if(http_client == NULL)
         return;
-    
+
     // GET /api/v1/devices/poll
     HttpResponse response = http_client->Get("/api/v1/devices/poll");
-    
+
     if(!response.success)
     {
         Print("[WARNING] Poll failed: ", response.error_message);
         return;
     }
-    
+
     // In production, parse JSON response here
     // For now, simulate response handling
     ParsePollResponse(response.response_body);
-    
+
     Print("[Caerus EA] Poll complete. Pending signals: ", pending_count);
 }
 
@@ -131,9 +131,9 @@ void ParsePollResponse(string json_response)
 {
     // Placeholder: In production, use JSON parser library
     // For now, set up test signals
-    
+
     pending_count = 0;
-    
+
     // Example: Create test signal
     if(StringLen(json_response) > 0)
     {
@@ -146,7 +146,7 @@ void ParsePollResponse(string json_response)
         pending_signals[pending_count].take_profit = Ask + 30 * Point();
         pending_signals[pending_count].volume = 0.5;
         pending_signals[pending_count].status = 0; // pending
-        
+
         pending_count++;
     }
 }
@@ -160,10 +160,10 @@ void ProcessSignals()
     for(int i = 0; i < pending_count; i++)
     {
         Signal& sig = pending_signals[i];
-        
+
         if(sig.status != 0)
             continue; // Skip if not pending
-        
+
         if(AUTO_EXECUTE_COPY_TRADING)
         {
             // Copy-trading mode: auto-execute
@@ -193,7 +193,7 @@ void ExecuteSignal(Signal& signal)
         AckSignal(signal.id, 0, 1, "Spread too wide");
         return;
     }
-    
+
     // Validate position count
     if(CountOpenPositions(signal.instrument) >= MAX_POSITIONS_PER_SYMBOL)
     {
@@ -201,19 +201,19 @@ void ExecuteSignal(Signal& signal)
         AckSignal(signal.id, 0, 1, "Max positions reached");
         return;
     }
-    
+
     // Execute order
     int order_type = (signal.side == 0) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
     double volume = MathMin(signal.volume, MAX_POSITION_SIZE_LOT);
-    
+
     CTrade trade;
     bool result = false;
-    
+
     if(signal.side == 0) // BUY
         result = trade.Buy(volume, signal.instrument, Ask, signal.stop_loss, signal.take_profit, signal.id);
     else // SELL
         result = trade.Sell(volume, signal.instrument, Bid, signal.stop_loss, signal.take_profit, signal.id);
-    
+
     if(result)
     {
         Print("[SUCCESS] Order executed: ", signal.id, " - Ticket: ", trade.ResultOrder());
@@ -236,7 +236,7 @@ int CountOpenPositions(string symbol)
 {
     int count = 0;
     int total = PositionsTotal();
-    
+
     for(int i = total - 1; i >= 0; i--)
     {
         if(PositionSelectByTicket(i))
@@ -245,7 +245,7 @@ int CountOpenPositions(string symbol)
                 count++;
         }
     }
-    
+
     return count;
 }
 
@@ -257,16 +257,16 @@ void AckSignal(string signal_id, ulong order_ticket, int status, string error_ms
 {
     if(http_client == NULL)
         return;
-    
+
     // Build ACK JSON
     string ack_json = "{\"signal_id\":\"" + signal_id + "\",";
     ack_json += "\"order_ticket\":" + IntegerToString(order_ticket) + ",";
     ack_json += "\"status\":" + IntegerToString(status) + ",";
     ack_json += "\"error_message\":\"" + error_msg + "\"}";
-    
+
     // POST /api/v1/devices/ack
     HttpResponse response = http_client->Post("/api/v1/devices/ack", ack_json);
-    
+
     if(response.success)
         Print("[ACK] Signal acknowledged: ", signal_id);
     else
@@ -281,20 +281,20 @@ class CTrade
 {
 public:
     ulong result_order;
-    
+
     CTrade() { result_order = 0; }
-    
+
     bool Buy(double volume, string symbol, double price, double sl, double tp, string comment)
     {
         result_order = 1000001;
         return true;
     }
-    
+
     bool Sell(double volume, string symbol, double price, double sl, double tp, string comment)
     {
         result_order = 1000002;
         return true;
     }
-    
+
     ulong ResultOrder() { return result_order; }
 };

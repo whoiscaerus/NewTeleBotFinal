@@ -401,3 +401,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=problem_detail.model_dump(exclude_none=True),
     )
+
+
+# Alias for backward compatibility (old code uses APIError, class is APIException)
+APIError = APIException

@@ -21,7 +21,7 @@ struct Signal
     double volume;
     long created_at_ms;
     int status;            // 0=pending, 1=approved, 2=executed, 3=rejected
-    
+
     Signal()
     {
         id = "";
@@ -52,7 +52,7 @@ struct Order
     double take_profit;
     long opened_at_ms;
     int status;            // 0=pending, 1=open, 2=closed
-    
+
     Order()
     {
         ticket = 0;
@@ -84,7 +84,7 @@ struct Position
     double take_profit;
     double profit;
     double profit_percent;
-    
+
     Position()
     {
         ticket = 0;
@@ -112,7 +112,7 @@ struct AccountInfo
     double free_margin;
     double margin_level;
     int leverage;
-    
+
     AccountInfo()
     {
         account_number = 0;
@@ -134,7 +134,7 @@ struct PollResponse
     int signal_count;
     string timestamp;
     bool success;
-    
+
     PollResponse()
     {
         signal_count = 0;
@@ -153,7 +153,7 @@ struct AckRequest
     ulong order_ticket;
     int status;            // 0=executed, 1=rejected, 2=failed
     string error_message;
-    
+
     AckRequest()
     {
         signal_id = "";

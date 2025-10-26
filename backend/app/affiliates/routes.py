@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.affiliates.schema import AffiliateStatsOut, PayoutCreate, PayoutOut
 from backend.app.affiliates.service import AffiliateService
-from backend.app.auth.rbac import get_current_user
+from backend.app.auth.dependencies import get_current_user
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
 

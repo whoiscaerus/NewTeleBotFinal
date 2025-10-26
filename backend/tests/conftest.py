@@ -32,7 +32,6 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import text
 
 # Set test environment variables BEFORE importing app
 os.environ["APP_ENV"] = "development"
@@ -74,12 +73,13 @@ def reset_context():
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create test database session with fresh schema each test.
-    
+
     Uses in-memory SQLite with checkfirst=True to avoid duplicate index errors.
     Each test gets a completely fresh database.
     """
-    from backend.app.core.db import Base
     from sqlalchemy import text
+
+    from backend.app.core.db import Base
 
     # Create fresh engine for this test
     engine = create_async_engine(
@@ -128,14 +128,14 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture
 async def db_postgres() -> AsyncGenerator[AsyncSession, None]:
     """Create test database session with REAL PostgreSQL backend.
-    
+
     Use this fixture for integration tests that need real database behavior:
     - Constraint validation
     - Transaction semantics
     - Complex query patterns
-    
+
     Requires: docker-compose up (PostgreSQL running on localhost:5432)
-    
+
     Example:
         async def test_signal_creation(db_postgres):
             signal = StripeEvent(...)
@@ -146,7 +146,9 @@ async def db_postgres() -> AsyncGenerator[AsyncSession, None]:
     from backend.app.core.db import Base
 
     # Connect to real PostgreSQL (same one as docker-compose)
-    db_url = "postgresql+psycopg_async://postgres:postgres@localhost:5432/trading_db_test"
+    db_url = (
+        "postgresql+psycopg_async://postgres:postgres@localhost:5432/trading_db_test"
+    )
     engine = create_async_engine(
         db_url,
         echo=False,

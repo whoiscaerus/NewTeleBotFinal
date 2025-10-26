@@ -7,10 +7,10 @@ import logging
 import time
 from uuid import uuid4
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.db import async_session
+from backend.app.core.db import get_db
 from backend.app.core.settings import settings
 from backend.app.telegram.models import TelegramWebhook
 from backend.app.telegram.router import CommandRouter
@@ -45,7 +45,7 @@ def verify_telegram_signature(body: bytes, signature: str) -> bool:
 @router.post("/telegram/webhook", status_code=status.HTTP_200_OK)
 async def telegram_webhook(
     request: Request,
-    db: AsyncSession | None = None,  # Will be injected manually to avoid issues
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Receive and process Telegram webhook updates.
 
@@ -53,20 +53,14 @@ async def telegram_webhook(
 
     Args:
         request: FastAPI request object
-        db: Database session (injected)
+        db: Database session (injected via dependency)
 
     Returns:
         {"ok": true} on success (always return 200 to acknowledge)
     """
     start_time = time.time()
 
-    # Create session if not provided
-    session_context = async_session() if db is None else None
-    session = db
-
     try:
-        if session_context is not None:
-            session = await session_context.__aenter__()
 
         # 1. Verify signature
         body = await request.body()
@@ -116,12 +110,11 @@ async def telegram_webhook(
             status=0,
         )
 
-        assert session is not None, "Database session must be available"
-        session.add(webhook_event)
-        await session.commit()
+        db.add(webhook_event)
+        await db.commit()
 
         # 5. Route to handler
-        router_instance = CommandRouter(session)
+        router_instance = CommandRouter(db)
         await router_instance.route(update)
 
         # 6. Update event status
@@ -139,10 +132,6 @@ async def telegram_webhook(
 
     except Exception as e:
         logger.error(f"Webhook processing error: {e}", exc_info=True)
-
-    finally:
-        if session_context is not None:
-            await session_context.__aexit__(None, None, None)
 
     # Always return 200 to acknowledge receipt to Telegram
     return {"ok": True}

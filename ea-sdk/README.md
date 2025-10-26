@@ -285,7 +285,7 @@ Keys automatically rotated every 90 days:
 
 ### "HTTP request failed"
 
-**Cause**: Network connectivity issue  
+**Cause**: Network connectivity issue
 **Solution**:
 1. Check internet connection
 2. Verify firewall allows HTTPS (port 443)
@@ -293,7 +293,7 @@ Keys automatically rotated every 90 days:
 
 ### "Auth header mismatch"
 
-**Cause**: Invalid HMAC signature  
+**Cause**: Invalid HMAC signature
 **Solution**:
 1. Verify DEVICE_SECRET is correct
 2. Check device is registered
@@ -301,7 +301,7 @@ Keys automatically rotated every 90 days:
 
 ### "Spread too wide"
 
-**Cause**: Bid-ask spread > threshold  
+**Cause**: Bid-ask spread > threshold
 **Solution**:
 1. Wait for spread to tighten
 2. Increase MAX_SPREAD_POINTS if needed
@@ -309,7 +309,7 @@ Keys automatically rotated every 90 days:
 
 ### "Max positions reached"
 
-**Cause**: Already have max trades open on symbol  
+**Cause**: Already have max trades open on symbol
 **Solution**:
 1. Close unprofitable trades
 2. Reduce MAX_POSITIONS_PER_SYMBOL if needed

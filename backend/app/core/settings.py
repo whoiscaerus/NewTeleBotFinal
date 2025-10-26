@@ -119,6 +119,54 @@ class SecuritySettings(BaseSettings):
         return v
 
 
+class PaymentSettings(BaseSettings):
+    """Payment provider settings (Stripe, Telegram)."""
+
+    stripe_secret_key: str = Field(default="", alias="STRIPE_SECRET_KEY")
+    stripe_webhook_secret: str = Field(default="", alias="STRIPE_WEBHOOK_SECRET")
+    stripe_price_map: dict = Field(
+        default={"premium_monthly": "price_1234"},
+        alias="STRIPE_PRICE_MAP",
+    )
+    telegram_payment_provider_token: str = Field(
+        default="", alias="TELEGRAM_PAYMENT_PROVIDER_TOKEN"
+    )
+    telegram_payment_plans: dict = Field(
+        default={
+            "premium_monthly": {
+                "label": "Premium (Monthly)",
+                "title": "Premium Subscription",
+                "description": "Get access to advanced trading signals",
+                "amount_cents": 2900,
+                "duration_days": 30,
+                "entitlement_type": "premium",
+            }
+        },
+        alias="TELEGRAM_PAYMENT_PLANS",
+    )
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",
+    )
+
+
+class TelegramSettings(BaseSettings):
+    """Telegram bot settings."""
+
+    bot_token: str = Field(default="", alias="TELEGRAM_BOT_TOKEN")
+    bot_username: str = Field(default="SampleBot", alias="TELEGRAM_BOT_USERNAME")
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",
+    )
+
+
 class TelemetrySettings(BaseSettings):
     """Observability and telemetry settings."""
 
@@ -144,6 +192,8 @@ class Settings(BaseSettings):
     db: DbSettings = Field(default_factory=DbSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
+    payments: PaymentSettings = Field(default_factory=PaymentSettings)
+    telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
@@ -152,6 +202,35 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="allow",
     )
+
+    # Direct attribute access for backward compatibility
+    @property
+    def stripe_secret_key(self) -> str:
+        return self.payments.stripe_secret_key
+
+    @property
+    def stripe_webhook_secret(self) -> str:
+        return self.payments.stripe_webhook_secret
+
+    @property
+    def stripe_price_map(self) -> dict:
+        return self.payments.stripe_price_map
+
+    @property
+    def telegram_payment_provider_token(self) -> str:
+        return self.payments.telegram_payment_provider_token
+
+    @property
+    def telegram_payment_plans(self) -> dict:
+        return self.payments.telegram_payment_plans
+
+    @property
+    def telegram_bot_token(self) -> str:
+        return self.telegram.bot_token
+
+    @property
+    def telegram_bot_username(self) -> str:
+        return self.telegram.bot_username
 
 
 def get_settings() -> Settings:

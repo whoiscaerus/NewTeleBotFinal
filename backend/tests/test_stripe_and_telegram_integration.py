@@ -21,9 +21,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.billing.stripe.handlers import (
-    StripeEventHandler,
     STATUS_PENDING,
     STATUS_PROCESSED,
+    StripeEventHandler,
 )
 from backend.app.billing.stripe.models import StripeEvent
 from backend.app.billing.stripe.webhooks import verify_stripe_signature
@@ -422,7 +422,7 @@ class TestStripeWebhookIntegration:
         await db_session.commit()
 
         # Aggregate total
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
 
         query = select(func.sum(StripeEvent.amount_cents)).where(
             StripeEvent.customer_id == customer_id

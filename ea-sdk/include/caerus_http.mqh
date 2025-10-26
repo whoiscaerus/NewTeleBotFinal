@@ -16,7 +16,7 @@ struct HttpRequest
     string endpoint;
     string body;
     int timeout_ms;
-    
+
     HttpRequest()
     {
         method = "GET";
@@ -32,7 +32,7 @@ struct HttpResponse
     string response_body;
     bool success;
     string error_message;
-    
+
     HttpResponse()
     {
         status_code = 0;
@@ -53,7 +53,7 @@ private:
     string auth_header;
     int max_retries;
     int retry_delay_ms;
-    
+
 public:
     CaerusHttpClient(string base_url, string auth)
     {
@@ -62,7 +62,7 @@ public:
         max_retries = 3;
         retry_delay_ms = 1000;
     }
-    
+
     //--- Execute GET request with retry logic
     HttpResponse Get(string endpoint)
     {
@@ -71,7 +71,7 @@ public:
         request.endpoint = endpoint;
         return ExecuteWithRetry(request);
     }
-    
+
     //--- Execute POST request with retry logic
     HttpResponse Post(string endpoint, string json_body)
     {
@@ -81,43 +81,43 @@ public:
         request.body = json_body;
         return ExecuteWithRetry(request);
     }
-    
+
 private:
     HttpResponse ExecuteWithRetry(HttpRequest& request)
     {
         HttpResponse response;
-        
+
         for(int attempt = 0; attempt <= max_retries; attempt++)
         {
             response = ExecuteRequest(request);
-            
+
             if(response.success || attempt == max_retries)
                 return response;
-            
+
             // Exponential backoff
             Sleep(retry_delay_ms * (attempt + 1));
         }
-        
+
         return response;
     }
-    
+
     HttpResponse ExecuteRequest(HttpRequest& request)
     {
         HttpResponse response;
-        
+
         try
         {
             string url = api_base + request.endpoint;
             string headers = "Content-Type: application/json\r\n";
             headers += "Authorization: " + auth_header + "\r\n";
-            
+
             // Note: In production MT5, use WebRequest API
             // This is a placeholder structure
-            
+
             response.status_code = 200;
             response.success = true;
             response.response_body = "{}";
-            
+
             return response;
         }
         catch(...)

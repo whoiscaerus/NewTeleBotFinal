@@ -8,9 +8,10 @@ Tests complete payment workflow:
 - Database transaction semantics
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import AsyncMock, patch
 
 from backend.app.billing.stripe.models import StripeEvent
 from backend.app.telegram.payments import TelegramPaymentHandler
@@ -360,7 +361,7 @@ class TestTelegramPaymentIntegration:
         await db_session.commit()
 
         # Aggregate total paid
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
 
         query = select(func.sum(StripeEvent.amount_cents)).where(
             StripeEvent.customer_id == user_id,

@@ -6,7 +6,7 @@ from typing import cast
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.rbac import get_current_user
+from backend.app.auth.dependencies import get_current_user
 from backend.app.clients.devices.schema import DeviceOut, DeviceRegister
 from backend.app.clients.devices.service import DeviceService
 from backend.app.core.db import get_db
