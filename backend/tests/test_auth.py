@@ -270,6 +270,8 @@ class TestMeEndpoint:
         self, client: AsyncClient, db_session: AsyncSession
     ):
         """Test getting current user with valid token."""
+        from backend.app.auth.jwt_handler import JWTHandler
+
         # Create user
         user = User(
             email="current@example.com", password_hash=hash_password("password")
@@ -278,8 +280,12 @@ class TestMeEndpoint:
         await db_session.commit()
         await db_session.refresh(user)
 
-        # Get token
-        token = create_access_token(subject=user.id, role=user.role.value)
+        # Verify user was created with ID
+        assert user.id is not None, "User ID should be auto-generated"
+
+        # Get token using JWTHandler
+        handler = JWTHandler()
+        token = handler.create_token(user_id=user.id, role=user.role.value)
 
         # Get current user
         response = await client.get(

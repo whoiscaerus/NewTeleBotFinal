@@ -383,20 +383,21 @@ class TestTelegramPayments:
 # ============================================================================
 
 
-@pytest.mark.asyncio
 class TestMiniAppAuthBridge:
     """Test Mini App authentication bridge."""
 
     def test_verify_telegram_initdata_valid(self):
         """Test valid Telegram initData signature verification."""
+        from datetime import datetime
+
         from backend.app.miniapp.auth_bridge import verify_telegram_init_data
 
         # Mock bot token
         bot_token = "123:ABC"
 
-        # Create valid initData
+        # Create valid initData with CURRENT timestamp (must be within 15 minutes)
         user_data = {"id": 123, "first_name": "Test", "is_bot": False}
-        auth_date = 1693000000
+        auth_date = int(datetime.utcnow().timestamp())
         data_parts = [
             f"auth_date={auth_date}",
             f"user={json.dumps(user_data)}",
@@ -459,6 +460,7 @@ class TestMiniAppAuthBridge:
         with pytest.raises(ValueError, match="initData too old"):
             verify_telegram_init_data(init_data, bot_token)
 
+    @pytest.mark.asyncio
     async def test_exchange_initdata_endpoint(
         self,
         client: AsyncClient,
@@ -498,6 +500,7 @@ class TestMiniAppAuthBridge:
         assert data["token_type"] == "bearer"
         assert data["expires_in"] == 900
 
+    @pytest.mark.asyncio
     async def test_exchange_initdata_invalid_signature(
         self,
         client: AsyncClient,

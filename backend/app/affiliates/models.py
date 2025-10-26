@@ -210,7 +210,6 @@ class Commission(Base):
     status: Mapped[int] = mapped_column(
         nullable=False,
         default=CommissionStatus.PENDING.value,
-        index=True,
         doc="Commission status (pending, paid, refunded)",
     )
     created_at: Mapped[datetime] = mapped_column(
