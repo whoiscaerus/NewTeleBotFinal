@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.billing.entitlements.service import EntitlementService
@@ -46,6 +47,17 @@ class StripeEventHandler:
         self.logger.info(
             f"Routing Stripe event: {event_type}", extra={"event_id": event_id}
         )
+
+        # Check for duplicate event (idempotency)
+        existing_event = await self.db.scalar(
+            select(StripeEvent).where(StripeEvent.event_id == event_id)
+        )
+        if existing_event:
+            self.logger.info(
+                "Event already processed, skipping",
+                extra={"event_id": event_id, "event_type": event_type},
+            )
+            return
 
         if event_type == "charge.succeeded":
             await self._handle_charge_succeeded(event)

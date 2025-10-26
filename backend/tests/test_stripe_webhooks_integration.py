@@ -93,6 +93,8 @@ class TestStripeWebhookIntegration:
         self, db_session: AsyncSession
     ):
         """Test idempotency: duplicate webhook with same event_id is not processed twice."""
+        from sqlalchemy.exc import IntegrityError
+
         # Setup: Create first event
         event_id = "evt_test_duplicate_001"
         customer_id = "cus_test_customer_001"
@@ -112,7 +114,7 @@ class TestStripeWebhookIntegration:
 
         # Try to create duplicate with same event_id
         event2 = StripeEvent(
-            event_id=event_id,  # SAME event_id - should not be duplicated in real code
+            event_id=event_id,  # SAME event_id - violates unique constraint
             event_type="charge.succeeded",
             payment_method="card",
             customer_id=customer_id,
@@ -122,12 +124,12 @@ class TestStripeWebhookIntegration:
         )
         db_session.add(event2)
 
-        # Query to verify only one event with this event_id can exist
-        # (in production, this would be enforced by unique constraint + application logic)
-        await db_session.commit()
+        # The database enforces UNIQUE constraint on event_id
+        # Application logic (handler.handle) also prevents duplicate processing via idempotency check
+        with pytest.raises(IntegrityError):
+            await db_session.commit()
 
-        # Both events stored (database allows, but application logic prevents processing)
-        # This test verifies the application SHOULD check for duplicates before processing
+        # Verify first event is the only one stored
         assert event1_id is not None
 
     @pytest.mark.asyncio

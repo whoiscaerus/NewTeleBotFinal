@@ -116,6 +116,8 @@ class TestStripeEventHandler:
         """charge.succeeded event should grant entitlement."""
         # Use mock instead of real db_session to avoid database initialization
         mock_db_session = AsyncMock()
+        # Configure mock to return None for idempotency check (no existing event)
+        mock_db_session.scalar.return_value = None
         handler = StripeEventHandler(mock_db_session)
 
         # Mock the EntitlementService
@@ -180,7 +182,7 @@ class TestStripeEventHandler:
             "created": int(time.time()),
         }
 
-        with patch("backend.app.billing.stripe.handlers.logger") as mock_logger:
+        with patch.object(handler, "logger") as mock_logger:
             await handler.handle(event_data)
 
             # Verify failure was logged
@@ -364,12 +366,10 @@ class TestErrorHandling:
             "created": int(time.time()),
         }
 
-        with patch("backend.app.billing.stripe.handlers.logger") as mock_logger:
-            try:
+        with patch.object(handler, "logger") as mock_logger:
+            # Should raise error after logging
+            with pytest.raises(ValueError):
                 await handler.handle(event_data)
-            except (KeyError, AttributeError):
-                # Expected: should raise or log error
-                pass
 
             # Verify error was logged
             assert mock_logger.error.called or mock_logger.warning.called
@@ -409,7 +409,7 @@ class TestErrorHandling:
                 side_effect=Exception("Database connection failed")
             )
 
-            with patch("backend.app.billing.stripe.handlers.logger") as mock_logger:
+            with patch.object(handler, "logger") as mock_logger:
                 try:
                     await handler.handle(event_data)
                 except Exception:

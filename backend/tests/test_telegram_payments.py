@@ -193,7 +193,7 @@ class TestTelegramPaymentErrorHandling:
                 side_effect=Exception("Database connection failed")
             )
 
-            with patch("backend.app.telegram.payments.logger") as mock_logger:
+            with patch.object(handler, "logger") as mock_logger:
                 try:
                     await handler.handle_successful_payment(
                         user_id="user_service_fail",

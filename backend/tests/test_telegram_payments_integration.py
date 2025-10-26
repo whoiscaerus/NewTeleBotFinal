@@ -295,8 +295,9 @@ class TestTelegramPaymentIntegration:
 
         user_id = "123456789"
 
-        async def create_event(i: int):
-            """Create payment event."""
+        # Create 5 events sequentially (not concurrently) to avoid session state issues
+        events_created = []
+        for i in range(5):
             event = StripeEvent(
                 event_id=f"telegram_payment_ordering_{i}",
                 event_type="telegram_stars.successful_payment",
@@ -307,11 +308,12 @@ class TestTelegramPaymentIntegration:
                 status=1,
             )
             db_session.add(event)
-            await db_session.commit()
-            return event
+            await db_session.flush()  # Flush to DB but don't commit yet
+            events_created.append(event)
+            # Small delay to ensure different creation timestamps
+            await asyncio.sleep(0.001)
 
-        # Create 5 events
-        await asyncio.gather(*[create_event(i) for i in range(5)])
+        await db_session.commit()
 
         # Query events ordered by creation time
         from sqlalchemy import select
