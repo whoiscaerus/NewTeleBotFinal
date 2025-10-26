@@ -92,7 +92,7 @@ class StripeCheckoutService:
 
         Raises:
             ValueError: If plan_id not found in price map
-            stripe.error.StripeError: If Stripe API fails
+            stripe.StripeError: If Stripe API fails
 
         Example:
             >>> response = await service.create_checkout_session(
@@ -151,7 +151,7 @@ class StripeCheckoutService:
                 url=session.url,
             )
 
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             logger.error(
                 f"Failed to create checkout session: {e.user_message}",
                 exc_info=True,
@@ -176,7 +176,7 @@ class StripeCheckoutService:
             Portal response with session URL
 
         Raises:
-            stripe.error.StripeError: If Stripe API fails
+            stripe.StripeError: If Stripe API fails
 
         Example:
             >>> response = await service.create_portal_session(
@@ -187,7 +187,7 @@ class StripeCheckoutService:
             'https://billing.stripe.com/...'
         """
         try:
-            session = stripe.billing.portal.Session.create(
+            session = stripe.billing_portal.Session.create(
                 customer=customer_id,
                 return_url=return_url,
             )
@@ -202,7 +202,7 @@ class StripeCheckoutService:
 
             return PortalSessionResponse(url=session.url)
 
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             logger.error(
                 f"Failed to create portal session: {e.user_message}",
                 exc_info=True,
@@ -229,7 +229,7 @@ class StripeCheckoutService:
             Stripe customer ID
 
         Raises:
-            stripe.error.StripeError: If customer creation fails
+            stripe.StripeError: If customer creation fails
         """
         try:
             # For now, create new customer each time
@@ -252,7 +252,7 @@ class StripeCheckoutService:
 
             return customer.id
 
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             logger.error(
                 f"Failed to create customer: {e.user_message}",
                 exc_info=True,

@@ -114,7 +114,7 @@ class StripeClient:
                 status=intent.status,
             )
 
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             self.logger.error(
                 f"Failed to create payment intent: {e.user_message}",
                 exc_info=True,
@@ -150,7 +150,7 @@ class StripeClient:
                 receipt_email=charge.receipt_email,
             )
 
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             self.logger.error(
                 f"Failed to retrieve charge {charge_id}: {e.user_message}",
                 exc_info=True,
@@ -179,7 +179,7 @@ class StripeClient:
                 metadata=customer.metadata or {},
             )
 
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             self.logger.error(
                 f"Failed to retrieve customer {customer_id}: {e.user_message}",
                 exc_info=True,
@@ -215,7 +215,7 @@ class StripeClient:
                 "status": refund.status,
             }
 
-        except stripe.error.StripeError as e:
+        except stripe.StripeError as e:
             self.logger.error(
                 f"Failed to refund charge {charge_id}: {e.user_message}",
                 exc_info=True,

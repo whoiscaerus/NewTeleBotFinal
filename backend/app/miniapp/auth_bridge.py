@@ -286,8 +286,7 @@ async def _get_or_create_user(
     # Create new user
     new_user = User(
         email=email,
-        name=name,
-        hashed_password="",  # Mini App users auth via Telegram
+        password_hash="",  # Mini App users auth via Telegram
     )
 
     db.add(new_user)

@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,9 @@ from backend.app.core.logging import get_logger
 logger = logging.getLogger(__name__)
 
 
-async def get_bearer_token(authorization: str | None = None) -> str:
+async def get_bearer_token(
+    authorization: Annotated[str | None, Header()] = None,
+) -> str:
     """Extract bearer token from Authorization header.
 
     Args:
@@ -33,7 +35,7 @@ async def get_bearer_token(authorization: str | None = None) -> str:
     parts = authorization.split()
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(
-            status_code=403, detail="Invalid Authorization header format"
+            status_code=401, detail="Invalid Authorization header format"
         )
 
     return parts[1]

@@ -25,7 +25,7 @@ class StripeEvent(Base):
     )  # charge.succeeded, charge.failed, etc
     payment_method = Column(String(50), nullable=False)  # 'stripe'
     customer_id = Column(String(255))  # Stripe customer ID
-    amount_cents = Column(Integer, nullable=False)  # Amount in cents
+    amount_cents = Column(Integer)  # Amount in cents (nullable for refunds)
     currency = Column(String(3), nullable=False, default="USD")
     status = Column(
         Integer, nullable=False, default=0
@@ -33,7 +33,9 @@ class StripeEvent(Base):
     idempotency_key = Column(String(255), index=True)  # For idempotent retries
     processed_at = Column(DateTime)  # When successfully processed
     error_message = Column(Text)  # If status=failed, reason
-    webhook_timestamp = Column(DateTime, nullable=False)  # From Stripe event timestamp
+    webhook_timestamp = Column(
+        DateTime, default=datetime.utcnow
+    )  # From Stripe event timestamp
     received_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 

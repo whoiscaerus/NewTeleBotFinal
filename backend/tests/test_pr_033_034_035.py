@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -86,7 +87,7 @@ class TestStripeCheckout:
         """Test creating a valid portal session."""
         service = StripeCheckoutService(db_session)
 
-        with patch("stripe.billing.portal.Session.create") as mock_create:
+        with patch("stripe.billing_portal.Session.create") as mock_create:
             mock_session = MagicMock()
             mock_session.id = "bps_test_123"
             mock_session.url = "https://billing.stripe.com/..."
@@ -592,13 +593,14 @@ class TestPaymentIntegration:
 # ============================================================================
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def sample_user(db_session: AsyncSession) -> User:
     """Create a sample user for tests."""
+    from backend.app.auth.utils import hash_password
+
     user = User(
         email="test@example.com",
-        name="Test User",
-        hashed_password="hashed_password_here",
+        password_hash=hash_password("password123"),
     )
     db_session.add(user)
     await db_session.commit()

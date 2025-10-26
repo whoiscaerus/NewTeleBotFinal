@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.affiliates.routes import router as affiliates_router
 from backend.app.auth.routes import router as auth_router
+from backend.app.billing.routes import router as billing_router
 from backend.app.clients.devices.routes import router as devices_router
 from backend.app.clients.exec.routes import router as exec_router
 from backend.app.core.errors import (
@@ -16,6 +17,7 @@ from backend.app.core.errors import (
     pydantic_validation_exception_handler,
 )
 from backend.app.core.middleware import RequestIDMiddleware
+from backend.app.miniapp.auth_bridge import router as miniapp_router
 from backend.app.telegram.webhook import router as telegram_router
 
 
@@ -60,6 +62,8 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(auth_router)
+    app.include_router(billing_router)
+    app.include_router(miniapp_router)
     app.include_router(affiliates_router)
     app.include_router(devices_router)
     app.include_router(exec_router)
