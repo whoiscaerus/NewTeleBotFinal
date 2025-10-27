@@ -29,12 +29,15 @@ httpx==0.25.2
 python-json-logger==2.0.7
 prometheus-client==0.19.0
 
-# Redis & Caching (for rate limiting, optional)
+# Redis & Caching
 redis==5.0.1
 
-# Secrets Management (optional)
+# Secrets Management
 hvac==1.2.1
 
-# Code Quality (optional for CI)
+# Telegram Integration
+python-telegram-bot==20.0
+
+# Code Quality
 black==23.12.1
 ruff==0.1.11
