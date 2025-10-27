@@ -17,10 +17,7 @@ from backend.app.trading.monitoring.drawdown_guard import (
     DrawdownGuard,
     get_drawdown_guard,
 )
-from backend.app.trading.monitoring.market_guard import (
-    MarketGuard,
-    get_market_guard,
-)
+from backend.app.trading.monitoring.market_guard import MarketGuard, get_market_guard
 
 # ============================================================================
 # DRAWDOWN GUARD TESTS (8 tests)

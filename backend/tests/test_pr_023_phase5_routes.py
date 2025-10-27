@@ -26,11 +26,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.trading.schemas import (
-    AlertType,
-    ConditionType,
-    PositionStatus,
-)
+from backend.app.trading.schemas import AlertType, ConditionType, PositionStatus
 
 # ================================================================
 # Fixtures

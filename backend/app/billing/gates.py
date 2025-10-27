@@ -6,8 +6,8 @@ across API endpoints and protect premium features.
 
 import json
 import logging
-from typing import Optional
 from collections.abc import Callable
+from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -5,11 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.telegram.commands import (
-    UserRole,
-    get_registry,
-    reset_registry,
-)
+from backend.app.telegram.commands import UserRole, get_registry, reset_registry
 from backend.app.telegram.handlers.distribution import MessageDistributor
 from backend.app.telegram.models import TelegramUser
 from backend.app.telegram.router import CommandRouter

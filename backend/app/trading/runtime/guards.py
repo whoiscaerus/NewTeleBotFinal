@@ -25,6 +25,7 @@ Example:
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
 
 from backend.app.observability.metrics import get_metrics
 
@@ -76,7 +77,7 @@ class Guards:
         self,
         max_drawdown_percent: float = 20.0,
         min_equity_gbp: float = 500.0,
-        alert_service: any = None,
+        alert_service: Any = None,
         logger: logging.Logger | None = None,
     ) -> None:
         """Initialize guards.
@@ -106,8 +107,8 @@ class Guards:
 
     async def check_and_enforce(
         self,
-        mt5_client: any,
-        order_service: any,
+        mt5_client: Any,
+        order_service: Any,
         current_positions: list[dict] | None = None,
     ) -> GuardState:
         """Check guards and enforce constraints.
@@ -255,10 +256,10 @@ class Guards:
 
 async def enforce_max_drawdown(
     max_drawdown_percent: float,
-    mt5_client: any,
-    order_service: any,
+    mt5_client: Any,
+    order_service: Any,
     current_positions: list[dict] | None = None,
-    alert_service: any = None,
+    alert_service: Any = None,
     logger: logging.Logger | None = None,
 ) -> GuardState:
     """Enforce maximum drawdown constraint.
@@ -300,10 +301,10 @@ async def enforce_max_drawdown(
 
 async def min_equity_guard(
     min_equity_gbp: float,
-    mt5_client: any,
-    order_service: any,
+    mt5_client: Any,
+    order_service: Any,
     current_positions: list[dict] | None = None,
-    alert_service: any = None,
+    alert_service: Any = None,
     logger: logging.Logger | None = None,
 ) -> GuardState:
     """Enforce minimum equity constraint.

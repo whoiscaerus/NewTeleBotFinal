@@ -233,8 +233,6 @@ def on_test_stop(environment, **kwargs):
 
 
 if __name__ == "__main__":
-
-
     # Run with: locust -f test_performance_pr_023_phase6.py -u 100 -r 10 --run-time 300s
     print("To run performance test:")
     print("  locust -f backend/tests/test_performance_pr_023_phase6.py \\")

@@ -15,9 +15,9 @@ Date: 2024-10-26
 
 import json
 import logging
+from collections.abc import Callable
 from functools import wraps
 from typing import Any, Optional, TypeVar
-from collections.abc import Callable
 from uuid import UUID
 
 logger = logging.getLogger(__name__)

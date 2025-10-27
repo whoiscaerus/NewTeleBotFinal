@@ -5,7 +5,7 @@ Runs every 10 seconds with circuit breaker and error tracking.
 """
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Optional
 
 from sqlalchemy import and_, select
@@ -13,9 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.models import User
 from backend.app.core.logging import get_logger
-from backend.app.trading.reconciliation.mt5_sync import (
-    run_reconciliation_sync,
-)
+from backend.app.trading.reconciliation.mt5_sync import run_reconciliation_sync
 
 logger = get_logger(__name__)
 

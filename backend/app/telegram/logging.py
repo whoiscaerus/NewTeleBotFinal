@@ -8,11 +8,8 @@ import logging
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import (
-    select,
-)
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 logger = logging.getLogger(__name__)
 

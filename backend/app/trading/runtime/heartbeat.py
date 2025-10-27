@@ -24,10 +24,10 @@ Example:
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
-from collections.abc import Callable
 
 from backend.app.observability.metrics import get_metrics
 
