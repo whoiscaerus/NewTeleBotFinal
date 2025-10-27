@@ -92,3 +92,18 @@ class AffiliateStatsOut(BaseModel):
     pending_commission: float = Field(description="Pending payout")
     paid_commission: float = Field(description="Already paid out")
     commission_tier: int = Field(description="Current tier percentage")
+
+
+class ReferralStatsOut(BaseModel):
+    """Referral statistics."""
+
+    total_referrals: int
+    activated_referrals: int
+    total_commission: float
+    pending_commission: float
+
+
+class AffiliateCreate(BaseModel):
+    """Request to create/join affiliate program."""
+
+    referral_code: str | None = Field(None, max_length=50)

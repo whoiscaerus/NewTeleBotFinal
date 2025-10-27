@@ -1,10 +1,13 @@
 //+------------------------------------------------------------------+
 //| Caerus HTTP Module for MT5 EA                                   |
 //| HTTPS requests with retry + timeout handling                    |
+//| Per-request HMAC-SHA256 signing with fresh nonce/timestamp      |
 //+------------------------------------------------------------------+
 
 #ifndef __CAERUS_HTTP_MQH__
 #define __CAERUS_HTTP_MQH__
+
+#include "caerus_auth.mqh"
 
 //+------------------------------------------------------------------+
 //| HTTP Request/Response Types                                     |
@@ -43,22 +46,22 @@ struct HttpResponse
 };
 
 //+------------------------------------------------------------------+
-//| HTTP Client                                                     |
+//| HTTP Client with Per-Request HMAC Signing                       |
 //+------------------------------------------------------------------+
 
 class CaerusHttpClient
 {
 private:
     string api_base;
-    string auth_header;
+    CaerusAuth* auth;  // Reference to auth object for per-request signing
     int max_retries;
     int retry_delay_ms;
 
 public:
-    CaerusHttpClient(string base_url, string auth)
+    CaerusHttpClient(string base_url, CaerusAuth& auth_obj)
     {
         api_base = base_url;
-        auth_header = auth;
+        auth = GetPointer(auth_obj);
         max_retries = 3;
         retry_delay_ms = 1000;
     }
@@ -69,6 +72,7 @@ public:
         HttpRequest request;
         request.method = "GET";
         request.endpoint = endpoint;
+        request.body = "";
         return ExecuteWithRetry(request);
     }
 
@@ -105,14 +109,33 @@ private:
     {
         HttpResponse response;
 
+        if(auth == NULL)
+        {
+            response.status_code = 0;
+            response.success = false;
+            response.error_message = "Auth object not configured";
+            return response;
+        }
+
         try
         {
             string url = api_base + request.endpoint;
+
+            // Generate fresh HMAC signature for this request
+            string auth_header = auth.GetAuthHeader(
+                request.method,
+                request.endpoint,
+                request.body
+            );
+
             string headers = "Content-Type: application/json\r\n";
             headers += "Authorization: " + auth_header + "\r\n";
 
             // Note: In production MT5, use WebRequest API
-            // This is a placeholder structure
+            // This is a placeholder that demonstrates the structure.
+            // Real WebRequest would be:
+            // int http_handle = WebRequest("POST", url, headers, request.body);
+            // string result = CharArrayToString(download_data);
 
             response.status_code = 200;
             response.success = true;

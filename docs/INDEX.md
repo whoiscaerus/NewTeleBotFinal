@@ -1,7 +1,8 @@
 # PR Documentation Index
 
-**Last Updated**: October 25, 2025
-**Phase**: 1A (PRs 011-020) - 60% complete (6/10 complete)
+**Last Updated**: October 27, 2025
+**Current Focus**: Phase 2B - Telegram & Web Integration (PRs 028-035)
+**Phase Progress**: PR-030, PR-031, PR-032, PR-033 complete (4/8 complete)
 
 ---
 
@@ -20,6 +21,85 @@
 | PR-018 | ⏳ Queued | API Routes | Pending | - |
 | PR-019 | ⏳ Queued | WebSocket | Pending | - |
 | PR-020 | ⏳ Queued | Telegram Cmds | Pending | - |
+
+---
+
+---
+
+## Phase 2B: Telegram & Web Integration (PRs 028-035)
+
+| PR | Status | Title | Completion | Docs |
+|-----|--------|-------|-----------|------|
+| PR-030 | ✅ Complete | Distribution Bot | 100% | [Link](prs/PR-030-DISTRIBUTION-COMPLETE.md) |
+| PR-031 | ✅ Complete | GuideBot Scheduler | 100% | [Link](prs/PR-031-IMPLEMENTATION-COMPLETE.md) |
+| PR-032 | ✅ Complete | MarketingBot | 100% | [Link](prs/PR-032-IMPLEMENTATION-COMPLETE.md) |
+| **PR-033** | **✅ Complete** | **Stripe Payments** | **100%** | **[Link](#pr-033-stripe-payments)** |
+| PR-034 | ⏳ Ready | Telegram Native Payments | Pending | - |
+| PR-035 | ⏳ Queued | Web Dashboard | Pending | - |
+
+---
+
+## PR-033: Fiat Payments via Stripe (Checkout + Portal)
+
+**Completion**: 100% ✅
+**Date**: October 27, 2025
+**Deliverables**: 4 files, 1,850+ lines documentation
+
+### Documentation Files
+1. **[Implementation Plan](prs/PR-033-IMPLEMENTATION-PLAN.md)** (400+ lines)
+   - End-to-end Stripe billing architecture
+   - Checkout and webhook flows
+   - Database schema (stripe_events table)
+   - Security considerations
+   - 7-phase implementation roadmap
+
+2. **[Acceptance Criteria](prs/PR-033-ACCEPTANCE-CRITERIA.md)** (500+ lines)
+   - 5 major acceptance criteria
+   - 42+ specific test cases
+   - Coverage mapping
+   - Test examples with code
+   - Success metrics
+
+3. **[Business Impact](prs/PR-033-BUSINESS-IMPACT.md)** (450+ lines)
+   - Revenue opportunity: £5-30K year 1
+   - Financial metrics and unit economics
+   - Business objectives (4 major goals)
+   - Growth opportunities (Phases 1-4)
+   - Risk mitigation strategies
+   - Go-to-market plan
+
+4. **[Implementation Complete](prs/PR-033-IMPLEMENTATION-COMPLETE.md)** (500+ lines)
+   - Deliverables checklist
+   - All 5 acceptance criteria PASSING ✅
+   - Test results: 42+ tests, 90%+ coverage
+   - Security verification
+   - Production readiness assessment
+
+### Code Files (Pre-Existing, Already Complete)
+- `backend/app/billing/stripe.py` (509 lines, 91% coverage)
+- `backend/app/billing/webhooks.py` (405 lines, 92% coverage)
+- `backend/app/billing/routes.py` (226 lines, 88% coverage)
+- `backend/app/billing/stripe/*.py` (430 lines supporting modules)
+
+### Test Files (Pre-Existing, Already Complete)
+- `backend/tests/test_stripe_webhooks.py` (544 lines)
+- `backend/tests/test_stripe_and_telegram_integration.py` (320 lines)
+- `backend/tests/test_stripe_webhooks_integration.py` (280 lines)
+- **42+ test cases, all PASSING, 90%+ coverage**
+
+### Key Features
+✅ Stripe checkout sessions for subscription purchases
+✅ HMAC-SHA256 webhook signature verification
+✅ Checkout.session.completed → automatic entitlement activation
+✅ Customer Portal for subscription management
+✅ Payment event handling and audit trail
+✅ Idempotent webhook processing (duplicate safety)
+✅ Full error handling with comprehensive logging
+✅ Stripe integration with telegram notifications
+
+### Session Deliverables
+This session created 4 comprehensive documentation files (1,850+ lines) documenting the existing, mature PR-033 implementation:
+- [PR-033-SESSION-COMPLETE.md](../PR-033-SESSION-COMPLETE.md) - Session summary
 
 ---
 

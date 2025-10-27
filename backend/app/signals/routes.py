@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.dependencies import get_current_user
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
+from backend.app.core.settings import get_settings
 from backend.app.signals.schema import SignalCreate, SignalListOut, SignalOut
 from backend.app.signals.service import SignalService
 
@@ -23,6 +24,7 @@ async def create_signal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     current_user=Depends(get_current_user),  # noqa: B008
     x_signature: str | None = Header(None),
+    x_producer_id: str | None = Header(None),
 ) -> SignalOut:
     """Ingest new trading signal.
 
@@ -31,21 +33,44 @@ async def create_signal(
     Args:
         request: Signal data
         x_signature: HMAC-SHA256 signature of request body
+        x_producer_id: External producer ID for deduplication
 
     Returns:
         Created signal
 
     Raises:
         400: Invalid payload
-        401: Unauthorized
+        401: Unauthorized / invalid signature
         409: Duplicate signal
+        413: Payload too large
+        422: Validation error
         500: Server error
     """
     try:
-        service = SignalService(db, hmac_key="your-secret-key")  # TODO: From settings
+        settings = get_settings()
+        service = SignalService(
+            db,
+            hmac_key=settings.signals.hmac_key,
+            dedup_window_seconds=settings.signals.dedup_window_seconds,
+        )
 
-        # Verify HMAC if signature provided
-        if x_signature:
+        # Validate payload size
+        if (
+            request.payload
+            and len(json.dumps(request.payload).encode())
+            > settings.signals.max_payload_bytes
+        ):
+            logger.warning(
+                f"Signal payload too large for user {current_user.id}: "
+                f"{len(json.dumps(request.payload).encode())} bytes"
+            )
+            raise HTTPException(
+                status_code=413,
+                detail=f"Payload exceeds {settings.signals.max_payload_bytes} bytes",
+            )
+
+        # Verify HMAC if signature provided and enabled
+        if x_signature and settings.signals.hmac_enabled:
             payload_json = json.dumps(request.model_dump())
             if not service.verify_hmac_signature(payload_json, x_signature):
                 logger.warning(f"HMAC verification failed for user {current_user.id}")
@@ -54,7 +79,7 @@ async def create_signal(
         signal = await service.create_signal(
             user_id=current_user.id,
             signal_create=request,
-            external_id=None,  # TODO: Extract from headers if provided
+            external_id=x_producer_id,
         )
 
         return signal

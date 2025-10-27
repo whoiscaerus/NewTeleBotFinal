@@ -117,6 +117,94 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Media/charting metrics
+        self.media_render_total = Counter(
+            "media_render_total",
+            "Total media renders",
+            ["type"],
+            registry=self.registry,
+        )
+
+        self.media_cache_hits_total = Counter(
+            "media_cache_hits_total",
+            "Media cache hits",
+            ["type"],
+            registry=self.registry,
+        )
+
+        self.signals_create_seconds = Histogram(
+            "signals_create_seconds",
+            "Signal creation duration in seconds",
+            buckets=(0.01, 0.05, 0.1, 0.5, 1.0),
+            registry=self.registry,
+        )
+
+        # Mini App billing metrics
+        self.miniapp_checkout_start_total = Counter(
+            "miniapp_checkout_start_total",
+            "Total mini app checkout initiations",
+            ["plan"],  # free, premium, vip, enterprise
+            registry=self.registry,
+        )
+
+        self.miniapp_portal_open_total = Counter(
+            "miniapp_portal_open_total",
+            "Total mini app portal opens",
+            registry=self.registry,
+        )
+
+        # PR-040: Payment Security Hardening metrics
+        self.billing_webhook_replay_block_total = Counter(
+            "billing_webhook_replay_block_total",
+            "Total webhook replay attacks blocked",
+            registry=self.registry,
+        )
+
+        self.idempotent_hits_total = Counter(
+            "idempotent_hits_total",
+            "Total idempotent cache hits (duplicate requests)",
+            ["operation"],  # checkout, invoice_payment, subscription_deleted, etc.
+            registry=self.registry,
+        )
+
+        self.billing_webhook_invalid_sig_total = Counter(
+            "billing_webhook_invalid_sig_total",
+            "Total webhooks rejected for invalid signature",
+            registry=self.registry,
+        )
+
+        # PR-041: MT5 EA SDK & Reference EA metrics
+        self.ea_requests_total = Counter(
+            "ea_requests_total",
+            "Total EA API requests (poll, ack)",
+            ["endpoint"],  # /poll, /ack
+            registry=self.registry,
+        )
+
+        self.ea_errors_total = Counter(
+            "ea_errors_total",
+            "Total EA request errors",
+            [
+                "endpoint",
+                "error_type",
+            ],  # endpoint: /poll, /ack; error_type: auth_failed, invalid_signature, timeout, malformed_request, etc.
+            registry=self.registry,
+        )
+
+        self.ea_poll_duration_seconds = Histogram(
+            "ea_poll_duration_seconds",
+            "EA poll request duration in seconds",
+            buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 5.0),
+            registry=self.registry,
+        )
+
+        self.ea_ack_duration_seconds = Histogram(
+            "ea_ack_duration_seconds",
+            "EA ack request duration in seconds",
+            buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 5.0),
+            registry=self.registry,
+        )
+
         logger.info("Metrics collector initialized")
 
     def record_http_request(
@@ -204,6 +292,67 @@ class MetricsCollector:
             duration_seconds
         )
 
+    def record_miniapp_checkout_start(self, plan: str):
+        """Record mini app checkout initiated.
+
+        Args:
+            plan: Plan type (free, premium, vip, enterprise)
+        """
+        self.miniapp_checkout_start_total.labels(plan=plan).inc()
+
+    def record_miniapp_portal_open(self):
+        """Record mini app billing portal opened."""
+        self.miniapp_portal_open_total.inc()
+
+    def record_billing_webhook_replay_block(self):
+        """Record webhook replay attack blocked (PR-040)."""
+        self.billing_webhook_replay_block_total.inc()
+
+    def record_idempotent_hit(self, operation: str):
+        """Record idempotent cache hit (duplicate request).
+
+        Args:
+            operation: Operation name (checkout, invoice_payment, subscription_deleted, etc.)
+        """
+        self.idempotent_hits_total.labels(operation=operation).inc()
+
+    def record_billing_webhook_invalid_sig(self):
+        """Record webhook rejected for invalid signature (PR-040)."""
+        self.billing_webhook_invalid_sig_total.inc()
+
+    def record_ea_request(self, endpoint: str):
+        """Record EA API request (PR-041).
+
+        Args:
+            endpoint: API endpoint ('/poll' or '/ack')
+        """
+        self.ea_requests_total.labels(endpoint=endpoint).inc()
+
+    def record_ea_error(self, endpoint: str, error_type: str):
+        """Record EA API request error (PR-041).
+
+        Args:
+            endpoint: API endpoint ('/poll' or '/ack')
+            error_type: Error type (auth_failed, invalid_signature, timeout, malformed_request, not_found, etc.)
+        """
+        self.ea_errors_total.labels(endpoint=endpoint, error_type=error_type).inc()
+
+    def record_ea_poll_duration(self, duration_seconds: float):
+        """Record EA poll request duration (PR-041).
+
+        Args:
+            duration_seconds: Request duration in seconds
+        """
+        self.ea_poll_duration_seconds.observe(duration_seconds)
+
+    def record_ea_ack_duration(self, duration_seconds: float):
+        """Record EA ack request duration (PR-041).
+
+        Args:
+            duration_seconds: Request duration in seconds
+        """
+        self.ea_ack_duration_seconds.observe(duration_seconds)
+
     def set_redis_connected(self, connected: bool):
         """Set Redis connection status.
 
@@ -220,6 +369,9 @@ class MetricsCollector:
         """
         return generate_latest(self.registry)
 
+
+# Singleton instance
+metrics = MetricsCollector()
 
 # Global metrics instance
 _metrics: MetricsCollector | None = None

@@ -50,6 +50,13 @@ class SignalCreate(BaseModel):
         default_factory=dict,
         description="Strategy metadata (RSI, Fib level, etc.)",
     )
+    version: str = Field(
+        default="1.0",
+        min_length=1,
+        max_length=20,
+        pattern="^[0-9.]+$",
+        description="Signal schema version for deduplication",
+    )
 
     @validator("instrument")
     def validate_instrument(cls, v: str) -> str:
@@ -103,10 +110,12 @@ class SignalOut(BaseModel):
 
     id: str = Field(..., description="Unique signal ID")
     instrument: str
-    side: str
+    side: int  # 0=buy, 1=sell (from database)
     price: float
-    status: SignalStatusEnum
+    status: int  # Use int directly from database
     payload: dict[str, Any]
+    version: str = Field(default="1.0", description="Signal schema version")
+    external_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -117,6 +126,24 @@ class SignalOut(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat(),
         }
+
+    @property
+    def side_label(self) -> str:
+        """Get human-readable side label."""
+        return "buy" if self.side == 0 else "sell"
+
+    @property
+    def status_label(self) -> str:
+        """Get human-readable status label."""
+        labels = {
+            0: "new",
+            1: "approved",
+            2: "rejected",
+            3: "executed",
+            4: "closed",
+            5: "cancelled",
+        }
+        return labels.get(self.status, "unknown")
 
 
 class SignalListOut(BaseModel):

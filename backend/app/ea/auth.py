@@ -1,191 +1,288 @@
 """
-PR-042: Encrypted Signal Transport - Auth & Device Key Generation
+Device authentication middleware for HMAC-based EA device verification (PR-024a).
 
-Manages device registration, encryption key issuance, and key rotation.
+This module provides the DeviceAuth dependency for FastAPI that validates:
+1. Required headers: X-Device-Id, X-Nonce, X-Timestamp, X-Signature
+2. Device exists and is not revoked
+3. HMAC signature is valid
+4. Timestamp is fresh (within skew window)
+5. Nonce has not been replayed
+
+Example:
+    >>> device = await DeviceAuthDependency(
+    ...     device_id="dev_123",
+    ...     nonce="nonce_abc",
+    ...     timestamp="2025-10-26T10:30:45Z",
+    ...     signature="base64_hmac_signature",
+    ...     db=db_session,
+    ...     redis=redis_client,
+    ...     request=request,
+    ... )
+    >>> assert device.device.id == "dev_123"
+    >>> assert not device.device.revoked
 """
 
-import uuid
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
 
-from sqlalchemy import Boolean, Column, DateTime, LargeBinary, String
-from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException, Request
+from redis.asyncio import Redis
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.db import Base
-from backend.app.ea.crypto import DeviceKeyManager
+from backend.app.clients.models import Client, Device
+from backend.app.core.db import get_db
+from backend.app.core.redis import get_redis
+from backend.app.ea.hmac import HMACBuilder
 
-
-class DeviceEncryptionKey(Base):
-    """Encryption key for device - persisted in DB."""
-
-    __tablename__ = "device_encryption_keys"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    device_id = Column(String(36), nullable=False, index=True)
-    key_material = Column(LargeBinary, nullable=False)  # Encrypted with master key
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=False)
-    is_active = Column(Boolean, nullable=False, default=True)
-    rotation_token = Column(String(128), unique=True)  # For graceful rotation
+logger = logging.getLogger(__name__)
 
 
-class DeviceAuthService:
+class DeviceAuthError(HTTPException):
+    """Device authentication error (401/400)."""
+
+    def __init__(self, detail: str, status_code: int = 401):
+        super().__init__(status_code=status_code, detail=detail)
+
+
+class DeviceAuthDependency:
     """
-    Manages device authentication and encryption key lifecycle.
-    Issues keys on registration, handles rotation, revocation.
+    FastAPI dependency for device HMAC authentication.
+
+    Validates headers, device status, signature, and nonce freshness.
     """
 
-    def __init__(self, key_manager: DeviceKeyManager):
-        """
-        Initialize auth service.
+    def __init__(
+        self,
+        request: Request,
+        device_id: str,
+        nonce: str,
+        timestamp: str,
+        signature: str,
+        db: AsyncSession = Depends(get_db),
+        redis: Redis = Depends(get_redis),
+        timestamp_skew_seconds: int = 300,
+        nonce_ttl_seconds: int = 600,
+    ):
+        self.request = request
+        self.device_id = device_id
+        self.nonce = nonce
+        self.timestamp_str = timestamp
+        self.signature = signature
+        self.db = db
+        self.redis = redis
+        self.timestamp_skew_seconds = timestamp_skew_seconds
+        self.nonce_ttl_seconds = nonce_ttl_seconds
 
-        Args:
-            key_manager: DeviceKeyManager instance
-        """
-        self.key_manager = key_manager
+        # Will be populated after validation
+        self.device: Optional[Device] = None
+        self.client: Optional[Client] = None
 
-    def register_device(self, db: Session, user_id: str) -> dict:
+    async def __call__(self) -> "DeviceAuthDependency":
         """
-        Register new device and issue encryption key.
+        Validate device authentication.
 
-        Args:
-            db: Database session
-            user_id: User identifier
+        This is called as a FastAPI dependency. It performs all validation
+        steps and either returns self or raises HTTPException (401/400).
 
         Returns:
-            Device credentials dict with device_id, secret, encryption material
+            Self with device and client populated.
+
+        Raises:
+            HTTPException: 401 if auth fails, 400 if malformed.
         """
-        device_id = str(uuid.uuid4())
-        rotation_token = str(uuid.uuid4())
+        await self._validate_timestamp()
+        await self._validate_nonce()
+        await self._load_device()
+        await self._validate_signature()
+        return self
 
-        # Create encryption key
-        key_obj = self.key_manager.create_device_key(device_id)
-
-        # Persist to DB
-        db_key = DeviceEncryptionKey(
-            id=str(uuid.uuid4()),
-            device_id=device_id,
-            key_material=key_obj.encryption_key,
-            created_at=key_obj.created_at,
-            expires_at=key_obj.expires_at,
-            is_active=True,
-            rotation_token=rotation_token,
-        )
-        db.add(db_key)
-        db.commit()
-
-        return {
-            "device_id": device_id,
-            "secret_key": rotation_token,  # Share only once
-            "encryption_key_b64": key_obj.encryption_key.hex(),
-            "created_at": key_obj.created_at.isoformat(),
-            "expires_at": key_obj.expires_at.isoformat(),
-        }
-
-    def rotate_device_key(self, db: Session, device_id: str) -> dict:
+    async def _validate_timestamp(self) -> None:
         """
-        Rotate device encryption key (grace period before old key expires).
+        Validate timestamp is fresh (within skew window).
 
-        Args:
-            db: Database session
-            device_id: Device identifier
-
-        Returns:
-            New key details + grace period info
+        Raises:
+            HTTPException: 400 if timestamp format invalid or outside skew window.
         """
-        # Mark old key as inactive
-        old_keys = (
-            db.query(DeviceEncryptionKey)
-            .filter_by(device_id=device_id, is_active=True)
-            .all()
-        )
-        for old_key in old_keys:
-            old_key.is_active = False
-
-        db.commit()
-
-        # Create new key
-        new_key_obj = self.key_manager.create_device_key(device_id)
-        rotation_token = str(uuid.uuid4())
-
-        db_key = DeviceEncryptionKey(
-            id=str(uuid.uuid4()),
-            device_id=device_id,
-            key_material=new_key_obj.encryption_key,
-            created_at=new_key_obj.created_at,
-            expires_at=new_key_obj.expires_at,
-            is_active=True,
-            rotation_token=rotation_token,
-        )
-        db.add(db_key)
-        db.commit()
-
-        return {
-            "device_id": device_id,
-            "new_secret_key": rotation_token,
-            "old_key_grace_period_days": 7,
-            "expires_at": new_key_obj.expires_at.isoformat(),
-        }
-
-    def revoke_device_key(self, db: Session, device_id: str):
-        """
-        Revoke device key immediately (e.g., on device unlink).
-
-        Args:
-            db: Database session
-            device_id: Device identifier
-        """
-        keys = db.query(DeviceEncryptionKey).filter_by(device_id=device_id).all()
-        for key in keys:
-            key.is_active = False
-
-        db.commit()
-        self.key_manager.revoke_device_key(device_id)
-
-    def get_device_key(self, db: Session, device_id: str) -> DeviceEncryptionKey | None:
-        """
-        Retrieve active key for device.
-
-        Args:
-            db: Database session
-            device_id: Device identifier
-
-        Returns:
-            Active key or None
-        """
-        key = (
-            db.query(DeviceEncryptionKey)
-            .filter_by(device_id=device_id, is_active=True)
-            .order_by(DeviceEncryptionKey.created_at.desc())
-            .first()
-        )
-
-        if key and key.expires_at > datetime.utcnow():
-            return key
-
-        return None
-
-    def check_key_expiry(self, db: Session, days_threshold: int = 14) -> dict:
-        """
-        Check for keys expiring soon and flag for rotation.
-
-        Args:
-            db: Database session
-            days_threshold: Warning threshold in days
-
-        Returns:
-            List of devices needing rotation
-        """
-        expiry_date = datetime.utcnow() + timedelta(days=days_threshold)
-        expiring_keys = (
-            db.query(DeviceEncryptionKey)
-            .filter(
-                DeviceEncryptionKey.expires_at <= expiry_date,
-                DeviceEncryptionKey.is_active,
+        try:
+            ts = datetime.fromisoformat(self.timestamp_str.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            logger.warning(
+                f"Invalid timestamp format: {self.timestamp_str}",
+                extra={"device_id": self.device_id},
             )
-            .all()
+            raise DeviceAuthError("Invalid timestamp format", 400)
+
+        now = (
+            datetime.utcnow().replace(tzinfo=ts.tzinfo)
+            if ts.tzinfo
+            else datetime.utcnow()
+        )
+        skew = (
+            abs((now - ts).total_seconds())
+            if ts.tzinfo
+            else abs(
+                (now.replace(tzinfo=None) - ts.replace(tzinfo=None)).total_seconds()
+            )
         )
 
-        return {
-            "expiring_soon_count": len(expiring_keys),
-            "devices": [key.device_id for key in expiring_keys],
-        }
+        if skew > self.timestamp_skew_seconds:
+            logger.warning(
+                f"Timestamp skew exceeded: {skew}s > {self.timestamp_skew_seconds}s",
+                extra={"device_id": self.device_id, "skew_seconds": skew},
+            )
+            raise DeviceAuthError("Request timestamp outside acceptable window")
+
+    async def _validate_nonce(self) -> None:
+        """
+        Validate nonce has not been replayed.
+
+        Uses Redis SETNX (set if not exists) to prevent replay attacks.
+        Nonce is stored with TTL equal to timestamp skew + nonce TTL.
+
+        Raises:
+            HTTPException: 401 if nonce has been replayed.
+        """
+        nonce_key = f"nonce:{self.device_id}:{self.nonce}"
+        ttl = self.timestamp_skew_seconds + self.nonce_ttl_seconds
+
+        result = await self.redis.set(nonce_key, "1", nx=True, ex=ttl)
+
+        if not result:
+            logger.warning(
+                "Nonce replay detected",
+                extra={"device_id": self.device_id, "nonce": self.nonce},
+            )
+            raise DeviceAuthError("Nonce has been replayed")
+
+    async def _load_device(self) -> None:
+        """
+        Load device from database.
+
+        Raises:
+            HTTPException: 404 if device not found, 401 if revoked.
+        """
+        try:
+            device_uuid = UUID(self.device_id)
+        except (ValueError, AttributeError):
+            logger.warning(
+                "Invalid device ID format", extra={"device_id": self.device_id}
+            )
+            raise DeviceAuthError("Invalid device ID format", 400)
+
+        # Load device with client relationship
+        stmt = select(Device).where(Device.id == device_uuid)
+        result = await self.db.execute(stmt)
+        device = result.scalar_one_or_none()
+
+        if not device:
+            logger.warning("Device not found", extra={"device_id": self.device_id})
+            raise DeviceAuthError("Device not found", 404)
+
+        if device.revoked or not device.is_active:
+            logger.warning(
+                "Device is revoked or inactive",
+                extra={"device_id": self.device_id, "revoked": device.revoked},
+            )
+            raise DeviceAuthError("Device is revoked")
+
+        self.device = device
+        self.client = device.client
+
+    async def _validate_signature(self) -> None:
+        """
+        Validate HMAC signature.
+
+        Constructs canonical string from request and verifies signature
+        against device's secret (stored as hash).
+
+        Raises:
+            HTTPException: 401 if signature invalid.
+        """
+        if not self.device or not self.device.hmac_key_hash:
+            logger.error(
+                "Device loaded but secret not available",
+                extra={"device_id": self.device_id},
+            )
+            raise DeviceAuthError("Device secret not configured")
+
+        # Get request body
+        try:
+            if self.request.method in ("POST", "PUT", "PATCH"):
+                body = (await self.request.body()).decode("utf-8")
+            else:
+                body = ""
+        except Exception as e:
+            logger.error(
+                "Failed to read request body",
+                extra={"device_id": self.device_id, "error": str(e)},
+            )
+            raise DeviceAuthError("Failed to read request body", 400)
+
+        # Build canonical string
+        canonical = HMACBuilder.build_canonical_string(
+            method=self.request.method,
+            path=self.request.url.path,
+            body=body,
+            device_id=self.device_id,
+            nonce=self.nonce,
+            timestamp=self.timestamp_str,
+        )
+
+        # Verify signature against device secret
+        verified = HMACBuilder.verify(
+            canonical, self.signature, self.device.hmac_key_hash.encode()
+        )
+
+        if not verified:
+            logger.warning(
+                "Signature verification failed", extra={"device_id": self.device_id}
+            )
+            raise DeviceAuthError("Invalid signature")
+
+    @property
+    def user_id(self) -> UUID:
+        """Get user ID from client."""
+        if not self.client:
+            raise ValueError("Device not authenticated")
+        return self.client.user_id
+
+    @property
+    def client_id(self) -> UUID:
+        """Get client ID from device."""
+        if not self.device:
+            raise ValueError("Device not authenticated")
+        return self.device.client_id
+
+
+async def get_device_auth(
+    device_id: Optional[str] = None,
+    nonce: Optional[str] = None,
+    timestamp: Optional[str] = None,
+    signature: Optional[str] = None,
+) -> DeviceAuthDependency:
+    """
+    FastAPI dependency that validates device headers.
+
+    Extracts X-Device-Id, X-Nonce, X-Timestamp, X-Signature from request headers
+    and validates them.
+
+    Returns:
+        DeviceAuthDependency instance with device and client populated.
+
+    Raises:
+        HTTPException: 401 if auth fails, 400 if malformed.
+    """
+    if not all([device_id, nonce, timestamp, signature]):
+        raise DeviceAuthError(
+            "Missing required headers: X-Device-Id, X-Nonce, X-Timestamp, X-Signature"
+        )
+
+    return await DeviceAuthDependency(
+        device_id=device_id,
+        nonce=nonce,
+        timestamp=timestamp,
+        signature=signature,
+    )()

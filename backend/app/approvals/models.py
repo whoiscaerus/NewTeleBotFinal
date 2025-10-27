@@ -64,6 +64,16 @@ class Approval(Base):
         nullable=True,
         doc="Rejection reason",
     )
+    ip: Mapped[str] = mapped_column(
+        String(45),
+        nullable=True,
+        doc="Client IP address (IPv4 or IPv6)",
+    )
+    ua: Mapped[str] = mapped_column(
+        String(500),
+        nullable=True,
+        doc="User-Agent header",
+    )
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,
         default=datetime.utcnow,

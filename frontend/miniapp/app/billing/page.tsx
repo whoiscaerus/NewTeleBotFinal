@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTelegram } from "@/app/_providers/TelegramProvider";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import AccountNav from "@/components/AccountNav";
+import InvoiceList from "@/components/InvoiceList";
 
 interface Subscription {
   tier: "free" | "premium" | "vip" | "enterprise";
@@ -33,6 +36,7 @@ interface Device {
  * Navigate to /billing → see tier + expiry → upgrade or manage devices
  */
 export default function BillingPage() {
+  const router = useRouter();
   const { jwt, isLoading: authLoading, error: authError } = useTelegram();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -165,7 +169,15 @@ export default function BillingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-900 to-blue-800 p-4 pb-20">
       <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-6">Account & Billing</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Account & Billing</h1>
+
+        {/* Account Navigation */}
+        <div className="mb-6">
+          <AccountNav
+            tier={subscription?.tier}
+            deviceCount={devices.length}
+          />
+        </div>
 
         {/* Subscription Card */}
         {subscription && (
@@ -209,9 +221,25 @@ export default function BillingPage() {
           </div>
         )}
 
+        {/* Invoice History Section */}
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-white mb-4">📜 Invoice History</h2>
+          {jwt && <InvoiceList jwt={jwt} />}
+        </div>
+
         {/* Devices Section */}
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-white mb-4">EA Devices</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">EA Devices</h2>
+            {devices.length > 0 && (
+              <button
+                onClick={() => router.push("/devices")}
+                className="text-sm text-blue-300 hover:text-blue-200 font-medium underline"
+              >
+                View All →
+              </button>
+            )}
+          </div>
 
           {/* Add Device Form */}
           {!showAddDevice ? (

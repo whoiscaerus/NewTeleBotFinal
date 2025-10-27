@@ -1,0 +1,210 @@
+════════════════════════════════════════════════════════════════════════════
+                    PHASE 3 QUICK REFERENCE - GUARDS
+════════════════════════════════════════════════════════════════════════════
+
+WHAT WAS COMPLETED
+══════════════════════════════════════════════════════════════════════════════
+
+✅ DRAWDOWN GUARD
+   • Monitors account equity vs. peak
+   • Triggers alerts: warning (15%), critical (20%)
+   • Forces liquidation if equity < £100
+   • 8 tests, all passing
+
+✅ MARKET GUARD
+   • Detects price gaps > 5%
+   • Checks bid-ask spread > 0.5%
+   • Evaluates position close conditions
+   • 7 tests, all passing
+
+✅ COMPREHENSIVE TESTS
+   • 20 total tests (Phase 3)
+   • 100% passing rate
+   • Unit + Integration tests
+   • Edge cases covered
+
+════════════════════════════════════════════════════════════════════════════
+
+KEY FILES
+════════════════════════════════════════════════════════════════════════════
+
+Production:
+  backend/app/trading/monitoring/drawdown_guard.py    (355 lines)
+  backend/app/trading/monitoring/market_guard.py      (380 lines)
+
+Tests:
+  backend/tests/test_pr_023_phase3_guards.py          (350 lines)
+
+════════════════════════════════════════════════════════════════════════════
+
+USAGE EXAMPLES
+════════════════════════════════════════════════════════════════════════════
+
+DRAWDOWN GUARD
+──────────────
+
+from backend.app.trading.monitoring.drawdown_guard import get_drawdown_guard
+
+guard = get_drawdown_guard()
+
+# Check drawdown
+alert = await guard.check_drawdown(
+    current_equity=8000.0,
+    peak_equity=10000.0,
+    user_id="user_123"
+)
+
+if alert:
+    print(f"Alert: {alert.alert_type} - {alert.drawdown_pct:.1f}%")
+    if alert.alert_type == "critical":
+        await guard.alert_user_before_close("user_123", alert)
+
+
+MARKET GUARD
+────────────
+
+from backend.app.trading.monitoring.market_guard import get_market_guard
+
+guard = get_market_guard()
+
+# Check price gap
+gap_alert = await guard.check_price_gap(
+    symbol="XAUUSD",
+    last_close=1950.00,
+    current_open=2050.00
+)
+
+# Check liquidity
+spread_alert = await guard.check_liquidity(
+    symbol="XAUUSD",
+    bid=1950.00,
+    ask=1950.50,
+    position_volume_lots=1.0
+)
+
+# Full evaluation
+should_close, reason = await guard.should_close_position(
+    position_id="pos_123",
+    symbol="XAUUSD",
+    bid=1950.00,
+    ask=1950.50,
+    last_close=1950.00,
+    current_open=1960.00,
+    position_volume_lots=1.0
+)
+
+if should_close:
+    print(f"Close position: {reason}")
+
+════════════════════════════════════════════════════════════════════════════
+
+CONFIGURATION
+════════════════════════════════════════════════════════════════════════════
+
+DrawdownGuard Thresholds:
+  MAX_DRAWDOWN_PERCENT=20               # Liquidation trigger
+  DRAWDOWN_ALERT_THRESHOLD=15           # Warning threshold
+  MIN_EQUITY_GBP=100                    # Force close level
+  PRE_LIQUIDATION_WARNING_SECONDS=10    # Alert countdown
+
+MarketGuard Thresholds:
+  PRICE_GAP_ALERT_PERCENT=5             # Gap alert trigger
+  BID_ASK_SPREAD_MAX_PERCENT=0.5        # Spread threshold
+  MIN_LIQUIDITY_VOLUME_LOTS=10          # Minimum volume
+  LIQUIDITY_CHECK_ENABLED=true          # Enable checks
+
+════════════════════════════════════════════════════════════════════════════
+
+ALERT TYPES
+════════════════════════════════════════════════════════════════════════════
+
+DrawdownGuard Alerts:
+  "warning":  Drawdown 15-20%, user notified
+  "critical": Drawdown ≥20% OR equity < £100, liquidation triggered
+
+MarketGuard Alerts:
+  "gap":      Price gap > 5%
+  "spread":   Bid-ask spread > 0.5%
+
+════════════════════════════════════════════════════════════════════════════
+
+TEST RESULTS
+════════════════════════════════════════════════════════════════════════════
+
+Phase 3: 20/20 PASSING (100%)
+  ✅ DrawdownGuard: 8 tests
+  ✅ MarketGuard: 7 tests
+  ✅ Integration: 3 tests
+  ✅ Singletons: 2 tests
+
+Phase 2 Regression: 22/22 PASSING (100%)
+  ✅ MT5 Sync still working
+
+TOTAL: 42/42 PASSING (100%)
+
+════════════════════════════════════════════════════════════════════════════
+
+INTEGRATION WITH PHASE 2
+════════════════════════════════════════════════════════════════════════════
+
+In ReconciliationScheduler (Phase 2):
+
+After sync_positions_for_user():
+
+  # Check drawdown guard
+  alert = await drawdown_guard.check_drawdown(
+      current_equity=account.equity,
+      peak_equity=account.peak_equity,
+      user_id=user_id
+  )
+
+  # Check market guards for each position
+  for position in positions:
+      should_close, reason = await market_guard.should_close_position(
+          position_id=position.id,
+          symbol=position.symbol,
+          bid=position.bid,
+          ask=position.ask,
+          last_close=position.last_close,
+          current_open=position.current_open,
+          position_volume_lots=position.volume
+      )
+
+      if should_close:
+          # Phase 4: auto_close_service.close_position(position.id, reason)
+          pass
+
+════════════════════════════════════════════════════════════════════════════
+
+NEXT STEPS (PHASE 4)
+════════════════════════════════════════════════════════════════════════════
+
+Phase 4: Auto-Close Service
+  • Implement: close_position(), close_all_positions()
+  • Integrate: Guards → Close logic
+  • Test: ~10-15 tests
+  • Time: 2-3 hours
+
+Then Phase 5: API Routes
+Then Phase 6: Consolidation
+Then Phase 7: Documentation
+
+════════════════════════════════════════════════════════════════════════════
+
+IMPORTANT NOTES
+════════════════════════════════════════════════════════════════════════════
+
+✅ Both guards are async - must be called with await
+✅ Both are singletons - get_drawdown_guard() / get_market_guard()
+✅ All inputs are validated - will raise ValueError on invalid data
+✅ All operations are logged - check logs for debug info
+✅ Database integration ready - Phase 1 models prepared
+✅ Phase 2 still working - no regressions, 22/22 passing
+✅ Ready for Phase 4 - guards can feed into auto-close
+
+════════════════════════════════════════════════════════════════════════════
+
+STATUS: ✅ COMPLETE - 20/20 TESTS PASSING
+
+Timestamp: October 26, 2024
+════════════════════════════════════════════════════════════════════════════

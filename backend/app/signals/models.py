@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Index, String
+from sqlalchemy import JSON, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.core.db import Base
@@ -75,6 +75,7 @@ class Signal(Base):
         doc="Lifecycle status code",
     )
     payload: Mapped[dict] = mapped_column(
+        JSON,
         nullable=True,
         doc="Strategy metadata (JSON)",
     )
@@ -84,6 +85,13 @@ class Signal(Base):
         unique=True,
         index=True,
         doc="External system ID for deduplication",
+    )
+    version: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="1.0",
+        index=True,
+        doc="Signal schema version for deduplication",
     )
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,

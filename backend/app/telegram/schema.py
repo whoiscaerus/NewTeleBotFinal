@@ -32,6 +32,7 @@ class TelegramMessage(BaseModel):
     chat: TelegramChat
     from_user: TelegramUser = Field(alias="from")
     text: str | None = None
+    forward_from_chat: Optional["TelegramChat"] = None
     reply_to_message: Optional["TelegramMessage"] = None
 
     class Config:

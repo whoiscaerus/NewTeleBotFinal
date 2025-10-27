@@ -5,6 +5,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from backend.app.core.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,9 @@ class StorageManager:
         Args:
             base_path: Base directory for media storage
         """
-        self.base_path = Path(base_path)
+        # Prefer configured MEDIA_DIR if present
+        configured = getattr(settings, "media_dir", None)
+        self.base_path = Path(configured or base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"Storage initialized: {self.base_path}")
 

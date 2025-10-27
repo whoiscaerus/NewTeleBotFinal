@@ -153,6 +153,37 @@ class PaymentSettings(BaseSettings):
     )
 
 
+class SignalsSettings(BaseSettings):
+    """Signals API settings."""
+
+    hmac_key: str = Field(default="change-me-in-production", alias="SIGNALS_HMAC_KEY")
+    hmac_enabled: bool = Field(default=True, alias="SIGNALS_HMAC_ENABLED")
+    dedup_window_seconds: int = Field(
+        default=300, alias="SIGNALS_DEDUP_WINDOW_SECONDS", ge=10, le=3600
+    )
+    max_payload_bytes: int = Field(
+        default=32768, alias="SIGNALS_MAX_PAYLOAD_BYTES", ge=1024, le=1048576
+    )
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",
+    )
+
+    @field_validator("hmac_key", mode="after")
+    @classmethod
+    def validate_hmac_key(cls, v: str) -> str:
+        """Validate HMAC key in production."""
+        if os.getenv("APP_ENV") == "production":
+            if v == "change-me-in-production" or len(v) < 32:
+                raise ValueError(
+                    "SIGNALS_HMAC_KEY must be ≥32 characters in production"
+                )
+        return v
+
+
 class TelegramSettings(BaseSettings):
     """Telegram bot settings."""
 
@@ -185,6 +216,21 @@ class TelemetrySettings(BaseSettings):
     )
 
 
+class MediaSettings(BaseSettings):
+    """Media/charting settings."""
+
+    media_dir: str = Field(default="media", alias="MEDIA_DIR")
+    media_ttl_seconds: int = Field(default=86400, alias="MEDIA_TTL_SECONDS")
+    media_max_bytes: int = Field(default=5000000, alias="MEDIA_MAX_BYTES")
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",
+    )
+
+
 class Settings(BaseSettings):
     """Main settings combining all config objects."""
 
@@ -193,8 +239,10 @@ class Settings(BaseSettings):
     redis: RedisSettings = Field(default_factory=RedisSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     payments: PaymentSettings = Field(default_factory=PaymentSettings)
+    signals: SignalsSettings = Field(default_factory=SignalsSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
+    media: MediaSettings = Field(default_factory=MediaSettings)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
@@ -231,6 +279,18 @@ class Settings(BaseSettings):
     @property
     def telegram_bot_username(self) -> str:
         return self.telegram.bot_username
+
+    @property
+    def media_dir(self) -> str:
+        return self.media.media_dir
+
+    @property
+    def media_ttl_seconds(self) -> int:
+        return self.media.media_ttl_seconds
+
+    @property
+    def media_max_bytes(self) -> int:
+        return self.media.media_max_bytes
 
 
 def get_settings() -> Settings:

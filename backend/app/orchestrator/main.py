@@ -5,6 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.affiliates.routes import router as affiliates_router
+from backend.app.approvals.routes import router as approvals_router
 from backend.app.auth.routes import router as auth_router
 from backend.app.billing.routes import router as billing_router
 from backend.app.clients.devices.routes import router as devices_router
@@ -18,7 +19,9 @@ from backend.app.core.errors import (
 )
 from backend.app.core.middleware import RequestIDMiddleware
 from backend.app.miniapp.auth_bridge import router as miniapp_router
+from backend.app.signals.routes import router as signals_router
 from backend.app.telegram.webhook import router as telegram_router
+from backend.app.trading.routes import router as trading_router
 
 
 def create_app() -> FastAPI:
@@ -65,9 +68,12 @@ def create_app() -> FastAPI:
     app.include_router(billing_router)
     app.include_router(miniapp_router)
     app.include_router(affiliates_router)
+    app.include_router(approvals_router)
     app.include_router(devices_router)
     app.include_router(exec_router)
+    app.include_router(signals_router)
     app.include_router(telegram_router)
+    app.include_router(trading_router)
 
     @app.get("/health")
     async def health_check() -> dict:

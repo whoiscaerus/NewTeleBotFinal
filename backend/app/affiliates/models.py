@@ -281,3 +281,63 @@ class Payout(Base):
         Index("ix_payouts_referrer", "referrer_id", "created_at"),
         Index("ix_payouts_status", "status"),
     )
+
+
+class ReferralEvent(Base):
+    """Referral event tracking."""
+
+    __tablename__ = "referral_events"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+    referral_code: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+    )
+    event_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(36),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    __table_args__ = (
+        Index("ix_referral_events_code", "referral_code"),
+        Index("ix_referral_events_user_id", "user_id"),
+    )
+
+
+class AffiliateEarnings(Base):
+    """Affiliate earnings tracking."""
+
+    __tablename__ = "affiliate_earnings"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    affiliate_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    amount: Mapped[float] = mapped_column(nullable=False)
+    commission_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    period: Mapped[str] = mapped_column(String(50), nullable=False)
+    paid: Mapped[bool] = mapped_column(nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False, default=datetime.utcnow
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    __table_args__ = (
+        Index("ix_affiliate_earnings_affiliate", "affiliate_id"),
+        Index("ix_affiliate_earnings_period", "period"),
+    )

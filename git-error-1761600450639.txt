@@ -1,0 +1,641 @@
+> git -c user.useConfigOnly=true commit --quiet
+[WARNING] Unstaged files detected.
+[INFO] Stashing unstaged files to C:\Users\FCumm\.cache\pre-commit\patch1761600395-16744.
+trim trailing whitespace.................................................Failed
+- hook id: trailing-whitespace
+- exit code: 1
+- files were modified by this hook
+
+Fixing backend/tests/test_pr_023_phase5_routes.py
+Fixing PR_024_023a_STATUS_BANNER.txt
+Fixing PHASE-6-TO-8-STRATEGIC-ROADMAP.md
+Fixing PR_023_PHASE_1_COMPLETE_BANNER.txt
+Fixing docs/prs/PR-032-IMPLEMENTATION-COMPLETE.md
+Fixing docs/prs/PR-031-IMPLEMENTATION-COMPLETE.md
+Fixing PHASE-7-STATUS-FINAL.txt
+Fixing PHASE-7-BUSINESS-IMPACT.md
+Fixing PR_022_DOCUMENTATION_INDEX.md
+Fixing docs/prs/PR-033-BUSINESS-IMPACT.md
+Fixing frontend/miniapp/app/billing/page.tsx
+Fixing PR_040_IMPLEMENTATION_MATRIX.md
+Fixing PR-023-PHASE6-QUICK-REFERENCE.md
+Fixing PR_030_031_AUDIT_EXECUTIVE_SUMMARY.md
+Fixing NEXT_SESSION_QUICK_START.md
+Fixing PR_037_VERIFICATION_SUMMARY.md
+Fixing PR_024_023a_FINAL_VERIFICATION_REPORT.md
+Fixing TEST_INFRASTRUCTURE_FIX_COMPLETE.md
+Fixing docs/prs/PR-034-IMPLEMENTATION-PLAN.md
+Fixing AUDIT_SUMMARY_ALL_PRS.md
+Fixing PR-023-COMPLETE-DOCUMENTATION-INDEX.md
+Fixing PR_038_COMPREHENSIVE_FINAL_SUMMARY.md
+Fixing PR-034-QUICK-REFERENCE.md
+Fixing scripts/verify/verify-pr-034.py
+Fixing backend/app/clients/service.py
+Fixing PR_024a_025_QUICK_REFERENCE.md
+Fixing docs/prs/PR-039-INTEGRATION-GUIDE.md
+Fixing PR-034-PHASE-2-QUICK-START.md
+Fixing PR_023_PHASE_3_SESSION_PROGRESS.md
+Fixing PROJECT_STATUS_VERIFICATION_COMPLETE.md
+Fixing INTEGRATION-PR-039-PR-033-SUMMARY.md
+Fixing PR_037_VERIFICATION_COMPLETE.md
+Fixing PR_037_038_039_040_DOCUMENTATION_INDEX.md
+Fixing IMPLEMENTATION_SESSION_COMPLETE.md
+Fixing PR_024_023a_VERIFICATION_STATUS.md
+Fixing PR-023-PHASE6-IMPLEMENTATION-COMPLETE.md
+Fixing PR-034-035-036-FULL-AUDIT-REPORT.md
+Fixing PR-023-PHASE6-IMPLEMENTATION-PLAN.md
+Fixing PR_040_CRITICAL_ISSUES.md
+Fixing PR_037_038_039_040_DELIVERY_SUMMARY.md
+Fixing SESSION_2_COMPLETE_FINAL.md
+Fixing PR-031-032-SESSION-COMPLETE.md
+Fixing docs/prs/PR_037_038_039_040_IMPLEMENTATION_COMPLETE.md
+Fixing IMPLEMENTATION_QUICK_REFERENCE.md
+Fixing PR_020_021_COMPLETION_SUMMARY.md
+Fixing PR_024a_025_IMPLEMENTATION_COMPLETE.md
+Fixing backend/app/billing/security.py
+Fixing PR_040_AUDIT_REPORT.md
+Fixing QUICK_REFERENCE.md
+Fixing ea-sdk/include/caerus_json.mqh
+Fixing docs/prs/PR-023-Phase5-BUSINESS-IMPACT.md
+Fixing PR_022_SESSION_PROGRESS.md
+Fixing PR_041_FILE_MANIFEST.md
+Fixing PR_038_STATUS_REPORT.txt
+Fixing PR_020_021_COMPLETION_100_PERCENT.md
+Fixing PR_038_QUICK_REFERENCE.md
+Fixing PR_030_031_AUDIT_REPORT.md
+Fixing backend/app/trading/runtime/guards.py
+Fixing PR_024_023a_FINAL_STATUS.md
+Fixing PR_026_027_MODELS_IMPLEMENTATION.md
+Fixing SESSION_SUMMARY_PR026027_MODELS.md
+Fixing PR_022_COMPLETION_VERIFIED.md
+Fixing MASTER-SUMMARY-PR-039-PR-033.md
+Fixing VERIFICATION_SUMMARY.md
+Fixing backend/app/trading/monitoring/auto_close.py
+Fixing PR-023-PHASE6-COMPLETE-INDEX.md
+Fixing backend/tests/test_pr_040_security.py
+Fixing PR_026_027_IMPLEMENTATION_STATUS.md
+Fixing PHASE-6E-6F-COMPLETE.md
+Fixing PR_038_DOCUMENTS_INDEX.md
+Fixing PR_040_AUDIT_SUMMARY.md
+Fixing PR-026-027-FINAL-SUMMARY.md
+Fixing PR_038_FINAL_VERIFICATION_REPORT.md
+Fixing FINAL_SESSION_REPORT.md
+Fixing PR_040_FINAL_VERDICT.md
+Fixing PHASE-7-OPERATIONS-RUNBOOK.md
+Fixing PR-039-PR-033-TEST-PLAN.md
+Fixing backend/app/trading/routes.py
+Fixing scripts/verify/verify-pr-026-027.sh
+Fixing SESSION-COMPLETE-PR023-PHASE6.md
+Fixing PR_023_COMPLETE_7PHASE_PLAN.md
+Fixing SESSION_COMPLETION_SUMMARY.md
+Fixing PR_040_IMPLEMENTATION_COMPLETE.md
+Fixing backend/app/telegram/routes_config.py
+Fixing PR_023_PHASE_2_SESSION_PROGRESS.md
+Fixing SESSION-SUMMARY-OCT26-CONTINUATION.md
+Fixing PR_037_040_AUDIT_REPORT.md
+Fixing PR-034-READY-TO-IMPLEMENT.md
+Fixing PR_037_038_039_040_VERIFICATION_CHECKLIST.md
+Fixing backend/tests/test_pr_021_signals.py
+Fixing PR_017_VERIFICATION_COMPLETE.md
+Fixing FIXTURE_FIX_COMPLETE.md
+Fixing PR_040_BEFORE_AFTER_COMPARISON.md
+Fixing backend/tests/test_pr_038_billing.py
+Fixing docs/prs/PR-033-ACCEPTANCE-CRITERIA.md
+Fixing PR_038_VERIFICATION_AUDIT.md
+Fixing backend/tests/test_pr_023_phase6_integration.py
+Fixing QUICK_FIX_GUIDE_DB_FIXTURE.md
+Fixing PR_026_027_IMPLEMENTATION_REFERENCE.md
+Fixing backend/app/telegram/handlers/distribution.py
+Fixing SESSION_4_FINAL_REPORT.txt
+Fixing PR_022_023_COMPREHENSIVE_VERIFICATION_REPORT.md
+Fixing PR_024_023a_IMPLEMENTATION_COMPLETE.txt
+Fixing SESSION_2_COMPLETE_BANNER.txt
+Fixing PR_038_FINAL_STATUS_REPORT.md
+Fixing docs/prs/PR-039-PR-033-INTEGRATION-STATUS.md
+Fixing PR-031-EXECUTIVE-SUMMARY.md
+Fixing PHASE_2_SESSION_COMPLETE.md
+Fixing docs/prs/PR-038-COMPLETION-SUMMARY.md
+Fixing PR_018_VERIFICATION_COMPLETE.md
+Fixing PR-019-SESSION-WORK-LOG.md
+Fixing PR-039-PR-033-IMPLEMENTATION-COMPLETE.md
+Fixing PR-019-BEFORE-AFTER-COMPARISON.md
+Fixing backend/app/trading/monitoring/drawdown_guard.py
+Fixing docs/prs/PR_023_PHASE_4_BUSINESS_IMPACT.md
+Fixing PHASE-7-COMPLETE-SUMMARY.md
+Fixing backend/tests/test_performance_pr_023_phase6.py
+Fixing SESSION_SUMMARY_PR_020_021_022.md
+Fixing docs/prs/PR_023_PHASE_4_ACCEPTANCE_CRITERIA.md
+Fixing COMPREHENSIVE_PROJECT_STATUS_OCT26.md
+Fixing PR_038_COMPLETION_SUMMARY.md
+Fixing PR-039-PR-033-INTEGRATION-QUICK-REF.md
+Fixing PR_041_AUDIT_REPORT.md
+Fixing PROJECT-STATUS-OCT27.md
+Fixing FINAL_AUDIT_STATUS_REPORT.md
+Fixing docs/prs/PR_023_PHASE_4_IMPLEMENTATION_PLAN.md
+Fixing PR_038_IMPLEMENTATION_SESSION_2.md
+Fixing PR_040_DOCUMENTATION_INDEX.md
+Fixing PR_038_FIX_PLAN.md
+Fixing docs/prs/PR-034-IMPLEMENTATION-COMPLETE.md
+Fixing PHASE_2_3_EXECUTION_STATUS.md
+Fixing docs/prs/PR_023_PHASE_4_IMPLEMENTATION_COMPLETE.md
+Fixing docs/prs/PR-034-SESSION-SUMMARY.md
+Fixing PR-034-PHASE-2-SESSION-COMPLETE.md
+Fixing docs/prs/PR-023-Phase5-IMPLEMENTATION-COMPLETE.md
+Fixing PR_030_031_AUDIT_STATUS_REPORT.md
+Fixing PR_024_023a_EXECUTIVE_SUMMARY.md
+Fixing OPTIONAL_FIXES_COMPLETE_109_109.md
+Fixing PR_040_EXECUTION_ROADMAP.md
+Fixing PR_023_PHASE_3_COMPLETE_BANNER.txt
+Fixing LESSONS_LEARNED_PR_022.md
+Fixing backend/tests/test_telegram_handlers.py
+Fixing PHASE_2_COMPLETION_BREAKTHROUGH.md
+Fixing AUDIT_DOCUMENTATION_INDEX.md
+Fixing PR_023_COMPREHENSIVE_STATUS.md
+Fixing PR_026_027_AUDIT_FINAL.md
+Fixing backend/tests/test_pr_023_phase2_mt5_sync.py
+Fixing PR_028_029_AUDIT_COMPREHENSIVE.md
+Fixing PHASE3_QUICK_REFERENCE.txt
+Fixing FINAL_STATUS_COMPREHENSIVE.md
+Fixing docs/prs/PR-026-027-PHASE3-COMPLETE.md
+Fixing PR_040_AUDIT_COMPLETE.md
+Fixing PHASE-7-DEPLOYMENT-GUIDE.md
+Fixing PHASE-2B-PROGRESS-OCT27.md
+Fixing SESSION_5_COMPLETION_BANNER.txt
+Fixing frontend/miniapp/app/devices/page.tsx
+Fixing VERIFICATION_COMPLETE_BANNER.txt
+Fixing PR_038_SESSION_3_COMPLETE.md
+Fixing PR-019-FINAL-STATUS.md
+Fixing PR_026_027_AUDIT_REPORT.md
+Fixing PR-019-COMPLETION-BANNER.txt
+Fixing PR_037_APPROVED_FOR_DEPLOYMENT.txt
+Fixing SESSION_SUMMARY_PHASE_2_3.md
+Fixing PR_026_027_DATABASE_MODELS_COMPLETE.md
+Fixing docs/prs/PR-034-ACCEPTANCE-CRITERIA.md
+
+fix end of files.........................................................Failed
+- hook id: end-of-file-fixer
+- exit code: 1
+- files were modified by this hook
+
+Fixing backend/tests/test_pr_023_phase5_routes.py
+Fixing PR_040_IMPLEMENTATION_MATRIX.md
+Fixing backend/tests/test_pr_020_media.py
+Fixing TEST_INFRASTRUCTURE_FIX_COMPLETE.md
+Fixing docs/prs/PR-034-IMPLEMENTATION-PLAN.md
+Fixing PR-034-PHASE-2-QUICK-START.md
+Fixing backend/tests/test_pr_022_approvals.py
+Fixing PR_040_CRITICAL_ISSUES.md
+Fixing PR_040_AUDIT_REPORT.md
+Fixing PR-023-PHASE6-COMPLETE-INDEX.md
+Fixing PHASE-6E-6F-COMPLETE.md
+Fixing PR_040_AUDIT_SUMMARY.md
+Fixing PR_040_FINAL_VERDICT.md
+Fixing base_files/Final_Master_Prs.md
+Fixing SESSION-COMPLETE-PR023-PHASE6.md
+Fixing PR_040_IMPLEMENTATION_COMPLETE.md
+Fixing PR-034-READY-TO-IMPLEMENT.md
+Fixing backend/app/telegram/models.py
+Fixing full_test_results.txt
+Fixing test_results.txt
+Fixing QUICK_FIX_GUIDE_DB_FIXTURE.md
+Fixing backend/app/billing/stripe/checkout.py
+Fixing PROJECT-STATUS-OCT27.md
+Fixing docs/prs/PR-034-IMPLEMENTATION-COMPLETE.md
+Fixing PR-034-COMPLETION-BANNER.txt
+Fixing PHASE_2_3_EXECUTION_STATUS.md
+Fixing docs/prs/PR-034-SESSION-SUMMARY.md
+Fixing PR-034-PHASE-2-SESSION-COMPLETE.md
+Fixing OPTIONAL_FIXES_COMPLETE_109_109.md
+Fixing PR_040_EXECUTION_ROADMAP.md
+Fixing PHASE_2_COMPLETION_BREAKTHROUGH.md
+Fixing PR_040_AUDIT_COMPLETE.md
+Fixing backend/conftest.py
+Fixing SESSION_SUMMARY_PHASE_2_3.md
+Fixing docs/prs/PR-034-ACCEPTANCE-CRITERIA.md
+
+check yaml...........................................(no files to check)Skipped
+check for added large files..............................................Passed
+check json...........................................(no files to check)Skipped
+check for merge conflicts................................................Passed
+debug statements (python)................................................Passed
+detect private key.......................................................Passed
+isort....................................................................Failed
+- hook id: isort
+- files were modified by this hook
+
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\alembic\versions\0004_reconciliation.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\alembic\versions\0005_clients_devices.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\alembic\versions\0006_executions.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\alembic\versions\011_add_distribution.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\billing\security.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\billing\stripe.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\billing\webhooks.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\clients\models.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\core\cache.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\core\redis.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\ea\__init__.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\ea\aggregate.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\ea\auth.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\ea\hmac.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\ea\models.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\ea\routes.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\ea\routes_admin.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\ea\schemas.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\marketing\clicks_store.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\marketing\scheduler.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\signals\models.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\signals\service.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\telegram\handlers\distribution.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\telegram\logging.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\telegram\models.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\telegram\routes_config.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\telegram\scheduler.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\telegram\webhook.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\monitoring\auto_close.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\query_service.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\reconciliation\__init__.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\reconciliation\models.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\reconciliation\mt5_sync.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\reconciliation\scheduler.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\routes.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\runtime\__init__.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\app\trading\schemas.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\marketing\test_scheduler.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\telegram\test_scheduler.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_ea_device_auth_security.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_performance_pr_023_phase6.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_019_complete.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_021_signals.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_022_approvals.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_023_phase2_mt5_sync.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_023_phase3_guards.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_023_phase4_auto_close.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_023_phase5_routes.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_023_phase6_integration.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_023a_devices.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_023a_hmac.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_024_affiliates.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_024_fraud.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_024_payout.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_024a_025_ea.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_030_distribution.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_037_gating.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_038_billing.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_039_devices.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_040_security.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_telegram_handlers.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_telegram_rbac.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\backend\tests\test_telegram_webhook.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\scripts\verify\verify-pr-034.py
+Fixing C:\Users\FCumm\NewTeleBotFinal\scripts\verify\verify-pr-038-invoice.py
+
+black....................................................................Failed
+- hook id: black
+- files were modified by this hook
+
+reformatted backend\app\billing\gates.py
+reformatted backend\alembic\versions\007_add_telegram.py
+reformatted backend\alembic\versions\011_add_distribution.py
+reformatted backend\alembic\versions\0004_reconciliation.py
+reformatted backend\app\affiliates\fraud.py
+reformatted backend\app\clients\service.py
+reformatted backend\app\billing\security.py
+reformatted backend\app\clients\models.py
+reformatted backend\app\approvals\routes.py
+reformatted backend\app\affiliates\models.py
+reformatted backend\app\core\redis_cache.py
+reformatted backend\app\ea\hmac.py
+reformatted backend\app\ea\auth.py
+reformatted backend\app\ea\models.py
+reformatted backend\app\billing\stripe.py
+reformatted backend\app\core\settings.py
+reformatted backend\app\ea\routes_admin.py
+reformatted backend\app\ea\routes.py
+reformatted backend\app\billing\webhooks.py
+reformatted backend\app\ea\schemas.py
+reformatted backend\app\ea\aggregate.py
+reformatted backend\app\marketing\clicks_store.py
+reformatted backend\app\marketing\scheduler.py
+reformatted backend\app\signals\routes.py
+reformatted backend\app\observability\metrics.py
+reformatted backend\app\telegram\commands.py
+reformatted backend\app\media\render.py
+reformatted backend\app\signals\service.py
+reformatted backend\app\telegram\handlers\guides.py
+reformatted backend\app\telegram\handlers\marketing.py
+reformatted backend\app\telegram\logging.py
+reformatted backend\app\telegram\routes_config.py
+reformatted backend\app\telegram\rbac.py
+reformatted backend\app\telegram\verify.py
+reformatted backend\app\telegram\handlers\distribution.py
+reformatted backend\app\telegram\models.py
+reformatted backend\app\telegram\webhook.py
+reformatted backend\app\telegram\scheduler.py
+reformatted backend\app\trading\monitoring\drawdown_guard.py
+reformatted backend\app\trading\monitoring\market_guard.py
+reformatted backend\app\trading\reconciliation\models.py
+reformatted backend\app\trading\monitoring\auto_close.py
+reformatted backend\app\trading\reconciliation\scheduler.py
+reformatted backend\app\trading\routes.py
+reformatted backend\app\telegram\router.py
+reformatted backend\app\trading\runtime\guards.py
+reformatted backend\app\trading\query_service.py
+reformatted backend\schedulers\affiliate_payout_runner.py
+reformatted backend\app\trading\reconciliation\mt5_sync.py
+reformatted backend\tests\test_performance_pr_023_phase6.py
+reformatted backend\tests\test_pr_020_media.py
+reformatted backend\tests\telegram\test_scheduler.py
+reformatted backend\app\trading\schemas.py
+reformatted backend\tests\test_pr_021_signals.py
+reformatted backend\tests\marketing\test_scheduler.py
+reformatted backend\tests\test_pr_019_complete.py
+reformatted backend\tests\test_ea_device_auth_security.py
+reformatted backend\tests\test_pr_023_phase2_mt5_sync.py
+reformatted backend\tests\test_pr_023_phase3_guards.py
+reformatted backend\tests\test_pr_023_phase4_auto_close.py
+reformatted backend\tests\test_pr_023_phase5_routes.py
+reformatted backend\tests\test_pr_023_phase6_integration.py
+reformatted backend\tests\test_pr_023a_hmac.py
+reformatted backend\tests\test_pr_039_devices.py
+reformatted backend\tests\test_pr_038_billing.py
+reformatted backend\tests\test_pr_024_payout.py
+reformatted backend\tests\test_pr_030_distribution.py
+reformatted backend\tests\test_pr_040_security.py
+reformatted backend\tests\test_pr_024a_025_ea.py
+reformatted backend\tests\test_telegram_webhook.py
+reformatted scripts\verify\verify-pr-034.py
+reformatted backend\tests\test_telegram_handlers.py
+reformatted backend\tests\test_telegram_rbac.py
+
+All done! \u2728 \U0001f370 \u2728
+73 files reformatted, 33 files left unchanged.
+
+ruff.....................................................................Failed
+- hook id: ruff
+- exit code: 1
+- files were modified by this hook
+
+backend\app\affiliates\fraud.py:54:9: F841 Local variable `stmt` is assigned to but never used
+backend\app\affiliates\fraud.py:274:18: UP007 Use `X | Y` for type annotations
+backend\app\billing\gates.py:32:23: UP007 Use `X | Y` for type annotations
+backend\app\billing\gates.py:33:23: UP007 Use `X | Y` for type annotations
+backend\app\billing\gates.py:136:19: UP007 Use `X | Y` for type annotations
+backend\app\billing\gates.py:137:19: UP007 Use `X | Y` for type annotations
+backend\app\billing\security.py:169:55: UP007 Use `X | Y` for type annotations
+backend\app\billing\security.py:211:22: UP007 Use `X | Y` for type annotations
+backend\app\billing\stripe.py:47:20: UP007 Use `X | Y` for type annotations
+backend\app\billing\stripe.py:73:19: UP007 Use `X | Y` for type annotations
+backend\app\billing\webhooks.py:487:18: UP007 Use `X | Y` for type annotations
+backend\app\billing\webhooks.py:489:20: UP007 Use `X | Y` for type annotations
+backend\app\billing\webhooks.py:490:22: UP007 Use `X | Y` for type annotations
+backend\app\billing\webhooks.py:491:21: UP007 Use `X | Y` for type annotations
+backend\app\billing\webhooks.py:492:26: UP007 Use `X | Y` for type annotations
+backend\app\billing\webhooks.py:493:17: UP007 Use `X | Y` for type annotations
+backend\app\billing\webhooks.py:494:19: UP007 Use `X | Y` for type annotations
+backend\app\billing\webhooks.py:589:16: B025 try-except block with duplicate exception `Exception`
+backend\app\core\redis.py:9:16: UP007 Use `X | Y` for type annotations
+backend\app\core\redis_cache.py:28:16: UP007 Use `X | Y` for type annotations
+backend\app\core\redis_cache.py:31:41: UP007 Use `X | Y` for type annotations
+backend\app\core\redis_cache.py:71:27: UP007 Use `X | Y` for type annotations
+backend\app\core\redis_cache.py:94:14: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+backend\app\core\redis_cache.py:104:14: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+backend\app\core\redis_cache.py:112:59: UP007 Use `X | Y` for type annotations
+backend\app\core\redis_cache.py:226:18: UP007 Use `X | Y` for type annotations
+backend\app\core\redis_cache.py:295:52: UP007 Use `X | Y` for type annotations
+backend\app\core\redis_cache.py:342:28: UP007 Use `X | Y` for type annotations
+backend\app\ea\auth.py:64:28: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\auth.py:65:24: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\auth.py:80:22: UP007 Use `X | Y` for type annotations
+backend\app\ea\auth.py:81:22: UP007 Use `X | Y` for type annotations
+backend\app\ea\auth.py:116:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+backend\app\ea\auth.py:173:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+backend\app\ea\auth.py:222:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+backend\app\ea\auth.py:261:16: UP007 Use `X | Y` for type annotations
+backend\app\ea\auth.py:262:12: UP007 Use `X | Y` for type annotations
+backend\app\ea\auth.py:263:16: UP007 Use `X | Y` for type annotations
+backend\app\ea\auth.py:264:16: UP007 Use `X | Y` for type annotations
+backend\app\ea\routes.py:41:12: UP007 Use `X | Y` for type annotations
+backend\app\ea\routes_admin.py:34:24: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\routes_admin.py:35:26: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\routes_admin.py:35:34: B008 Do not perform function call `require_roles` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\routes_admin.py:99:24: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\routes_admin.py:100:26: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\routes_admin.py:100:34: B008 Do not perform function call `require_roles` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\routes_admin.py:162:24: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\routes_admin.py:163:26: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\routes_admin.py:163:34: B008 Do not perform function call `require_roles` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\ea\schemas.py:121:20: UP007 Use `X | Y` for type annotations
+backend\app\ea\schemas.py:124:12: UP007 Use `X | Y` for type annotations
+backend\app\ea\schemas.py:178:20: UP007 Use `X | Y` for type annotations
+backend\app\ea\schemas.py:179:12: UP007 Use `X | Y` for type annotations
+backend\app\marketing\clicks_store.py:47:18: UP007 Use `X | Y` for type annotations
+backend\app\marketing\clicks_store.py:48:21: UP007 Use `X | Y` for type annotations
+backend\app\marketing\clicks_store.py:49:19: UP007 Use `X | Y` for type annotations
+backend\app\marketing\scheduler.py:74:21: UP007 Use `X | Y` for type annotations
+backend\app\marketing\scheduler.py:298:36: UP007 Use `X | Y` for type annotations
+backend\app\marketing\scheduler.py:345:21: UP007 Use `X | Y` for type annotations
+backend\app\marketing\scheduler.py:378:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+backend\app\signals\service.py:259:19: F821 Undefined name `APIError`
+backend\app\signals\service.py:305:19: F821 Undefined name `APIError`
+backend\app\telegram\commands.py:145:41: UP007 Use `X | Y` for type annotations
+backend\app\telegram\commands.py:276:54: UP007 Use `X | Y` for type annotations
+backend\app\telegram\commands.py:313:19: UP007 Use `X | Y` for type annotations
+backend\app\telegram\handlers\distribution.py:36:20: UP007 Use `X | Y` for type annotations
+backend\app\telegram\handlers\distribution.py:123:21: UP007 Use `X | Y` for type annotations
+backend\app\telegram\handlers\guides.py:47:48: UP007 Use `X | Y` for type annotations
+backend\app\telegram\handlers\guides.py:71:40: E712 Comparison to `True` should be `cond is True` or `if cond:`
+backend\app\telegram\handlers\guides.py:76:56: UP007 Use `X | Y` for type annotations
+backend\app\telegram\handlers\marketing.py:38:48: UP007 Use `X | Y` for type annotations
+backend\app\telegram\handlers\marketing.py:59:44: E712 Comparison to `True` should be `cond is True` or `if cond:`
+backend\app\telegram\handlers\marketing.py:68:10: UP007 Use `X | Y` for type annotations
+backend\app\telegram\handlers\marketing.py:235:48: E712 Comparison to `True` should be `cond is True` or `if cond:`
+backend\app\telegram\logging.py:23:36: UP007 Use `X | Y` for type annotations
+backend\app\telegram\logging.py:105:10: UP007 Use `X | Y` for type annotations
+backend\app\telegram\rbac.py:17:60: UP007 Use `X | Y` for type annotations
+backend\app\telegram\rbac.py:315:38: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\telegram\rbac.py:316:6: UP007 Use `X | Y` for type annotations
+backend\app\telegram\rbac.py:336:38: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\telegram\rbac.py:337:6: UP007 Use `X | Y` for type annotations
+backend\app\telegram\rbac.py:357:38: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\telegram\rbac.py:358:6: UP007 Use `X | Y` for type annotations
+backend\app\telegram\rbac.py:378:38: B008 Do not perform function call `Depends` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+backend\app\telegram\rbac.py:379:6: UP007 Use `X | Y` for type annotations
+backend\app\telegram\router.py:159:10: UP007 Use `X | Y` for type annotations
+backend\app\telegram\router.py:314:13: F841 Local variable `user_role` is assigned to but never used
+backend\app\telegram\routes_config.py:25:37: UP007 Use `X | Y` for type annotations
+backend\app\telegram\routes_config.py:99:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+backend\app\telegram\routes_config.py:101:55: UP007 Use `X | Y` for type annotations
+backend\app\telegram\scheduler.py:73:21: UP007 Use `X | Y` for type annotations
+backend\app\telegram\scheduler.py:305:36: UP007 Use `X | Y` for type annotations
+backend\app\telegram\scheduler.py:352:21: UP007 Use `X | Y` for type annotations
+backend\app\telegram\scheduler.py:385:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+backend\app\trading\monitoring\auto_close.py:50:19: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:51:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:54:20: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:124:22: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:125:21: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:272:20: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:273:21: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:393:24: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:394:21: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\auto_close.py:567:28: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\drawdown_guard.py:109:28: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\drawdown_guard.py:122:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\drawdown_guard.py:328:18: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\market_guard.py:116:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\market_guard.py:202:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\market_guard.py:293:65: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\market_guard.py:348:22: UP007 Use `X | Y` for type annotations
+backend\app\trading\monitoring\market_guard.py:420:16: UP007 Use `X | Y` for type annotations
+backend\app\trading\query_service.py:265:17: UP007 Use `X | Y` for type annotations
+backend\app\trading\query_service.py:295:59: E711 Comparison to `None` should be `cond is None`
+backend\app\trading\query_service.py:310:17: B007 Loop control variable `i` not used within loop body
+backend\app\trading\query_service.py:380:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\reconciliation\mt5_sync.py:38:13: UP007 Use `X | Y` for type annotations
+backend\app\trading\reconciliation\mt5_sync.py:39:13: UP007 Use `X | Y` for type annotations
+backend\app\trading\reconciliation\mt5_sync.py:120:47: UP007 Use `X | Y` for type annotations
+backend\app\trading\reconciliation\mt5_sync.py:248:13: F841 Local variable `mt5_tickets` is assigned to but never used
+backend\app\trading\reconciliation\mt5_sync.py:326:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\reconciliation\mt5_sync.py:373:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\reconciliation\scheduler.py:46:30: UP007 Use `X | Y` for type annotations
+backend\app\trading\reconciliation\scheduler.py:154:39: E712 Comparison to `True` should be `cond is True` or `if cond:`
+backend\app\trading\reconciliation\scheduler.py:232:13: UP007 Use `X | Y` for type annotations
+backend\app\trading\reconciliation\scheduler.py:264:24: UP007 Use `X | Y` for type annotations
+backend\app\trading\routes.py:160:13: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:82:24: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:109:19: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:113:28: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:126:20: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:167:18: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:168:16: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:245:34: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:272:20: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:275:25: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:278:17: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:279:18: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:280:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:281:10: UP007 Use `X | Y` for type annotations
+backend\app\trading\schemas.py:346:13: UP007 Use `X | Y` for type annotations
+backend\tests\telegram\test_scheduler.py:359:18: B017 `pytest.raises(Exception)` should be considered evil
+backend\tests\telegram\test_scheduler.py:371:18: B017 `pytest.raises(Exception)` should be considered evil
+backend\tests\test_ea_device_auth_security.py:500:9: F841 Local variable `tampered_body` is assigned to but never used
+backend\tests\test_pr_019_complete.py:93:9: F841 Local variable `emit_count` is assigned to but never used
+backend\tests\test_pr_019_complete.py:314:9: F841 Local variable `state_peak` is assigned to but never used
+backend\tests\test_pr_019_complete.py:354:9: F841 Local variable `state` is assigned to but never used
+backend\tests\test_pr_020_media.py:32:12: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+backend\tests\test_pr_020_media.py:55:12: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+backend\tests\test_pr_020_media.py:79:12: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+backend\tests\test_pr_020_media.py:100:16: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+backend\tests\test_pr_023_phase2_mt5_sync.py:443:40: E712 Comparison to `False` should be `cond is False` or `if not cond:`
+backend\tests\test_pr_023_phase2_mt5_sync.py:462:40: E712 Comparison to `False` should be `cond is False` or `if not cond:`
+backend\tests\test_pr_023_phase5_routes.py:204:16: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+backend\tests\test_pr_023_phase5_routes.py:298:15: F811 Redefinition of unused `test_get_open_positions_without_auth` from line 262
+backend\tests\test_pr_023_phase5_routes.py:306:15: F811 Redefinition of unused `test_get_open_positions_empty_list` from line 270
+backend\tests\test_pr_023_phase5_routes.py:383:16: UP038 Use `X | Y` in `isinstance` call instead of `(X, Y)`
+backend\tests\test_pr_023a_hmac.py:126:9: F841 Local variable `first_secret` is assigned to but never used
+backend\tests\test_pr_023a_hmac.py:365:9: F841 Local variable `nonce1` is assigned to but never used
+backend\tests\test_pr_023a_hmac.py:366:9: F841 Local variable `nonce2` is assigned to but never used
+backend\tests\test_pr_023a_hmac.py:380:9: F841 Local variable `fresh_time` is assigned to but never used
+backend\tests\test_pr_023a_hmac.py:381:9: F841 Local variable `stale_time` is assigned to but never used
+backend\tests\test_pr_023a_hmac.py:392:9: F841 Local variable `future_time` is assigned to but never used
+backend\tests\test_pr_024_payout.py:229:18: F821 Undefined name `AffiliatePayout`
+backend\tests\test_pr_024_payout.py:282:18: F821 Undefined name `AffiliatePayout`
+backend\tests\test_pr_024_payout.py:330:9: F841 Local variable `query` is assigned to but never used
+backend\tests\test_pr_037_gating.py:223:14: B017 `pytest.raises(Exception)` should be considered evil
+backend\tests\test_pr_037_gating.py:268:14: B017 `pytest.raises(Exception)` should be considered evil
+backend\tests\test_telegram_handlers.py:388:9: F841 Local variable `router` is assigned to but never used
+scripts\verify\verify-pr-034.py:136:16: B007 Loop control variable `name` not used within loop body
+scripts\verify\verify-pr-034.py:177:16: B007 Loop control variable `name` not used within loop body
+scripts\verify\verify-pr-034.py:250:51: F401 `backend.app.telegram.payments.TelegramPaymentHandler` imported but unused; consider using `importlib.util.find_spec` to test for availability
+scripts\verify\verify-pr-038-invoice.py:24:68: F841 Local variable `client` is assigned to but never used
+Found 499 errors (326 fixed, 173 remaining).
+No fixes available (140 hidden fixes can be enabled with the `--unsafe-fixes` option).
+
+mypy.....................................................................Failed
+- hook id: mypy
+- exit code: 1
+
+app\trading\runtime\guards.py:79: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:79: note: Perhaps you meant "typing.Any" instead of "any"?
+app\trading\runtime\guards.py:109: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:109: note: Perhaps you meant "typing.Any" instead of "any"?
+app\trading\runtime\guards.py:110: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:110: note: Perhaps you meant "typing.Any" instead of "any"?
+app\trading\runtime\guards.py:131: error: any? has no attribute "get_account_info"  [attr-defined]
+app\trading\runtime\guards.py:181: error: any? has no attribute "close_all_positions"  [attr-defined]
+app\trading\runtime\guards.py:196: error: any? has no attribute "send_owner_alert"  [attr-defined]
+app\trading\runtime\guards.py:228: error: any? has no attribute "close_all_positions"  [attr-defined]
+app\trading\runtime\guards.py:233: error: any? has no attribute "send_owner_alert"  [attr-defined]
+app\trading\runtime\guards.py:258: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:258: note: Perhaps you meant "typing.Any" instead of "any"?
+app\trading\runtime\guards.py:259: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:259: note: Perhaps you meant "typing.Any" instead of "any"?
+app\trading\runtime\guards.py:261: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:261: note: Perhaps you meant "typing.Any" instead of "any"?
+app\trading\runtime\guards.py:303: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:303: note: Perhaps you meant "typing.Any" instead of "any"?
+app\trading\runtime\guards.py:304: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:304: note: Perhaps you meant "typing.Any" instead of "any"?
+app\trading\runtime\guards.py:306: error: Function "builtins.any" is not valid as a type  [valid-type]
+app\trading\runtime\guards.py:306: note: Perhaps you meant "typing.Any" instead of "any"?
+app\telegram\commands.py:40: error: Incompatible types in assignment (expression has type "None", variable has type "list[str]")  [assignment]
+app\telegram\commands.py:46: error: Statement is unreachable  [unreachable]
+app\telegram\commands.py:85: error: Incompatible default for argument "aliases" (default has type "None", argument has type "list[str]")  [assignment]
+app\telegram\commands.py:85: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+app\telegram\commands.py:85: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+app\trading\runtime\heartbeat.py:225: error: Incompatible types in "await" (actual type "dict[str, Any]", expected type "Awaitable[Any]")  [misc]
+app\trading\query_service.py:247: error: Incompatible return value type (got "Sequence[Any]", expected "list[Any]")  [return-value]
+app\trading\reconciliation\scheduler.py:161: error: Incompatible return value type (got "Sequence[Any]", expected "list[Any]")  [return-value]
+app\trading\reconciliation\scheduler.py:197: error: Returning Any from function declared to return "dict[Any, Any]"  [no-any-return]
+app\trading\reconciliation\mt5_sync.py:225: error: "object" has no attribute "append"  [attr-defined]
+app\trading\reconciliation\mt5_sync.py:249: error: Need type annotation for "matched_bot_trades" (hint: "matched_bot_trades: Set[<type>] = ...")  [var-annotated]
+app\trading\reconciliation\mt5_sync.py:254: error: Argument 2 to "_find_matching_trade" of "MT5SyncService" has incompatible type "Sequence[Any]"; expected "list[Any]"  [arg-type]
+app\trading\reconciliation\mt5_sync.py:266: error: Unsupported operand types for + ("object" and "int")  [operator]
+app\trading\reconciliation\mt5_sync.py:268: error: Unsupported operand types for + ("object" and "int")  [operator]
+app\trading\reconciliation\mt5_sync.py:272: error: Unsupported operand types for + ("object" and "int")  [operator]
+app\trading\reconciliation\mt5_sync.py:278: error: Unsupported operand types for + ("object" and "int")  [operator]
+app\trading\reconciliation\mt5_sync.py:318: error: "object" has no attribute "append"  [attr-defined]
+app\telegram\logging.py:217: error: Value of type "Row[Any] | None" is not indexable  [index]
+app\telegram\logging.py:218: error: Value of type "Row[Any] | None" is not indexable  [index]
+app\telegram\logging.py:219: error: Value of type "Row[Any] | None" is not indexable  [index]
+app\telegram\logging.py:221: error: Value of type "Row[Any] | None" is not indexable  [index]
+app\telegram\logging.py:222: error: Value of type "Row[Any] | None" is not indexable  [index]
+app\signals\service.py:259: error: Name "APIError" is not defined  [name-defined]
+app\signals\service.py:305: error: Name "APIError" is not defined  [name-defined]
+app\marketing\clicks_store.py:102: error: Returning Any from function declared to return "str"  [no-any-return]
+app\affiliates\fraud.py:267: error: Returning Any from function declared to return "str"  [no-any-return]
+app\core\redis_cache.py:50: error: Module has no attribute "create_redis_pool"  [attr-defined]
+app\billing\webhooks.py:129: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+app\billing\webhooks.py:212: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+app\billing\webhooks.py:261: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+app\billing\webhooks.py:308: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+app\billing\security.py:186: error: Returning Any from function declared to return "dict[str, Any] | None"  [no-any-return]
+app\billing\security.py:186: error: Argument 1 to "loads" has incompatible type "Awaitable[Any] | Any"; expected "str | bytes | bytearray"  [arg-type]
+app\media\render.py:397: error: Returning Any from function declared to return "bytes"  [no-any-return]
+app\telegram\scheduler.py:97: error: Cannot assign to a method  [method-assign]
+app\telegram\scheduler.py:97: error: Incompatible types in assignment (expression has type "bool", variable has type "Callable[[], bool]")  [assignment]
+app\telegram\scheduler.py:110: error: Function "is_running" could always be true in boolean context  [truthy-function]
+app\telegram\scheduler.py:114: error: Statement is unreachable  [unreachable]
+app\telegram\scheduler.py:151: error: Function "is_running" could always be true in boolean context  [truthy-function]
+app\telegram\scheduler.py:152: error: Statement is unreachable  [unreachable]
+app\telegram\scheduler.py:156: error: Cannot assign to a method  [method-assign]
+app\telegram\scheduler.py:156: error: Incompatible types in assignment (expression has type "bool", variable has type "Callable[[], bool]")  [assignment]
+app\telegram\scheduler.py:285: error: Item "None" of "Any | None" has no attribute "add"  [union-attr]
+app\telegram\scheduler.py:286: error: Item "None" of "Any | None" has no attribute "commit"  [union-attr]
+app\telegram\scheduler.py:303: error: Incompatible return value type (got "Callable[[], bool]", expected "bool")  [return-value]
+app\telegram\handlers\marketing.py:64: error: Incompatible return value type (got "Sequence[Any]", expected "list[Any]")  [return-value]
+app\telegram\handlers\guides.py:74: error: Incompatible return value type (got "Sequence[Any]", expected "list[Any]")  [return-value]
+app\telegram\handlers\distribution.py:279: error: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
+app\telegram\handlers\distribution.py:298: error: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
+app\marketing\scheduler.py:286: error: Item "None" of "Any | None" has no attribute "add"  [union-attr]
+app\marketing\scheduler.py:287: error: Item "None" of "Any | None" has no attribute "commit"  [union-attr]
+app\core\idempotency.py:111: error: Returning Any from function declared to return "dict[str, Any] | None"  [no-any-return]
+app\core\idempotency.py:111: error: Argument 1 to "loads" has incompatible type "Awaitable[Any] | Any"; expected "str | bytes | bytearray"  [arg-type]
+app\core\idempotency.py:179: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+app\billing\routes.py:285: error: Returning Any from function declared to return "dict[Any, Any]"  [no-any-return]
+app\billing\routes.py:361: error: Returning Any from function declared to return "list[dict[Any, Any]]"  [no-any-return]
+app\billing\gates.py:188: error: Returning Any from function declared to return "bool"  [no-any-return]
+Found 69 errors in 22 files (checked 178 source files)
+
+[WARNING] Stashed changes conflicted with hook auto-fixes... Rolling back fixes...
+[INFO] Restored changes from C:\Users\FCumm\.cache\pre-commit\patch1761600395-16744.

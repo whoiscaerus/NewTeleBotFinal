@@ -25,6 +25,9 @@ class ApprovalService:
         user_id: str,
         decision: str,
         reason: str | None = None,
+        ip: str | None = None,
+        ua: str | None = None,
+        consent_version: int = 1,
     ) -> Approval:
         """Create approval record.
 
@@ -50,6 +53,9 @@ class ApprovalService:
                 user_id=user_id,
                 decision=1 if decision == "approved" else 0,
                 reason=reason,
+                ip=ip,
+                ua=ua,
+                consent_version=consent_version,
             )
 
             # Update signal status
@@ -59,6 +65,7 @@ class ApprovalService:
                 signal.status = SignalStatus.REJECTED.value
 
             self.db.add(approval)
+            self.db.add(signal)
             await self.db.commit()
             await self.db.refresh(approval)
 

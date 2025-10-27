@@ -1193,7 +1193,7 @@ backend/schedulers/
 ---
 
 
-# PR-023 — Device Registry & HMAC Secrets
+# PR-023a — Device Registry & HMAC Secrets
 
 **Goal**
 Let each client register one or more “devices” (their MT5 EA instances) and authenticate them via HMAC for server APIs.
@@ -1244,7 +1244,7 @@ backend/alembic/versions/0005_clients_devices.py
 
 ---
 
-# PR-024 — EA Poll/Ack API (HMAC, Nonce, Freshness)
+# PR-024a — EA Poll/Ack API (HMAC, Nonce, Freshness)
 
 **Goal**
 Let EAs poll for **their user’s approved signals**, and **acknowledge** execution results. Prevent replay with nonce + timestamp.
@@ -4017,5 +4017,3 @@ docs/feature_flags/nft_access.md
 * Internal staging wallet → mint entitlement → confirm gated endpoint allows; keep **feature flag OFF** in production.
 
 ---
-
-

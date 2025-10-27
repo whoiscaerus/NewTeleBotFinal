@@ -48,6 +48,8 @@ def upgrade() -> None:
         sa.Column("decision", sa.Integer(), nullable=False),
         sa.Column("consent_version", sa.Integer(), nullable=False),
         sa.Column("reason", sa.String(500), nullable=True),
+        sa.Column("ip", sa.String(45), nullable=True),
+        sa.Column("ua", sa.String(500), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(["signal_id"], ["signals.id"], ondelete="CASCADE"),

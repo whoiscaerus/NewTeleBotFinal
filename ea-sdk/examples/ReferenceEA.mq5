@@ -11,6 +11,7 @@
 #include "include/caerus_auth.mqh"
 #include "include/caerus_http.mqh"
 #include "include/caerus_models.mqh"
+#include "include/caerus_json.mqh"
 
 //+------------------------------------------------------------------+
 //| EA Inputs                                                        |
@@ -48,11 +49,11 @@ int OnInit()
     // Initialize authentication
     auth.Initialize(DEVICE_ID, DEVICE_SECRET, API_BASE);
 
-    // Create HTTP client
+    // Create HTTP client (pass auth object for per-request signing)
     if(http_client != NULL)
         delete http_client;
 
-    http_client = new CaerusHttpClient(API_BASE, auth.GetAuthHeader());
+    http_client = new CaerusHttpClient(API_BASE, auth);
 
     if(http_client == NULL)
     {
@@ -129,26 +130,327 @@ void PollForSignals()
 
 void ParsePollResponse(string json_response)
 {
-    // Placeholder: In production, use JSON parser library
-    // For now, set up test signals
+    /**
+     * Parse poll response from backend with full error handling.
+     *
+     * Expected JSON format:
+     * {
+     *   "signals": [
+     *     {
+     *       "id": "signal_001",
+     *       "instrument": "XAUUSD",
+     *       "side": 0,
+     *       "entry_price": 1950.50,
+     *       "stop_loss": 1940.50,
+     *       "take_profit": 1960.50,
+     *       "volume": 0.5,
+     *       "status": 0
+     *     }
+     *   ],
+     *   "count": 1,
+     *   "timestamp": "2025-10-26T10:30:45Z"
+     * }
+     *
+     * Handles:
+     * - Empty responses
+     * - Malformed JSON
+     * - Missing fields
+     * - Type errors
+     * - Array bounds
+     * - Invalid signal data
+     */
 
     pending_count = 0;
 
-    // Example: Create test signal
-    if(StringLen(json_response) > 0)
+    // === STEP 1: Validate Input ===
+    if(StringLen(json_response) == 0)
     {
-        ArrayResize(pending_signals, pending_count + 1);
-        pending_signals[pending_count].id = "signal_001";
-        pending_signals[pending_count].instrument = "XAUUSD";
-        pending_signals[pending_count].side = 0; // BUY
-        pending_signals[pending_count].entry_price = Ask;
-        pending_signals[pending_count].stop_loss = Ask - 20 * Point();
-        pending_signals[pending_count].take_profit = Ask + 30 * Point();
-        pending_signals[pending_count].volume = 0.5;
-        pending_signals[pending_count].status = 0; // pending
+        Print("[Caerus EA] ERROR: Empty poll response");
+        return;
+    }
+
+    if(StringLen(json_response) > 1000000)  // 1MB max
+    {
+        Print("[Caerus EA] ERROR: Response too large (", StringLen(json_response), " bytes)");
+        return;
+    }
+
+    // === STEP 2: Extract Signals Array with Error Handling ===
+    JSONException error;
+    string signals_array = JSONParser::GetArrayValue(json_response, "signals", error);
+
+    if(error.error_code != JSON_OK)
+    {
+        Print("[Caerus EA] ERROR: Failed to extract signals array: ", error.error_message, " at position ", error.error_position);
+        return;
+    }
+
+    if(StringLen(signals_array) == 0)
+    {
+        Print("[Caerus EA] WARNING: No signals array in response");
+        return;
+    }
+
+    // === STEP 3: Get Signal Count with Error Handling ===
+    int signal_count = JSONParser::GetArrayLength(signals_array, error);
+
+    if(error.error_code != JSON_OK)
+    {
+        Print("[Caerus EA] ERROR: Failed to count signals: ", error.error_message);
+        return;
+    }
+
+    if(signal_count == 0)
+    {
+        Print("[Caerus EA] INFO: Empty signals array (no pending approvals)");
+        return;
+    }
+
+    if(signal_count > 100)  // Safety limit
+    {
+        Print("[Caerus EA] ERROR: Too many signals (", signal_count, "), limit is 100");
+        return;
+    }
+
+    // === STEP 4: Resize Array ===
+    if(!ArrayResize(pending_signals, signal_count))
+    {
+        Print("[Caerus EA] ERROR: Failed to resize pending_signals array to ", signal_count);
+        return;
+    }
+
+    // === STEP 5: Parse Each Signal with Full Validation ===
+    int successfully_parsed = 0;
+
+    for(int i = 0; i < signal_count; i++)
+    {
+        // Extract signal object from array
+        string signal_json = JSONParser::GetArrayElement(signals_array, i, error);
+
+        if(error.error_code != JSON_OK)
+        {
+            Print("[Caerus EA] WARNING: Failed to extract signal[", i, "]: ", error.error_message);
+            continue;
+        }
+
+        if(StringLen(signal_json) == 0)
+        {
+            Print("[Caerus EA] WARNING: Empty signal object at index ", i);
+            continue;
+        }
+
+        // === Parse ID (required) ===
+        string signal_id = JSONParser::GetStringValue(signal_json, "id", error);
+        if(error.error_code != JSON_OK)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] missing/invalid id: ", error.error_message);
+            continue;
+        }
+
+        if(StringLen(signal_id) == 0)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] has empty id");
+            continue;
+        }
+
+        // === Parse Instrument (required) ===
+        string instrument = JSONParser::GetStringValue(signal_json, "instrument", error);
+        if(error.error_code != JSON_OK)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] missing/invalid instrument: ", error.error_message);
+            continue;
+        }
+
+        if(StringLen(instrument) == 0)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] has empty instrument");
+            continue;
+        }
+
+        // Validate instrument is known
+        if(!IsValidInstrument(instrument))
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] has unknown instrument: ", instrument);
+            continue;
+        }
+
+        // === Parse Side (required, 0=buy, 1=sell) ===
+        double side_value = JSONParser::GetNumberValue(signal_json, "side", error);
+        if(error.error_code != JSON_OK)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] missing/invalid side: ", error.error_message);
+            continue;
+        }
+
+        int side = (int)side_value;
+        if(side != 0 && side != 1)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] invalid side (expected 0/1, got ", side, ")");
+            continue;
+        }
+
+        // === Parse Entry Price (required, must be positive) ===
+        double entry_price = JSONParser::GetNumberValue(signal_json, "entry_price", error);
+        if(error.error_code != JSON_OK)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] missing/invalid entry_price: ", error.error_message);
+            continue;
+        }
+
+        if(entry_price <= 0)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] invalid entry_price: ", entry_price);
+            continue;
+        }
+
+        // === Parse Stop Loss (required, must be valid) ===
+        double stop_loss = JSONParser::GetNumberValue(signal_json, "stop_loss", error);
+        if(error.error_code != JSON_OK)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] missing/invalid stop_loss: ", error.error_message);
+            continue;
+        }
+
+        if(stop_loss <= 0)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] invalid stop_loss: ", stop_loss);
+            continue;
+        }
+
+        // Validate SL is on correct side
+        if(side == 0 && stop_loss >= entry_price)  // BUY: SL must be below entry
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] BUY SL must be below entry. Entry=", entry_price, ", SL=", stop_loss);
+            continue;
+        }
+
+        if(side == 1 && stop_loss <= entry_price)  // SELL: SL must be above entry
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] SELL SL must be above entry. Entry=", entry_price, ", SL=", stop_loss);
+            continue;
+        }
+
+        // === Parse Take Profit (required, must be valid) ===
+        double take_profit = JSONParser::GetNumberValue(signal_json, "take_profit", error);
+        if(error.error_code != JSON_OK)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] missing/invalid take_profit: ", error.error_message);
+            continue;
+        }
+
+        if(take_profit <= 0)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] invalid take_profit: ", take_profit);
+            continue;
+        }
+
+        // Validate TP is on correct side
+        if(side == 0 && take_profit <= entry_price)  // BUY: TP must be above entry
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] BUY TP must be above entry. Entry=", entry_price, ", TP=", take_profit);
+            continue;
+        }
+
+        if(side == 1 && take_profit >= entry_price)  // SELL: TP must be below entry
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] SELL TP must be below entry. Entry=", entry_price, ", TP=", take_profit);
+            continue;
+        }
+
+        // === Parse Volume (required, must be positive) ===
+        double volume = JSONParser::GetNumberValue(signal_json, "volume", error);
+        if(error.error_code != JSON_OK)
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] missing/invalid volume: ", error.error_message);
+            continue;
+        }
+
+        if(volume <= 0 || volume > 100)  // Reasonable range
+        {
+            Print("[Caerus EA] WARNING: Signal[", i, "] invalid volume: ", volume);
+            continue;
+        }
+
+        // === Parse Status (optional, default 0) ===
+        double status_value = JSONParser::GetNumberValue(signal_json, "status", error);
+        int status = (int)status_value;
+        // Status errors are non-fatal
+
+        // === All validation passed - store signal ===
+        pending_signals[i].id = signal_id;
+        pending_signals[i].instrument = instrument;
+        pending_signals[i].side = side;
+        pending_signals[i].entry_price = entry_price;
+        pending_signals[i].stop_loss = stop_loss;
+        pending_signals[i].take_profit = take_profit;
+        pending_signals[i].volume = volume;
+        pending_signals[i].status = status;
+
+        successfully_parsed++;
+
+        // Log successful parse with all details
+        Print(
+            "[Caerus EA] ✓ Parsed signal[", i, "]: ",
+            "ID=", signal_id, " ",
+            "Instrument=", instrument, " ",
+            "Side=", (side == 0 ? "BUY" : "SELL"), " ",
+            "Entry=", DoubleToString(entry_price, 5), " ",
+            "SL=", DoubleToString(stop_loss, 5), " ",
+            "TP=", DoubleToString(take_profit, 5), " ",
+            "Volume=", DoubleToString(volume, 2)
+        );
+    }
+
+    // === STEP 6: Summary ===
+    Print("[Caerus EA] Poll parsing complete: ", successfully_parsed, "/", signal_count, " signals valid");
+
+    if(successfully_parsed > 0)
+    {
+        pending_count = successfully_parsed;
+        Print("[Caerus EA] Ready to process ", pending_count, " pending approvals");
+    }
+    else
+    {
+        Print("[Caerus EA] No valid signals to process");
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Validate Instrument is Known                                    |
+//+------------------------------------------------------------------+
+
+bool IsValidInstrument(string instrument)
+{
+    // List of valid instruments on MT5
+    string valid_instruments[] = {
+        "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD",
+        "NZDUSD", "USDCHF", "XAUUSD", "XAGUSD", "BRENT",
+        "XPTUSD", "XPDUSD", "US30", "DE30", "FR40",
+        "BTCUSD", "ETHUSD", "AAPL", "MSFT", "GOOGL",
+        "AMZN", "TSLA", "SPY", "QQQ", "IWM"
+    };
+
+    for(int i = 0; i < ArraySize(valid_instruments); i++)
+    {
+        if(instrument == valid_instruments[i])
+            return true;
+    }
+
+    return false;
+}
+            pending_signals[i].id,
+            " ",
+            pending_signals[i].instrument,
+            " ",
+            (pending_signals[i].side == 0 ? "BUY" : "SELL"),
+            " @ ",
+            DoubleToString(pending_signals[i].entry_price, 2)
+        );
 
         pending_count++;
     }
+
+    Print("[Caerus EA] Successfully parsed ", pending_count, " signals");
 }
 
 //+------------------------------------------------------------------+
