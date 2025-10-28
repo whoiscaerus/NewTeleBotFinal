@@ -99,7 +99,7 @@ class ClicksStore:
             # Record telemetry
             get_metrics().marketing_clicks_total.inc()
 
-            return click.id
+            return str(click.id)
 
         except Exception as e:
             self.logger.error(

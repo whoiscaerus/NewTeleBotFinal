@@ -23,7 +23,7 @@ Example:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 import redis
@@ -126,7 +126,7 @@ class StripeWebhookHandler:
                 # Record idempotent hit metric
                 event_type = event_data.get("type", "unknown")
                 metrics.record_idempotent_hit(event_type)
-                return cached_result
+                return cast(dict[str, Any], cached_result)
 
             # Parse verified event
             event = event_data
@@ -209,7 +209,7 @@ class StripeWebhookHandler:
                     extra={"user_id": user_id, "plan_code": plan_code},
                 )
 
-            return result
+            return cast(dict[str, Any], result)
 
         except Exception as e:
             self.logger.error(
@@ -258,7 +258,7 @@ class StripeWebhookHandler:
                     },
                 )
 
-            return result
+            return cast(dict[str, Any], result)
 
         except Exception as e:
             self.logger.error(
@@ -305,7 +305,7 @@ class StripeWebhookHandler:
                     },
                 )
 
-            return result
+            return cast(dict[str, Any], result)
 
         except Exception as e:
             self.logger.error(

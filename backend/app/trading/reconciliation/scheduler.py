@@ -6,6 +6,7 @@ Runs every 10 seconds with circuit breaker and error tracking.
 
 import asyncio
 from datetime import UTC, datetime
+from typing import Any, cast
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -153,7 +154,7 @@ class ReconciliationScheduler:
                 )
             )
             result = await db.execute(stmt)
-            users = result.scalars().all()
+            users = list(result.scalars().all())
 
             return users
 
@@ -161,7 +162,7 @@ class ReconciliationScheduler:
             logger.error(f"Failed to get active users: {e}", exc_info=True)
             return []
 
-    async def _sync_user_with_error_handling(self, user: User) -> dict:
+    async def _sync_user_with_error_handling(self, user: User) -> dict[str, Any]:
         """Sync positions for a single user with error handling.
 
         Args:
@@ -173,6 +174,9 @@ class ReconciliationScheduler:
         async with self.db_factory() as db:
             try:
                 result = await run_reconciliation_sync(db, self.mt5, user)
+
+                if not isinstance(result, dict):
+                    result = {}
 
                 if result.get("errors"):
                     logger.warning(
@@ -191,7 +195,7 @@ class ReconciliationScheduler:
                         },
                     )
 
-                return result
+                return cast(dict[str, Any], result)
 
             except Exception as e:
                 logger.error(

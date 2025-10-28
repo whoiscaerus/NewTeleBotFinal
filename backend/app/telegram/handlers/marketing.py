@@ -60,7 +60,7 @@ class MarketingHandler:
             TelegramBroadcast.end_time >= now,
         )
         result = await self.db.execute(query)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def _get_broadcast_by_id(self, broadcast_id: str) -> TelegramBroadcast | None:
         """Fetch specific broadcast campaign.

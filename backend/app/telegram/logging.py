@@ -210,6 +210,14 @@ class DistributionAuditLogger:
             result = await self.db_session.execute(stmt)
             row = result.first()
 
+            if not row:
+                return {
+                    "total_distributions": 0,
+                    "total_messages_sent": 0,
+                    "total_messages_failed": 0,
+                    "success_rate": 0,
+                }
+
             return {
                 "total_distributions": row[0] or 0,
                 "total_messages_sent": row[1] or 0,

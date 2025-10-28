@@ -20,7 +20,6 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Bot
 from telegram.constants import ParseMode
-from telegram.error import TelegramError
 
 from backend.app.observability.metrics import get_metrics
 
@@ -251,7 +250,7 @@ class ContentDistributor:
                         )
 
                         result_entry = {
-                            "chat_id": chat_id,
+                            "chat_id": str(chat_id),
                             "message_id": message.message_id,
                             "success": True,
                         }
@@ -262,7 +261,7 @@ class ContentDistributor:
                             "Message sent successfully",
                             extra={
                                 "distribution_id": distribution_id,
-                                "chat_id": chat_id,
+                                "chat_id": str(chat_id),
                                 "message_id": message.message_id,
                                 "keyword": keyword,
                             },
@@ -273,28 +272,9 @@ class ContentDistributor:
                             channel=keyword
                         ).inc()
 
-                    except TelegramError as e:
-                        result_entry = {
-                            "chat_id": chat_id,
-                            "error": str(e),
-                            "success": False,
-                        }
-                        results[keyword].append(result_entry)
-                        messages_failed += 1
-
-                        self.logger.error(
-                            "Failed to send message",
-                            extra={
-                                "distribution_id": distribution_id,
-                                "chat_id": chat_id,
-                                "keyword": keyword,
-                                "error": str(e),
-                            },
-                        )
-
                     except Exception as e:
                         result_entry = {
-                            "chat_id": chat_id,
+                            "chat_id": str(chat_id),
                             "error": str(e),
                             "success": False,
                         }
@@ -305,10 +285,10 @@ class ContentDistributor:
                             "Unexpected error sending message",
                             extra={
                                 "distribution_id": distribution_id,
-                                "chat_id": chat_id,
+                                "chat_id": str(chat_id),
                                 "keyword": keyword,
+                                "error": str(e),
                             },
-                            exc_info=True,
                         )
 
             # Log to DB if session provided

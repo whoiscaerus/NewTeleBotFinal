@@ -70,7 +70,7 @@ class GuideHandler:
             TelegramGuide.is_active,
         )
         result = await self.db.execute(query)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def _get_guide_by_id(self, guide_id: str) -> TelegramGuide | None:
         """Fetch specific guide.

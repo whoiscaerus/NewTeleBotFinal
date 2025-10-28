@@ -176,6 +176,7 @@ class WebhookReplayProtection:
             Result dict if found, None otherwise
         """
         import json
+        from typing import cast
 
         cache_key = f"{WEBHOOK_IDEMPOTENCY_KEY_PREFIX}{event_id}"
 
@@ -183,7 +184,8 @@ class WebhookReplayProtection:
             result = self.redis.get(cache_key)
             if result:
                 logger.info(f"Returning cached result for {event_id}")
-                return json.loads(result)
+                cached_str = cast(str | bytes | bytearray, result)
+                return cast(dict[str, Any], json.loads(cached_str))
             return None
         except Exception as e:
             logger.error(f"Error retrieving idempotent result: {e}", exc_info=True)

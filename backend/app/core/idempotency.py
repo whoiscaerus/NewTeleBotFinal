@@ -17,7 +17,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any
+from typing import Any, cast
 
 import redis
 from pydantic import BaseModel, Field
@@ -108,7 +108,8 @@ class IdempotencyHandler:
             cached = self.redis.get(f"idempotency:{key}")
             if cached:
                 logger.info(f"Idempotency hit for key: {key}")
-                return json.loads(cached)
+                cached_str = cast(str | bytes | bytearray, cached)
+                return cast(dict[str, Any], json.loads(cached_str))
         except Exception as e:
             logger.warning(f"Error retrieving cached idempotency: {e}")
 
@@ -176,7 +177,7 @@ class IdempotencyHandler:
             # Cache for future retries
             await self.set_cached(key, response)
 
-            return response
+            return cast(dict[str, Any], response)
 
         except Exception as e:
             logger.error(f"Idempotent processing failed: {e}", exc_info=True)

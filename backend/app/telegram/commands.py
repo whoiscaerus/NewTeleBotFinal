@@ -36,7 +36,7 @@ class CommandInfo:
     required_role: UserRole
     handler: Callable
     help_text: str
-    aliases: list[str] = None
+    aliases: list[str] | None = None
     hidden: bool = False
 
     def __post_init__(self):
@@ -81,7 +81,7 @@ class CommandRegistry:
         required_role: UserRole,
         handler: Callable,
         help_text: str,
-        aliases: list[str] = None,
+        aliases: list[str] | None = None,
         hidden: bool = False,
     ) -> None:
         """Register a command.
@@ -131,14 +131,15 @@ class CommandRegistry:
         self.commands[name] = command_info
 
         # Register aliases
-        for alias in command_info.aliases:
-            if alias in self._alias_map:
-                raise ValueError(f"Alias '{alias}' already mapped to command")
-            self._alias_map[alias] = name
+        if command_info.aliases:
+            for alias in command_info.aliases:
+                if alias in self._alias_map:
+                    raise ValueError(f"Alias '{alias}' already mapped to command")
+                self._alias_map[alias] = name
 
         logger.debug(
             f"Command registered: {name}",
-            extra={"role": required_role, "aliases": len(command_info.aliases)},
+            extra={"role": required_role, "aliases": len(command_info.aliases or [])},
         )
 
     def get_command(self, name: str) -> CommandInfo | None:

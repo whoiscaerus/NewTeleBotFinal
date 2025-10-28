@@ -243,7 +243,7 @@ class ReconciliationQueryService:
             )
 
             result = await db.execute(query)
-            return result.scalars().all()
+            return list(result.scalars().all())
 
         except Exception as e:
             logger.error(

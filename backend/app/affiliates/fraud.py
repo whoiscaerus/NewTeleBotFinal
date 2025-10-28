@@ -256,7 +256,7 @@ class FraudDetectionService:
             },
         )
 
-        return audit_entry.id
+        return str(audit_entry.id)
 
 
 async def validate_referral_before_commission(

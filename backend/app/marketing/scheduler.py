@@ -283,8 +283,9 @@ class MarketingScheduler:
                 failed=failed,
                 created_at=datetime.utcnow(),
             )
-            self.db_session.add(log_entry)
-            await self.db_session.commit()
+            if self.db_session is not None:
+                self.db_session.add(log_entry)
+                await self.db_session.commit()
 
             self.logger.debug("Promo event logged", extra={"promo_id": promo_id})
 

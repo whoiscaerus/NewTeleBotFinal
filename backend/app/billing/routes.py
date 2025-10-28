@@ -1,6 +1,7 @@
 """Billing API routes for checkout and portal access."""
 
 import logging
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -282,7 +283,7 @@ async def get_subscription_miniapp(
             },
         )
 
-        return subscription
+        return cast(dict, subscription)
 
     except Exception as e:
         logger.error(
@@ -358,7 +359,7 @@ async def get_invoices(
             },
         )
 
-        return invoices
+        return cast(list[dict], invoices)
 
     except Exception as e:
         logger.error(

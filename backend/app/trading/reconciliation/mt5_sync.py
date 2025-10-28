@@ -7,6 +7,7 @@ This service runs every 10 seconds to ensure real-time account reconciliation.
 """
 
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -190,7 +191,7 @@ class MT5SyncService:
             )
             return None
 
-    async def sync_positions_for_user(self, user_id: str, user: User) -> dict:
+    async def sync_positions_for_user(self, user_id: str, user: User) -> dict[str, Any]:
         """Sync all positions for a specific user.
 
         Compares MT5 positions to bot's expected trades, records divergences,
@@ -209,7 +210,7 @@ class MT5SyncService:
                 'errors': list[str],
             }
         """
-        result = {
+        result: dict[str, Any] = {
             "matched_count": 0,
             "divergences_count": 0,
             "new_positions_count": 0,
@@ -232,7 +233,7 @@ class MT5SyncService:
                 )
             )
             result_trades = await self.db.execute(stmt)
-            bot_trades = result_trades.scalars().all()
+            bot_trades = list(result_trades.scalars().all())
 
             logger.info(
                 "Loaded bot trades for sync",
@@ -244,7 +245,7 @@ class MT5SyncService:
             )
 
             # 3. Create tracking sets
-            matched_bot_trades = set()
+            matched_bot_trades: set[str] = set()
 
             # 4. Match MT5 positions to bot trades
             for mt5_pos in snapshot.positions:
@@ -319,8 +320,8 @@ class MT5SyncService:
     def _find_matching_trade(
         self,
         mt5_pos: MT5Position,
-        bot_trades: list,
-        matched_trades: set,
+        bot_trades: list[Trade],
+        matched_trades: set[str],
     ) -> Trade | None:
         """Find a bot trade matching the MT5 position.
 

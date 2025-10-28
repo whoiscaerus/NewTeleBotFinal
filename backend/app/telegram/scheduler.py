@@ -94,7 +94,7 @@ class GuideScheduler:
         self.db_session = db_session
         self.logger = logger
         self.scheduler = AsyncIOScheduler()
-        self.is_running = False
+        self._is_running = False
         self.last_guide_index = 0
 
     def start(self) -> None:
@@ -107,7 +107,7 @@ class GuideScheduler:
             >>> scheduler.start()
             >>> print("Scheduler started")
         """
-        if self.is_running:
+        if self.is_running():
             self.logger.warning("Scheduler already running")
             return
 
@@ -123,7 +123,7 @@ class GuideScheduler:
 
             # Start scheduler
             self.scheduler.start()
-            self.is_running = True
+            self._is_running = True
 
             self.logger.info(
                 "Guide scheduler started",
@@ -148,12 +148,12 @@ class GuideScheduler:
             >>> scheduler.stop()
             >>> print("Scheduler stopped")
         """
-        if not self.is_running:
+        if not self.is_running():
             return
 
         try:
             self.scheduler.shutdown()
-            self.is_running = False
+            self._is_running = False
             self.logger.info("Guide scheduler stopped")
         except Exception as e:
             self.logger.error(
@@ -282,8 +282,9 @@ class GuideScheduler:
                 failed=failed,
                 created_at=datetime.utcnow(),
             )
-            self.db_session.add(log_entry)
-            await self.db_session.commit()
+            if self.db_session:
+                self.db_session.add(log_entry)
+                await self.db_session.commit()
 
             self.logger.debug("Schedule event logged", extra={"guide_id": guide_id})
 
@@ -300,7 +301,7 @@ class GuideScheduler:
         Returns:
             True if running, False otherwise.
         """
-        return self.is_running
+        return self._is_running
 
     def get_next_run_time(self) -> datetime | None:
         """Get the next scheduled run time.

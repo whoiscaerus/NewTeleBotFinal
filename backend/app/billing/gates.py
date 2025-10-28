@@ -7,6 +7,7 @@ across API endpoints and protect premium features.
 import json
 import logging
 from collections.abc import Callable
+from typing import cast
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -184,7 +185,7 @@ async def check_entitlement_sync(
     """
     try:
         service = EntitlementService(db)
-        return await service.has_entitlement(user_id, required_entitlement)
+        return cast(bool, await service.has_entitlement(user_id, required_entitlement))
     except Exception as e:
         logger.error(
             f"Error checking entitlement for {user_id}: {e}",

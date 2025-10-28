@@ -47,7 +47,7 @@ async def init_redis(redis_url: str) -> Any | None:
             logger.warning("aioredis not installed - caching disabled")
             return None
 
-        _redis_client = await aioredis.create_redis_pool(redis_url, encoding="utf8")
+        _redis_client = await aioredis.create_redis_pool(redis_url, encoding="utf8")  # type: ignore
         logger.info("Redis cache initialized successfully", extra={"url": redis_url})
         return _redis_client
     except Exception as e:
@@ -91,7 +91,7 @@ def cache_key(prefix: str, *args, **kwargs) -> str:
     for arg in args:
         if isinstance(arg, UUID):
             key_parts.append(str(arg))
-        elif isinstance(arg, (str, int, float, bool)):
+        elif isinstance(arg, str | int | float | bool):
             key_parts.append(str(arg))
         elif arg is None:
             key_parts.append("none")
@@ -101,7 +101,7 @@ def cache_key(prefix: str, *args, **kwargs) -> str:
         v = kwargs[k]
         if isinstance(v, UUID):
             key_parts.append(f"{k}:{str(v)}")
-        elif isinstance(v, (str, int, float, bool)):
+        elif isinstance(v, str | int | float | bool):
             key_parts.append(f"{k}:{str(v)}")
         elif v is None:
             key_parts.append(f"{k}:none")

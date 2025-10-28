@@ -19,11 +19,11 @@ except Exception:
     import pandas as pd
 
 try:
-    from PIL import Image
+    from PIL import Image as PILImage
 
     _HAS_PIL = True
 except Exception:
-    Image = None  # type: ignore
+    PILImage = None  # type: ignore
     _HAS_PIL = False
 
 
@@ -123,9 +123,9 @@ class ChartRenderer:
         # If matplotlib is not available, generate a simple placeholder PNG
         if not _HAS_MATPLOTLIB:
             logger.warning("matplotlib not available; returning placeholder image")
-            if _HAS_PIL and Image is not None:
+            if _HAS_PIL and PILImage is not None:
                 buffer = io.BytesIO()
-                img = Image.new("RGB", (width, height), color=(255, 255, 255))
+                img = PILImage.new("RGB", (width, height), color=(255, 255, 255))
                 img.save(buffer, format="PNG")
                 png_clean = buffer.getvalue()
             else:
@@ -257,9 +257,9 @@ class ChartRenderer:
 
         if not _HAS_MATPLOTLIB:
             logger.warning("matplotlib not available; returning placeholder equity PNG")
-            if _HAS_PIL and Image is not None:
+            if _HAS_PIL and PILImage is not None:
                 buffer = io.BytesIO()
-                img = Image.new("RGB", (width, height), color=(255, 255, 255))
+                img = PILImage.new("RGB", (width, height), color=(255, 255, 255))
                 img.save(buffer, format="PNG")
                 png_clean = buffer.getvalue()
             else:
@@ -394,7 +394,14 @@ class ChartRenderer:
                 _get_metrics().media_cache_hits_total.labels(type="histogram").inc()
             except Exception:
                 pass
-            return cached_img
+            return cast(
+                bytes,
+                (
+                    bytes(cached_img)
+                    if isinstance(cached_img, bytes | bytearray)
+                    else cached_img
+                ),
+            )
 
         try:
             # Validate input
@@ -481,10 +488,10 @@ class ChartRenderer:
         """
         try:
             # Load image, remove metadata, save clean
-            img = Image.open(io.BytesIO(png_bytes))
+            img = PILImage.open(io.BytesIO(png_bytes))
             # Remove metadata by creating new image
             data = list(img.getdata())
-            img_clean = Image.new(img.mode, img.size)
+            img_clean = PILImage.new(img.mode, img.size)
             img_clean.putdata(data)
 
             # Save without metadata
