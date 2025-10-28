@@ -12,7 +12,6 @@ All suspicions logged to audit log for manual review.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,13 +49,6 @@ class FraudDetectionService:
         """
         # Query: does referee have any payments/trades from same user
         # (This catches users creating multiple accounts to refer themselves)
-
-        stmt = select(Trade).where(
-            and_(
-                Trade.user_id == referee_id,
-                # Check if this referee's first payment matches referrer's history
-            )
-        )
 
         # For self-referral: check if referrer_id appears in referee's account setup
         # Simple heuristic: if same email domain and within 5 minutes, flag it
@@ -271,7 +263,7 @@ async def validate_referral_before_commission(
     db: AsyncSession,
     referrer_id: str,
     referee_id: str,
-) -> tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """
     Comprehensive validation before recording commission.
 

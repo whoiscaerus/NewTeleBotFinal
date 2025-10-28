@@ -11,7 +11,6 @@ Created: October 2024
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +105,7 @@ class DrawdownGuard:
         self.warning_threshold_pct = warning_threshold_pct
         self.min_equity_gbp = min_equity_gbp
         self.warning_seconds = warning_seconds
-        self.triggered_at: Optional[datetime] = None
+        self.triggered_at: datetime | None = None
 
         logger.info(
             "DrawdownGuard initialized",
@@ -119,7 +118,7 @@ class DrawdownGuard:
 
     async def check_drawdown(
         self, current_equity: float, peak_equity: float, user_id: str
-    ) -> Optional[DrawdownAlertData]:
+    ) -> DrawdownAlertData | None:
         """
         Check current drawdown and return alert if threshold exceeded.
 
@@ -325,7 +324,7 @@ class DrawdownGuard:
 
 
 # Global instance (lazy-loaded)
-_drawdown_guard: Optional[DrawdownGuard] = None
+_drawdown_guard: DrawdownGuard | None = None
 
 
 def get_drawdown_guard(

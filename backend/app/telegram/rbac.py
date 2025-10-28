@@ -14,7 +14,7 @@ from backend.app.telegram.models import TelegramUser
 logger = logging.getLogger(__name__)
 
 
-async def get_user_role(user_id: str, db: AsyncSession) -> Optional[UserRole]:
+async def get_user_role(user_id: str, db: AsyncSession) -> UserRole | None:
     """Get user's role from database.
 
     Looks up user in database and returns their assigned role.
@@ -312,8 +312,8 @@ class RoleMiddleware:
 
 
 async def get_public_user(
-    user_id: str, db: AsyncSession = Depends(get_db)
-) -> Optional[TelegramUser]:
+    user_id: str, db: AsyncSession = Depends(get_db)  # noqa: B008
+) -> TelegramUser | None:
     """FastAPI dependency to verify public user access.
 
     Args:
@@ -333,8 +333,8 @@ async def get_public_user(
 
 
 async def get_subscriber_user(
-    user_id: str, db: AsyncSession = Depends(get_db)
-) -> Optional[TelegramUser]:
+    user_id: str, db: AsyncSession = Depends(get_db)  # noqa: B008
+) -> TelegramUser | None:
     """FastAPI dependency to verify subscriber access.
 
     Args:
@@ -354,8 +354,8 @@ async def get_subscriber_user(
 
 
 async def get_admin_user(
-    user_id: str, db: AsyncSession = Depends(get_db)
-) -> Optional[TelegramUser]:
+    user_id: str, db: AsyncSession = Depends(get_db)  # noqa: B008
+) -> TelegramUser | None:
     """FastAPI dependency to verify admin access.
 
     Args:
@@ -375,8 +375,8 @@ async def get_admin_user(
 
 
 async def get_owner_user(
-    user_id: str, db: AsyncSession = Depends(get_db)
-) -> Optional[TelegramUser]:
+    user_id: str, db: AsyncSession = Depends(get_db)  # noqa: B008
+) -> TelegramUser | None:
     """FastAPI dependency to verify owner access.
 
     Args:

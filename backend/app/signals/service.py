@@ -256,7 +256,7 @@ class SignalService:
 
         except Exception as e:
             logger.error(f"Signal listing failed: {e}")
-            raise APIError(
+            raise APIException(
                 status_code=500,
                 code="SIGNAL_LIST_ERROR",
                 message="Failed to list signals",
@@ -302,7 +302,7 @@ class SignalService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Status update failed: {e}", exc_info=True)
-            raise APIError(
+            raise APIException(
                 status_code=500,
                 code="SIGNAL_UPDATE_ERROR",
                 message="Failed to update signal",

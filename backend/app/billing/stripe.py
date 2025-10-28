@@ -18,7 +18,7 @@ Example:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import stripe
@@ -44,7 +44,7 @@ class StripePaymentHandler:
         self,
         secret_key: str,
         webhook_secret: str,
-        price_map: Optional[dict[str, int]] = None,
+        price_map: dict[str, int] | None = None,
     ):
         """Initialize Stripe payment handler.
 
@@ -70,7 +70,7 @@ class StripePaymentHandler:
         plan_code: str,
         success_url: str,
         cancel_url: str,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> stripe.checkout.Session:
         """Create a Stripe checkout session for subscription.
 

@@ -6,7 +6,7 @@ logging success/failure of each message sent to each group.
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class DistributionAuditLogger:
     """Audit logger for content distributions."""
 
-    def __init__(self, db_session: Optional[AsyncSession] = None):
+    def __init__(self, db_session: AsyncSession | None = None):
         """Initialize the audit logger.
 
         Args:
@@ -99,7 +99,7 @@ class DistributionAuditLogger:
     async def get_distribution_log(
         self,
         distribution_id: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Retrieve a distribution log by ID.
 
         Args:

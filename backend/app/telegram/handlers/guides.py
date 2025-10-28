@@ -1,7 +1,6 @@
 """Guide/tutorial content delivery via Telegram inline keyboards."""
 
 import logging
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
@@ -44,7 +43,7 @@ class GuideHandler:
         self.db = db
         self.bot_token = settings.TELEGRAM_BOT_TOKEN
 
-    async def _get_user(self, user_id: str) -> Optional[TelegramUser]:
+    async def _get_user(self, user_id: str) -> TelegramUser | None:
         """Fetch user from database.
 
         Args:
@@ -68,12 +67,12 @@ class GuideHandler:
         """
         query = select(TelegramGuide).where(
             TelegramGuide.category == category,
-            TelegramGuide.is_active == True,
+            TelegramGuide.is_active,
         )
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    async def _get_guide_by_id(self, guide_id: str) -> Optional[TelegramGuide]:
+    async def _get_guide_by_id(self, guide_id: str) -> TelegramGuide | None:
         """Fetch specific guide.
 
         Args:

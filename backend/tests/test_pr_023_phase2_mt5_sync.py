@@ -440,7 +440,7 @@ class TestReconciliationScheduler:
 
     async def test_scheduler_initialization(self, scheduler):
         """Test scheduler initializes correctly."""
-        assert scheduler.is_running == False
+        assert not scheduler.is_running
         assert scheduler.sync_count == 0
         assert scheduler.error_count == 0
 
@@ -459,7 +459,7 @@ class TestReconciliationScheduler:
         scheduler.is_running = True
         await scheduler.stop()
 
-        assert scheduler.is_running == False
+        assert not scheduler.is_running
 
 
 # ============================================================================

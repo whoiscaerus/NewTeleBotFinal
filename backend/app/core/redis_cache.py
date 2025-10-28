@@ -17,7 +17,7 @@ import json
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -25,10 +25,10 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 # Global Redis client (initialized at app startup if available)
-_redis_client: Optional[Any] = None
+_redis_client: Any | None = None
 
 
-async def init_redis(redis_url: str) -> Optional[Any]:
+async def init_redis(redis_url: str) -> Any | None:
     """
     Initialize Redis client for caching.
 
@@ -68,7 +68,7 @@ async def close_redis():
         _redis_client = None
 
 
-def get_redis_client() -> Optional[Any]:
+def get_redis_client() -> Any | None:
     """Get global Redis client."""
     return _redis_client
 
@@ -109,7 +109,7 @@ def cache_key(prefix: str, *args, **kwargs) -> str:
     return ":".join(key_parts)
 
 
-async def get_cached(key: str, ttl_seconds: int = 300) -> Optional[Any]:
+async def get_cached(key: str, ttl_seconds: int = 300) -> Any | None:
     """
     Get value from Redis cache.
 
@@ -223,7 +223,7 @@ async def invalidate_pattern(pattern: str) -> int:
 def cached(
     prefix: str,
     ttl_seconds: int = 300,
-    key_builder: Optional[Callable] = None,
+    key_builder: Callable | None = None,
 ):
     """
     Decorator for caching async function results in Redis.
@@ -292,7 +292,7 @@ def get_reconciliation_cache_key(user_id: UUID) -> str:
     return f"reconciliation:user:{str(user_id)}:status"
 
 
-def get_positions_cache_key(user_id: UUID, symbol: Optional[str] = None) -> str:
+def get_positions_cache_key(user_id: UUID, symbol: str | None = None) -> str:
     """Get cache key for open positions."""
     symbol_part = symbol or "all"
     return f"positions:user:{str(user_id)}:{symbol_part}"
@@ -338,9 +338,7 @@ async def invalidate_reconciliation_cache(user_id: UUID) -> bool:
     return await invalidate_cache(key)
 
 
-async def invalidate_positions_cache(
-    user_id: UUID, symbol: Optional[str] = None
-) -> bool:
+async def invalidate_positions_cache(user_id: UUID, symbol: str | None = None) -> bool:
     """Invalidate positions cache for user."""
     key = get_positions_cache_key(user_id, symbol)
     return await invalidate_cache(key)

@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 @router.get("/{approval_id}", response_model=AggregateExecutionStatus)
 async def query_approval_executions(
     approval_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "owner")),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(require_roles("admin", "owner")),  # noqa: B008
 ) -> AggregateExecutionStatus:
     """
     Get aggregated execution status for an approval.
@@ -96,8 +96,8 @@ async def query_approval_executions(
 @router.get("/device/{device_id}/executions", response_model=list[ExecutionOut])
 async def query_device_executions(
     device_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "owner")),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(require_roles("admin", "owner")),  # noqa: B008
     limit: int = 100,
 ) -> list[ExecutionOut]:
     """
@@ -159,8 +159,8 @@ async def query_device_executions(
 @router.get("/device/{device_id}/success-rate", response_model=dict)
 async def query_device_success_rate(
     device_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "owner")),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(require_roles("admin", "owner")),  # noqa: B008
     hours: int = 24,
 ) -> dict:
     """

@@ -497,7 +497,6 @@ class TestAckSpecificSecurity:
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         # Use different body than what was signed
-        tampered_body = f'{{"approval_id":"{approval.id}","status":"failed"}}'
 
         response = await client.post(
             "/api/v1/client/ack",

@@ -7,7 +7,7 @@ Tests HMAC secret generation, hashing, uniqueness, and replay attack prevention.
 import base64
 import hashlib
 import hmac
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -122,8 +122,6 @@ class TestHMACKeyGeneration:
             test_client.id,
             "Device",
         )
-
-        first_secret = secret
 
         # Retrieve device again
         from sqlalchemy import select
@@ -362,9 +360,6 @@ class TestReplayAttackPrevention:
         # Nonce validation depends on Redis implementation
         # Here we test the concept
 
-        nonce1 = "nonce_123456"
-        nonce2 = "nonce_123456"
-
         # First use should succeed
         # Second use of same nonce should fail
         # This would be implemented in auth middleware
@@ -376,10 +371,6 @@ class TestReplayAttackPrevention:
         """Test timestamp must be fresh (not stale)."""
         # Timestamp validation: reject if > 5 minutes old
 
-        current_time = datetime.utcnow()
-        fresh_time = current_time
-        stale_time = current_time - timedelta(minutes=10)
-
         # Fresh timestamp should pass
         # Stale timestamp should fail
 
@@ -388,8 +379,6 @@ class TestReplayAttackPrevention:
         db_session: AsyncSession,
     ):
         """Test timestamp cannot be in future."""
-        current_time = datetime.utcnow()
-        future_time = current_time + timedelta(minutes=10)
 
         # Future timestamp should be rejected
 

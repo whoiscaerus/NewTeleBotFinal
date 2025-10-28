@@ -8,7 +8,6 @@ Schemas for:
 """
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, validator
@@ -118,10 +117,10 @@ class AckRequest(BaseModel):
     status: str = Field(
         ..., pattern="^(placed|failed)$", description="Execution outcome"
     )
-    broker_ticket: Optional[str] = Field(
+    broker_ticket: str | None = Field(
         default=None, max_length=128, description="Broker order ticket if placed"
     )
-    error: Optional[str] = Field(
+    error: str | None = Field(
         default=None, max_length=1024, description="Error message if failed"
     )
 
@@ -175,8 +174,8 @@ class ExecutionOut(BaseModel):
     approval_id: UUID
     device_id: UUID
     status: str
-    broker_ticket: Optional[str]
-    error: Optional[str]
+    broker_ticket: str | None
+    error: str | None
     created_at: datetime
     updated_at: datetime
 

@@ -16,7 +16,6 @@ Date: 2024-10-26
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import and_, desc, func, select
@@ -262,7 +261,7 @@ class PositionQueryService:
     async def get_open_positions(
         db: AsyncSession,
         user_id: UUID,
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
     ) -> tuple[list[PositionOut], float, float]:
         """
         Get open positions for user.
@@ -292,7 +291,7 @@ class PositionQueryService:
                     and_(
                         ReconciliationLog.user_id == user_id,
                         ReconciliationLog.matched == 1,  # Matched
-                        ReconciliationLog.close_reason == None,  # Still open
+                        ReconciliationLog.close_reason.is_(None),  # Still open
                     )
                 )
                 .order_by(desc(ReconciliationLog.created_at))
@@ -307,7 +306,7 @@ class PositionQueryService:
             positions = []
             total_pnl = 0.0
 
-            for i, log in enumerate(logs):
+            for _i, log in enumerate(logs):
                 # Calculate unrealized PnL
                 if log.current_price and log.entry_price:
                     price_diff = log.current_price - log.entry_price
@@ -377,7 +376,7 @@ class PositionQueryService:
         db: AsyncSession,
         user_id: UUID,
         position_id: UUID,
-    ) -> Optional[PositionOut]:
+    ) -> PositionOut | None:
         """
         Get a specific position by ID.
 

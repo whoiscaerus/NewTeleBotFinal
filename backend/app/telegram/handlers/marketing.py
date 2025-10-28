@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
@@ -35,7 +34,7 @@ class MarketingHandler:
         self.db = db
         self.bot_token = settings.TELEGRAM_BOT_TOKEN
 
-    async def _get_user(self, user_id: str) -> Optional[TelegramUser]:
+    async def _get_user(self, user_id: str) -> TelegramUser | None:
         """Fetch user from database.
 
         Args:
@@ -56,16 +55,14 @@ class MarketingHandler:
         """
         now = datetime.utcnow()
         query = select(TelegramBroadcast).where(
-            TelegramBroadcast.is_active == True,
+            TelegramBroadcast.is_active,
             TelegramBroadcast.start_time <= now,
             TelegramBroadcast.end_time >= now,
         )
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    async def _get_broadcast_by_id(
-        self, broadcast_id: str
-    ) -> Optional[TelegramBroadcast]:
+    async def _get_broadcast_by_id(self, broadcast_id: str) -> TelegramBroadcast | None:
         """Fetch specific broadcast campaign.
 
         Args:
@@ -232,7 +229,7 @@ class MarketingHandler:
         try:
             # Fetch active broadcasts matching offer type
             query = select(TelegramBroadcast).where(
-                TelegramBroadcast.is_active == True,
+                TelegramBroadcast.is_active,
                 TelegramBroadcast.offer_type == offer_type,
             )
             result = await self.db.execute(query)

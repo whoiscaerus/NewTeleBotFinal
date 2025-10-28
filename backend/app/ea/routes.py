@@ -11,7 +11,6 @@ All endpoints require HMAC device authentication headers.
 import logging
 import time
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import and_, select
@@ -38,7 +37,7 @@ logger = logging.getLogger(__name__)
 async def poll_approved_signals(
     db: AsyncSession = Depends(get_db),
     device_auth: DeviceAuthDependency = Depends(get_device_auth),
-    since: Optional[datetime] = Query(
+    since: datetime | None = Query(
         None, description="Only return signals approved after this time"
     ),
     x_device_id: str = Header(..., alias="X-Device-Id"),

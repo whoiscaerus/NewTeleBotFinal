@@ -10,7 +10,6 @@ Created: October 2024
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +112,7 @@ class MarketGuard:
 
     async def check_price_gap(
         self, symbol: str, last_close: float, current_open: float
-    ) -> Optional[MarketConditionAlert]:
+    ) -> MarketConditionAlert | None:
         """
         Detect price gaps between close and open.
 
@@ -199,7 +198,7 @@ class MarketGuard:
         bid: float,
         ask: float,
         position_volume_lots: float,
-    ) -> Optional[MarketConditionAlert]:
+    ) -> MarketConditionAlert | None:
         """
         Check liquidity conditions (bid-ask spread and available volume).
 
@@ -290,7 +289,7 @@ class MarketGuard:
         return None
 
     async def mark_position_for_close(
-        self, position_id: str, reason: str, condition_details: Optional[dict] = None
+        self, position_id: str, reason: str, condition_details: dict | None = None
     ) -> bool:
         """
         Mark position for automatic close due to market conditions.
@@ -345,7 +344,7 @@ class MarketGuard:
         last_close: float,
         current_open: float,
         position_volume_lots: float,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Determine if position should be closed based on market conditions.
 
@@ -417,7 +416,7 @@ class MarketGuard:
 
 
 # Global instance (lazy-loaded)
-_market_guard: Optional[MarketGuard] = None
+_market_guard: MarketGuard | None = None
 
 
 def get_market_guard(

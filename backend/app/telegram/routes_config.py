@@ -14,7 +14,6 @@ Format of TELEGRAM_GROUP_MAP_JSON env var:
 
 import json
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 class RoutesConfig:
     """Manages keyword-to-group route configuration."""
 
-    def __init__(self, config_json: Optional[str] = None):
+    def __init__(self, config_json: str | None = None):
         """Initialize routes configuration.
 
         Args:
@@ -96,9 +95,9 @@ class RoutesConfig:
 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse routes JSON: {e}")
-            raise ValueError(f"Invalid JSON format: {e}")
+            raise ValueError(f"Invalid JSON format: {e}") from e
 
-    def get_groups_for_keyword(self, keyword: str) -> Optional[list[int]]:
+    def get_groups_for_keyword(self, keyword: str) -> list[int] | None:
         """Get group IDs for a keyword.
 
         Args:

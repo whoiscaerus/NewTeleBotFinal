@@ -6,7 +6,6 @@ Runs every 10 seconds with circuit breaker and error tracking.
 
 import asyncio
 from datetime import UTC, datetime
-from typing import Optional
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +40,7 @@ class ReconciliationScheduler:
         self.sync_interval = sync_interval_seconds
         self.max_concurrent = max_concurrent_syncs
         self.is_running = False
-        self.last_sync_time: Optional[datetime] = None
+        self.last_sync_time: datetime | None = None
         self.sync_count = 0
         self.error_count = 0
 
@@ -149,7 +148,7 @@ class ReconciliationScheduler:
             # Query users with recent activity
             stmt = select(User).where(
                 and_(
-                    User.is_active == True,
+                    User.is_active,
                     User.last_login_at.isnot(None),
                 )
             )
@@ -227,7 +226,7 @@ class ReconciliationScheduler:
 
 
 # Global scheduler instance (initialized at app startup)
-_scheduler: Optional[ReconciliationScheduler] = None
+_scheduler: ReconciliationScheduler | None = None
 
 
 async def initialize_reconciliation_scheduler(
@@ -259,7 +258,7 @@ async def initialize_reconciliation_scheduler(
     return _scheduler
 
 
-def get_scheduler() -> Optional[ReconciliationScheduler]:
+def get_scheduler() -> ReconciliationScheduler | None:
     """Get the global reconciliation scheduler instance.
 
     Returns:

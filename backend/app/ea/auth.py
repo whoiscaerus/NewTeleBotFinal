@@ -24,7 +24,6 @@ Example:
 
 import logging
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
@@ -61,8 +60,8 @@ class DeviceAuthDependency:
         nonce: str,
         timestamp: str,
         signature: str,
-        db: AsyncSession = Depends(get_db),
-        redis: Redis = Depends(get_redis),
+        db: AsyncSession = Depends(get_db),  # noqa: B008
+        redis: Redis = Depends(get_redis),  # noqa: B008
         timestamp_skew_seconds: int = 300,
         nonce_ttl_seconds: int = 600,
     ):
@@ -77,8 +76,8 @@ class DeviceAuthDependency:
         self.nonce_ttl_seconds = nonce_ttl_seconds
 
         # Will be populated after validation
-        self.device: Optional[Device] = None
-        self.client: Optional[Client] = None
+        self.device: Device | None = None
+        self.client: Client | None = None
 
     async def __call__(self) -> "DeviceAuthDependency":
         """
@@ -108,12 +107,12 @@ class DeviceAuthDependency:
         """
         try:
             ts = datetime.fromisoformat(self.timestamp_str.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError) as e:
             logger.warning(
                 f"Invalid timestamp format: {self.timestamp_str}",
                 extra={"device_id": self.device_id},
             )
-            raise DeviceAuthError("Invalid timestamp format", 400)
+            raise DeviceAuthError("Invalid timestamp format", 400) from e
 
         now = (
             datetime.utcnow().replace(tzinfo=ts.tzinfo)
@@ -166,11 +165,11 @@ class DeviceAuthDependency:
         """
         try:
             device_uuid = UUID(self.device_id)
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError) as e:
             logger.warning(
                 "Invalid device ID format", extra={"device_id": self.device_id}
             )
-            raise DeviceAuthError("Invalid device ID format", 400)
+            raise DeviceAuthError("Invalid device ID format", 400) from e
 
         # Load device with client relationship
         stmt = select(Device).where(Device.id == device_uuid)
@@ -219,7 +218,7 @@ class DeviceAuthDependency:
                 "Failed to read request body",
                 extra={"device_id": self.device_id, "error": str(e)},
             )
-            raise DeviceAuthError("Failed to read request body", 400)
+            raise DeviceAuthError("Failed to read request body", 400) from e
 
         # Build canonical string
         canonical = HMACBuilder.build_canonical_string(
@@ -258,10 +257,10 @@ class DeviceAuthDependency:
 
 
 async def get_device_auth(
-    device_id: Optional[str] = None,
-    nonce: Optional[str] = None,
-    timestamp: Optional[str] = None,
-    signature: Optional[str] = None,
+    device_id: str | None = None,
+    nonce: str | None = None,
+    timestamp: str | None = None,
+    signature: str | None = None,
 ) -> DeviceAuthDependency:
     """
     FastAPI dependency that validates device headers.

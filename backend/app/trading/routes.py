@@ -27,7 +27,6 @@ Date: 2024-10-26
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -157,7 +156,7 @@ async def get_reconciliation_status(
     description="Returns list of all open positions with current prices and unrealized P&L.",
 )
 async def get_open_positions(
-    symbol: Optional[str] = Query(None, description="Filter by symbol (e.g., XAUUSD)"),
+    symbol: str | None = Query(None, description="Filter by symbol (e.g., XAUUSD)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> PositionsListOut:

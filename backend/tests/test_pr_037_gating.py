@@ -220,8 +220,10 @@ class TestGateTelemetry:
 
         # Metric should be logged in gate check
         # This would be verified with Prometheus/StatsD collector
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exc_info:
             await gate.check(user, db_session)
+        # Verify exception was raised (no specific type needed for this test)
+        assert exc_info.value is not None
 
         # In production, metric "entitlement_denied_total{feature=Test Feature}" would be incremented
 
@@ -265,8 +267,10 @@ class TestEntitlementExpiry:
         gate = EntitlementGate("premium_signals", "Feature")
 
         # Should raise 403 (expired)
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exc_info:
             await gate.check(user, db_session)
+        # Verify exception was raised
+        assert exc_info.value is not None
 
     async def test_valid_entitlement_not_expired(self, db_session: AsyncSession):
         """Test valid non-expired entitlements are granted."""

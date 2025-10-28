@@ -8,7 +8,7 @@ import hashlib
 import hmac
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 import redis
 
@@ -166,7 +166,7 @@ class WebhookReplayProtection:
         except Exception as e:
             logger.error(f"Error storing idempotent result: {e}", exc_info=True)
 
-    def get_idempotent_result(self, event_id: str) -> Optional[dict[str, Any]]:
+    def get_idempotent_result(self, event_id: str) -> dict[str, Any] | None:
         """Retrieve previously computed result for replayed request.
 
         Args:
@@ -208,7 +208,7 @@ class WebhookSecurityValidator:
         payload: bytes,
         signature: str,
         event_id: str,
-    ) -> tuple[bool, Optional[dict[str, Any]]]:
+    ) -> tuple[bool, dict[str, Any] | None]:
         """Comprehensive webhook validation.
 
         Args:

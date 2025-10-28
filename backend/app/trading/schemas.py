@@ -12,7 +12,6 @@ Date: 2024-10-26
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -79,7 +78,7 @@ class ReconciliationEventOut(BaseModel):
     event_type: EventType = Field(..., description="Type of reconciliation event")
     user_id: str = Field(..., description="User ID")
     created_at: datetime = Field(..., description="Event timestamp (UTC)")
-    divergence_reason: Optional[DivergenceReason] = Field(
+    divergence_reason: DivergenceReason | None = Field(
         None, description="If divergence detected, reason why"
     )
     description: str = Field(..., description="Human-readable description")
@@ -106,11 +105,11 @@ class ReconciliationStatusOut(BaseModel):
     status: str = Field(
         ..., description="Overall sync status (healthy, degraded, error)"
     )
-    last_sync_at: Optional[datetime] = Field(
+    last_sync_at: datetime | None = Field(
         None, description="Last successful sync timestamp"
     )
     total_syncs: int = Field(..., ge=0, description="Total sync attempts")
-    last_sync_duration_ms: Optional[int] = Field(
+    last_sync_duration_ms: int | None = Field(
         None, ge=0, description="Duration of last sync (ms)"
     )
     open_positions_count: int = Field(..., ge=0, description="Number of open positions")
@@ -123,7 +122,7 @@ class ReconciliationStatusOut(BaseModel):
     recent_events: list[ReconciliationEventOut] = Field(
         default_factory=list, description="Last 10 events"
     )
-    error_message: Optional[str] = Field(
+    error_message: str | None = Field(
         None, description="Error description if status=error"
     )
 
@@ -164,8 +163,8 @@ class PositionOut(BaseModel):
     current_price: float = Field(..., gt=0, description="Current market price")
     unrealized_pnl: float = Field(..., description="Unrealized P&L (GBP)")
     unrealized_pnl_pct: float = Field(..., description="Unrealized P&L (percent)")
-    take_profit: Optional[float] = Field(None, gt=0, description="Take profit price")
-    stop_loss: Optional[float] = Field(None, gt=0, description="Stop loss price")
+    take_profit: float | None = Field(None, gt=0, description="Take profit price")
+    stop_loss: float | None = Field(None, gt=0, description="Stop loss price")
     status: PositionStatus = Field(..., description="Position status")
     matched_with_bot: bool = Field(..., description="True if matched with bot signal")
     last_updated_at: datetime = Field(..., description="Last price update timestamp")
@@ -242,7 +241,7 @@ class DrawdownAlertOut(BaseModel):
         ..., ge=0, le=100, description="Threshold that triggered alert"
     )
     should_close_all: bool = Field(..., description="True if auto-close should trigger")
-    time_to_liquidation_seconds: Optional[int] = Field(
+    time_to_liquidation_seconds: int | None = Field(
         None, ge=0, description="Seconds before forced close (if critical)"
     )
     last_checked_at: datetime = Field(..., description="Last check timestamp")
@@ -269,16 +268,16 @@ class MarketConditionAlertOut(BaseModel):
     symbol: str = Field(..., description="Trading symbol")
     condition_type: ConditionType = Field(..., description="Type of condition detected")
     alert_type: AlertType = Field(..., description="Alert severity")
-    price_gap_pct: Optional[float] = Field(
+    price_gap_pct: float | None = Field(
         None, ge=0, description="Price gap percentage (if applicable)"
     )
-    bid_ask_spread_pct: Optional[float] = Field(
+    bid_ask_spread_pct: float | None = Field(
         None, ge=0, description="Bid-ask spread percentage (if applicable)"
     )
-    open_price: Optional[float] = Field(None, gt=0, description="Open price")
-    close_price: Optional[float] = Field(None, gt=0, description="Close/current price")
-    bid: Optional[float] = Field(None, gt=0, description="Current bid price")
-    ask: Optional[float] = Field(None, gt=0, description="Current ask price")
+    open_price: float | None = Field(None, gt=0, description="Open price")
+    close_price: float | None = Field(None, gt=0, description="Close/current price")
+    bid: float | None = Field(None, gt=0, description="Current bid price")
+    ask: float | None = Field(None, gt=0, description="Current ask price")
     should_close_positions: bool = Field(
         ..., description="True if positions should close"
     )
@@ -343,7 +342,7 @@ class ErrorDetail(BaseModel):
 
     code: str = Field(..., description="Error code (e.g., 'POSITION_NOT_FOUND')")
     message: str = Field(..., description="Error message")
-    detail: Optional[str] = Field(None, description="Additional detail")
+    detail: str | None = Field(None, description="Additional detail")
 
     class Config:
         json_schema_extra = {

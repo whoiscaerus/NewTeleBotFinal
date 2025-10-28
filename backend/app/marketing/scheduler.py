@@ -18,7 +18,7 @@ Example:
 import json
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -71,7 +71,7 @@ class MarketingScheduler:
         bot: Bot,
         promo_chat_ids: list[int],
         interval_hours: int = 4,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ):
         """Initialize the marketing scheduler.
 
@@ -295,7 +295,7 @@ class MarketingScheduler:
                 exc_info=True,
             )
 
-    def get_next_run_time(self) -> Optional[datetime]:
+    def get_next_run_time(self) -> datetime | None:
         """Get the next scheduled run time.
 
         Returns:
@@ -342,7 +342,7 @@ class MarketingScheduler:
         cls,
         bot: Bot,
         promos_chat_ids_json: str,
-        db_session: Optional[Any] = None,
+        db_session: Any | None = None,
     ) -> "MarketingScheduler":
         """Create scheduler from environment configuration.
 
@@ -375,4 +375,4 @@ class MarketingScheduler:
             )
 
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid PROMOS_CHAT_IDS_JSON: {e}")
+            raise ValueError(f"Invalid PROMOS_CHAT_IDS_JSON: {e}") from e

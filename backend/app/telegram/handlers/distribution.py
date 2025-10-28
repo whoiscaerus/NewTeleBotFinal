@@ -14,7 +14,7 @@ Flow:
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +33,7 @@ class ContentDistributor:
     def __init__(
         self,
         bot: Bot,
-        group_map: Optional[dict[str, list[int]]] = None,
+        group_map: dict[str, list[int]] | None = None,
     ):
         """Initialize the content distributor.
 
@@ -120,7 +120,7 @@ class ContentDistributor:
         text: str,
         keywords: list[str],
         parse_mode: str = ParseMode.MARKDOWN_V2,
-        db_session: Optional[AsyncSession] = None,
+        db_session: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """Distribute admin content to groups matching keywords.
 

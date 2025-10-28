@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.affiliates.models import AffiliateEarnings
+from backend.app.affiliates.models import AffiliateEarnings, AffiliatePayout
 from backend.app.auth.models import User
 
 
@@ -325,11 +325,6 @@ class TestPayoutIdempotency:
         # First payout
         result1 = await service.trigger_payout(affiliate_user.id, 150.0)
         assert result1 is True
-
-        # Clear earnings so second attempt finds nothing
-        query = (
-            "SELECT * FROM affiliate_earnings WHERE affiliate_id = %s AND status = %s"
-        )
 
         # Second attempt should find no pending earnings
         result2 = await service.trigger_payout(affiliate_user.id, 150.0)

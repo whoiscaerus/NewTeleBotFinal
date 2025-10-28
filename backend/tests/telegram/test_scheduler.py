@@ -356,8 +356,9 @@ class TestErrorHandling:
         with patch.object(
             scheduler.scheduler, "add_job", side_effect=Exception("Error")
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(Exception) as exc_info:
                 scheduler.start()
+            assert str(exc_info.value) == "Error"
 
     def test_stop_error_handling(self):
         """Test error handling when stopping scheduler."""
@@ -368,5 +369,6 @@ class TestErrorHandling:
         with patch.object(
             scheduler.scheduler, "shutdown", side_effect=Exception("Error")
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(Exception) as exc_info:
                 scheduler.stop()
+            assert str(exc_info.value) == "Error"

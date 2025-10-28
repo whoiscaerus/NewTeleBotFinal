@@ -2,7 +2,6 @@
 
 import logging
 from collections.abc import Callable
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
@@ -156,7 +155,7 @@ class CommandRouter:
 
     async def _get_user_or_register(
         self, message: TelegramMessage
-    ) -> Optional[TelegramUser]:
+    ) -> TelegramUser | None:
         """Get user from database, creating if necessary.
 
         Args:
@@ -309,9 +308,6 @@ class CommandRouter:
             # Parse callback data
             parts = callback.data.split(":", 1)
             command = parts[0]
-
-            user_id = str(callback.from_user.id)
-            user_role = await get_user_role(user_id, self.db)
 
             # Route by callback command
             if command == "shop":

@@ -7,7 +7,6 @@ across API endpoints and protect premium features.
 import json
 import logging
 from collections.abc import Callable
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,8 +28,8 @@ class EntitlementGate:
     def __init__(
         self,
         required_entitlement: str,
-        feature_name: Optional[str] = None,
-        tier_minimum: Optional[int] = None,
+        feature_name: str | None = None,
+        tier_minimum: int | None = None,
     ):
         """Initialize gate.
 
@@ -133,8 +132,8 @@ class EntitlementGate:
 
 async def require_entitlement(
     required_entitlement: str,
-    feature_name: Optional[str] = None,
-    tier_minimum: Optional[int] = None,
+    feature_name: str | None = None,
+    tier_minimum: int | None = None,
 ) -> Callable:
     """Dependency factory for entitlement enforcement.
 

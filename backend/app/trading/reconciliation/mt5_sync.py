@@ -7,7 +7,6 @@ This service runs every 10 seconds to ensure real-time account reconciliation.
 """
 
 from datetime import UTC, datetime
-from typing import Optional
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,8 +34,8 @@ class MT5Position:
         volume: float,
         entry_price: float,
         current_price: float,
-        tp: Optional[float] = None,
-        sl: Optional[float] = None,
+        tp: float | None = None,
+        sl: float | None = None,
         commission: float = 0.0,
         swap: float = 0.0,
         profit: float = 0.0,
@@ -117,7 +116,7 @@ class MT5SyncService:
         self.mt5 = mt5_session
         self.db = db
 
-    async def fetch_account_snapshot(self) -> Optional[MT5AccountSnapshot]:
+    async def fetch_account_snapshot(self) -> MT5AccountSnapshot | None:
         """Fetch live account state from MT5 terminal.
 
         Returns account balance, equity, and open positions. Handles reconnection
@@ -245,7 +244,6 @@ class MT5SyncService:
             )
 
             # 3. Create tracking sets
-            mt5_tickets = {p.ticket for p in snapshot.positions}
             matched_bot_trades = set()
 
             # 4. Match MT5 positions to bot trades
@@ -323,7 +321,7 @@ class MT5SyncService:
         mt5_pos: MT5Position,
         bot_trades: list,
         matched_trades: set,
-    ) -> Optional[Trade]:
+    ) -> Trade | None:
         """Find a bot trade matching the MT5 position.
 
         Matching criteria:
@@ -368,9 +366,7 @@ class MT5SyncService:
 
         return None
 
-    def _detect_divergence(
-        self, mt5_pos: MT5Position, bot_trade: Trade
-    ) -> Optional[str]:
+    def _detect_divergence(self, mt5_pos: MT5Position, bot_trade: Trade) -> str | None:
         """Detect if MT5 position diverges from bot trade expectations.
 
         Returns divergence reason if detected, None if all good.

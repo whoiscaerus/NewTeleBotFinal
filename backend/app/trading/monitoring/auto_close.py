@@ -20,7 +20,6 @@ Date: 2024-10-26
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,11 +46,11 @@ class CloseResult:
     success: bool
     position_id: str
     ticket: int
-    closed_price: Optional[float]
-    pnl: Optional[float]
+    closed_price: float | None
+    pnl: float | None
     close_reason: str
     close_timestamp: datetime
-    error_message: Optional[str] = None
+    error_message: str | None = None
     close_id: str = ""
 
     def __post_init__(self):
@@ -121,8 +120,8 @@ class PositionCloser:
         ticket: int,
         close_reason: str,
         user_id: str,
-        close_price: Optional[float] = None,
-        db_session: Optional[AsyncSession] = None,
+        close_price: float | None = None,
+        db_session: AsyncSession | None = None,
     ) -> CloseResult:
         """Close a single position via MT5 API.
 
@@ -269,8 +268,8 @@ class PositionCloser:
         self,
         user_id: str,
         close_reason: str,
-        positions: Optional[list[dict]] = None,
-        db_session: Optional[AsyncSession] = None,
+        positions: list[dict] | None = None,
+        db_session: AsyncSession | None = None,
     ) -> BulkCloseResult:
         """Close all open positions for a user.
 
@@ -390,8 +389,8 @@ class PositionCloser:
         trigger_reason: str,
         guard_type: str,
         user_id: str,
-        position_data: Optional[dict] = None,
-        db_session: Optional[AsyncSession] = None,
+        position_data: dict | None = None,
+        db_session: AsyncSession | None = None,
     ) -> CloseResult:
         """Close position if specific trigger condition is met.
 
@@ -564,7 +563,7 @@ class PositionCloser:
 # Global Singleton Instance
 # ================================================================
 
-_position_closer_instance: Optional[PositionCloser] = None
+_position_closer_instance: PositionCloser | None = None
 
 
 def get_position_closer() -> PositionCloser:

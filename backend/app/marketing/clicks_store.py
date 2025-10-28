@@ -13,7 +13,7 @@ Example:
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -44,9 +44,9 @@ class ClicksStore:
         user_id: str,
         promo_id: str,
         cta_text: str,
-        chat_id: Optional[int] = None,
-        message_id: Optional[int] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        chat_id: int | None = None,
+        message_id: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Log a CTA click for tracking and analytics.
 

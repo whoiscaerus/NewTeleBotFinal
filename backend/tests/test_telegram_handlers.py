@@ -381,8 +381,6 @@ class TestCommandRouter:
         db_session.add(user)
         await db_session.commit()
 
-        router = CommandRouter(db_session)
-
         message = TelegramMessage(
             message_id=1,
             date=123456,

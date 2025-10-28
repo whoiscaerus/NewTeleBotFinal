@@ -23,7 +23,7 @@ Example:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import redis
@@ -484,14 +484,14 @@ class StripeWebhookHandler:
 
     async def _log_payment_event(
         self,
-        user_id: Optional[str],
+        user_id: str | None,
         event_type: str,
-        plan_code: Optional[str] = None,
-        customer_id: Optional[str] = None,
-        invoice_id: Optional[str] = None,
-        subscription_id: Optional[str] = None,
-        amount: Optional[int] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        plan_code: str | None = None,
+        customer_id: str | None = None,
+        invoice_id: str | None = None,
+        subscription_id: str | None = None,
+        amount: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log payment event to database for audit trail and compliance.
 
@@ -586,10 +586,4 @@ class StripeWebhookHandler:
             )
             raise
 
-        except Exception as e:
-            self.logger.error(
-                "Error logging payment event",
-                extra={"event_type": event_type, "error": str(e)},
-                exc_info=True,
-            )
-            # Don't raise - logging errors shouldn't fail webhook processing
+        # Note: Unreachable except block removed - see first except above

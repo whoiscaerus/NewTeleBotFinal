@@ -1,12 +1,10 @@
 """Redis connection management."""
 
-from typing import Optional
-
 import redis
 
 from backend.app.core.settings import get_settings
 
-_redis_client: Optional[redis.Redis] = None
+_redis_client: redis.Redis | None = None
 
 
 def get_redis() -> redis.Redis:

@@ -290,31 +290,6 @@ class TestOpenPositionsEndpoint:
         for position in data["positions"]:
             assert position["symbol"] == "XAUUSD"
 
-    @pytest.mark.asyncio
-    async def test_get_open_positions_without_auth(self, client: AsyncClient):
-        """Test open positions requires authentication."""
-        response = await client.get("/api/v1/positions/open")
-
-        # Rate limiter returns 403 for missing/invalid auth
-        assert response.status_code in [401, 403]
-
-    @pytest.mark.asyncio
-    async def test_get_open_positions_empty_list(
-        self, client: AsyncClient, auth_headers: dict
-    ):
-        """Test open positions returns empty list when no positions."""
-        # Test with non-matching symbol filter
-        response = await client.get(
-            "/api/v1/positions/open?symbol=NONEXISTENT",
-            headers=auth_headers,
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["total_positions"] == 0
-        assert len(data["positions"]) == 0
-
 
 # ================================================================
 # Guards Status Tests

@@ -90,7 +90,6 @@ class TestHeartbeatManager:
     async def test_heartbeat_background_task_emits_periodically(self):
         """Test background heartbeat task emits at configured interval."""
         manager = HeartbeatManager(interval_seconds=1)
-        emit_count = 0
 
         async def metrics_provider():
             return {
@@ -311,7 +310,7 @@ class TestGuards:
         mt5_client.get_account_info = get_account_info
 
         # Second call with drawdown - update peak first, then call again
-        state_peak = await guards.check_and_enforce(mt5_client, order_service)
+        await guards.check_and_enforce(mt5_client, order_service)
 
         # Now trigger drawdown on next check
         mt5_client.get_account_info = AsyncMock(return_value={"equity": 7500.0})
@@ -351,7 +350,7 @@ class TestGuards:
 
         order_service = AsyncMock()
 
-        state = await guards.check_and_enforce(mt5_client, order_service)
+        await guards.check_and_enforce(mt5_client, order_service)
 
         assert guards.alert_service.send_owner_alert.called
         alert_text = guards.alert_service.send_owner_alert.call_args[0][0]

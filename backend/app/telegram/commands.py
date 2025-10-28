@@ -4,7 +4,6 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +141,7 @@ class CommandRegistry:
             extra={"role": required_role, "aliases": len(command_info.aliases)},
         )
 
-    def get_command(self, name: str) -> Optional[CommandInfo]:
+    def get_command(self, name: str) -> CommandInfo | None:
         """Get command by name or alias.
 
         Args:
@@ -273,7 +272,7 @@ class CommandRegistry:
 
         return "\n".join(help_lines)
 
-    def get_command_help(self, command_name: str) -> Optional[str]:
+    def get_command_help(self, command_name: str) -> str | None:
         """Get detailed help for specific command.
 
         Args:
@@ -310,7 +309,7 @@ class CommandRegistry:
 
 
 # Global registry instance
-_global_registry: Optional[CommandRegistry] = None
+_global_registry: CommandRegistry | None = None
 
 
 def get_registry() -> CommandRegistry:
