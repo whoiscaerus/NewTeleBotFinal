@@ -2,12 +2,16 @@
 
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import ForeignKey, Index, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.db import Base
+
+if TYPE_CHECKING:
+    from backend.app.ea.models import Execution
 
 
 class ApprovalDecision(Enum):
@@ -77,6 +81,13 @@ class Approval(Base):
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,
         default=datetime.utcnow,
+    )
+
+    # Relationships
+    executions: Mapped[list["Execution"]] = relationship(
+        "Execution",
+        back_populates="approval",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (

@@ -1,12 +1,16 @@
 """Client and Device models for PR-023a Device Registry."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
 from backend.app.core.db import Base
+
+if TYPE_CHECKING:
+    pass
 
 
 class Client(Base):
@@ -49,6 +53,11 @@ class Device(Base):
     )
 
     client = relationship("Client", back_populates="devices")
+    executions = relationship(
+        "Execution",
+        back_populates="device",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_devices_client_id", "client_id"),
