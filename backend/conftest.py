@@ -43,7 +43,62 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     sys.stdout.flush()
 
     # Force import ALL models before table creation
+    # Import all models to register them with Base.metadata
+    # This ensures all tables and indexes are registered
+    from backend.app.affiliates.models import (  # noqa: F401
+        Affiliate,
+        AffiliateEarnings,
+        Commission,
+        Payout,
+        Referral,
+        ReferralEvent,
+    )
+    from backend.app.approvals.models import Approval  # noqa: F401
+    from backend.app.audit.models import AuditLog  # noqa: F401
+    from backend.app.auth.models import User  # noqa: F401
+    from backend.app.billing.catalog.models import (  # noqa: F401
+        Product,
+        ProductCategory,
+        ProductTier,
+    )
+    from backend.app.billing.entitlements.models import (  # noqa: F401
+        EntitlementType,
+        UserEntitlement,
+    )
+    from backend.app.billing.stripe.models import StripeEvent  # noqa: F401
+    from backend.app.clients.devices.models import Device  # noqa: F401
+    from backend.app.clients.exec.models import ExecutionRecord  # noqa: F401
+    from backend.app.clients.models import Client  # noqa: F401
     from backend.app.core.db import Base
+    from backend.app.ea.models import Execution  # noqa: F401
+    from backend.app.marketing.models import MarketingClick  # noqa: F401
+    from backend.app.orders.models import Order, OrderItem  # noqa: F401
+    from backend.app.signals.models import Signal  # noqa: F401
+    from backend.app.telegram.models import (  # noqa: F401
+        DistributionAuditLog,
+        TelegramBroadcast,
+        TelegramCommand,
+        TelegramGuide,
+        TelegramUser,
+        TelegramUserGuideCollection,
+        TelegramWebhook,
+    )
+    from backend.app.trading.data.models import (  # noqa: F401
+        DataPullLog,
+        OHLCCandle,
+        SymbolPrice,
+    )
+    from backend.app.trading.reconciliation.models import (  # noqa: F401
+        DrawdownAlert,
+        PositionSnapshot,
+        ReconciliationLog,
+    )
+    from backend.app.trading.store.models import (  # noqa: F401
+        EquityPoint,
+        Position,
+        Trade,
+        ValidationLog,
+    )
 
     # Create fresh in-memory engine
     engine = create_async_engine(
@@ -52,9 +107,9 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         connect_args={"check_same_thread": False},
     )
 
-    # Create all tables
+    # Create all tables with checkfirst=True to avoid index conflicts
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(lambda c: Base.metadata.create_all(c, checkfirst=True))
         print("[ROOT CONFTEST] Tables created!")
         sys.stdout.flush()
 

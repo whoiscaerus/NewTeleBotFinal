@@ -312,10 +312,7 @@ class ReferralEvent(Base):
         default=datetime.utcnow,
     )
 
-    __table_args__ = (
-        Index("ix_referral_events_code", "referral_code"),
-        Index("ix_referral_events_user_id", "user_id"),
-    )
+    __table_args__ = (Index("ix_referral_events_code", "referral_code"),)
 
 
 class AffiliateEarnings(Base):
