@@ -23,7 +23,7 @@ try:
 
     _HAS_PIL = True
 except Exception:
-    PILImage = None  # type: ignore[assignment]
+    PILImage = None  # type: ignore
     _HAS_PIL = False
 
 

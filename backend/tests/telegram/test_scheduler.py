@@ -27,7 +27,7 @@ class TestGuideSchedulerInitialization:
         assert scheduler.bot == bot
         assert scheduler.guide_chat_ids == chat_ids
         assert scheduler.interval_hours == 4
-        assert scheduler.is_running is False
+        assert scheduler.is_running() is False
 
     def test_init_with_custom_interval(self):
         """Test scheduler initialization with custom interval."""
