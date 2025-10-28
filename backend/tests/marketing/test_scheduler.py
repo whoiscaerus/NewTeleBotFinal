@@ -316,12 +316,11 @@ class TestMarketingSchedulerCreation:
 
 @pytest.mark.asyncio
 class TestClicksStore:
-    """Test clicks store functionality."""
+    """Test clicks store functionality with real database."""
 
     @pytest.mark.asyncio
-    async def test_log_click_success(self):
+    async def test_log_click_success(self, db_session):
         """Test logging a CTA click."""
-        db_session = AsyncMock()
         store = ClicksStore(db_session=db_session)
 
         click_id = await store.log_click(
@@ -331,13 +330,12 @@ class TestClicksStore:
         )
 
         assert click_id is not None
-        assert db_session.add.called
-        assert db_session.commit.called
+        assert isinstance(click_id, str)
+        assert len(click_id) > 0
 
     @pytest.mark.asyncio
-    async def test_log_click_with_metadata(self):
+    async def test_log_click_with_metadata(self, db_session):
         """Test logging click with metadata."""
-        db_session = AsyncMock()
         store = ClicksStore(db_session=db_session)
 
         click_id = await store.log_click(
@@ -348,139 +346,153 @@ class TestClicksStore:
         )
 
         assert click_id is not None
-        db_session.add.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_get_user_clicks(self):
-        """Test retrieving user's clicks."""
-        db_session = AsyncMock()
-        store = ClicksStore(db_session=db_session)
-
-        # Mock click objects
-        mock_click = MagicMock()
-        mock_click.id = "click_1"
-        mock_click.user_id = "123456789"
-        mock_click.promo_id = "promo_1"
-        mock_click.cta_text = "Upgrade"
-        mock_click.clicked_at = datetime.now()
-        mock_click.metadata = {}
-
-        # Mock query result
-        mock_result = AsyncMock()
-        mock_result.scalars().all.return_value = [mock_click]
-        db_session.execute.return_value = mock_result
-
+        # Verify the click was stored with metadata
         clicks = await store.get_user_clicks(user_id="123456789")
-
         assert len(clicks) == 1
-        assert clicks[0]["user_id"] == "123456789"
+        assert clicks[0]["metadata"]["plan"] == "premium"
+        assert clicks[0]["metadata"]["source"] == "channel"
 
     @pytest.mark.asyncio
-    async def test_get_promo_clicks(self):
-        """Test retrieving promo's clicks."""
-        db_session = AsyncMock()
+    async def test_get_user_clicks(self, db_session):
+        """Test retrieving user's clicks."""
         store = ClicksStore(db_session=db_session)
 
-        # Mock click objects
-        mock_click1 = MagicMock()
-        mock_click1.id = "click_1"
-        mock_click1.user_id = "user_1"
-        mock_click1.promo_id = "promo_1"
-        mock_click1.cta_text = "Upgrade"
-        mock_click1.clicked_at = datetime.now()
-        mock_click1.metadata = {}
+        # Log some clicks
+        await store.log_click(
+            user_id="user_123",
+            promo_id="promo_1",
+            cta_text="Click 1",
+        )
+        await store.log_click(
+            user_id="user_123",
+            promo_id="promo_2",
+            cta_text="Click 2",
+        )
+        await store.log_click(
+            user_id="user_456",
+            promo_id="promo_1",
+            cta_text="Click 3",
+        )
 
-        mock_click2 = MagicMock()
-        mock_click2.id = "click_2"
-        mock_click2.user_id = "user_2"
-        mock_click2.promo_id = "promo_1"
-        mock_click2.cta_text = "Upgrade"
-        mock_click2.clicked_at = datetime.now()
-        mock_click2.metadata = {}
-
-        # Mock query result
-        mock_result = AsyncMock()
-        mock_result.scalars().all.return_value = [mock_click1, mock_click2]
-        db_session.execute.return_value = mock_result
-
-        clicks = await store.get_promo_clicks(promo_id="promo_1")
+        # Retrieve user's clicks
+        clicks = await store.get_user_clicks(user_id="user_123")
 
         assert len(clicks) == 2
-        assert all(click["promo_id"] == "promo_1" for click in clicks)
+        assert all(click["user_id"] == "user_123" for click in clicks)
+        assert {click["promo_id"] for click in clicks} == {"promo_1", "promo_2"}
 
     @pytest.mark.asyncio
-    async def test_get_click_count(self):
-        """Test getting total click count."""
-        db_session = AsyncMock()
+    async def test_get_promo_clicks(self, db_session):
+        """Test retrieving promo's clicks."""
         store = ClicksStore(db_session=db_session)
 
-        # Mock clicks
-        mock_clicks = [MagicMock(), MagicMock(), MagicMock()]
+        # Log clicks for same promo from different users
+        await store.log_click(
+            user_id="user_1",
+            promo_id="promo_1",
+            cta_text="Click 1",
+        )
+        await store.log_click(
+            user_id="user_2",
+            promo_id="promo_1",
+            cta_text="Click 2",
+        )
+        await store.log_click(
+            user_id="user_3",
+            promo_id="promo_1",
+            cta_text="Click 3",
+        )
+        await store.log_click(
+            user_id="user_4",
+            promo_id="promo_2",
+            cta_text="Click 4",
+        )
 
-        mock_result = AsyncMock()
-        mock_result.scalars().all.return_value = mock_clicks
-        db_session.execute.return_value = mock_result
+        # Retrieve promo's clicks
+        clicks = await store.get_promo_clicks(promo_id="promo_1")
+
+        assert len(clicks) == 3
+        assert all(click["promo_id"] == "promo_1" for click in clicks)
+        assert {click["user_id"] for click in clicks} == {"user_1", "user_2", "user_3"}
+
+    @pytest.mark.asyncio
+    async def test_get_click_count(self, db_session):
+        """Test getting total click count."""
+        store = ClicksStore(db_session=db_session)
+
+        # Log 3 clicks for the promo
+        for i in range(3):
+            await store.log_click(
+                user_id=f"user_{i}",
+                promo_id="promo_1",
+                cta_text=f"Click {i}",
+            )
 
         count = await store.get_click_count(promo_id="promo_1")
 
         assert count == 3
 
     @pytest.mark.asyncio
-    async def test_get_conversion_rate(self):
+    async def test_get_conversion_rate(self, db_session):
         """Test calculating conversion rate."""
-        db_session = AsyncMock()
         store = ClicksStore(db_session=db_session)
 
-        # Mock clicks: 2 conversions out of 5 = 40%
-        mock_click1 = MagicMock()
-        mock_click1.metadata = {"conversion": "completed"}
-
-        mock_click2 = MagicMock()
-        mock_click2.metadata = {"conversion": "pending"}
-
-        mock_click3 = MagicMock()
-        mock_click3.metadata = {"conversion": "completed"}
-
-        mock_click4 = MagicMock()
-        mock_click4.metadata = {}
-
-        mock_click5 = MagicMock()
-        mock_click5.metadata = None
-
-        mock_result = AsyncMock()
-        mock_result.scalars().all.return_value = [
-            mock_click1,
-            mock_click2,
-            mock_click3,
-            mock_click4,
-            mock_click5,
-        ]
-        db_session.execute.return_value = mock_result
+        # Log 5 clicks: 2 completed conversions = 40% rate
+        await store.log_click(
+            user_id="user_1",
+            promo_id="promo_1",
+            cta_text="Click 1",
+            metadata={"conversion": "completed"},
+        )
+        await store.log_click(
+            user_id="user_2",
+            promo_id="promo_1",
+            cta_text="Click 2",
+            metadata={"conversion": "pending"},
+        )
+        await store.log_click(
+            user_id="user_3",
+            promo_id="promo_1",
+            cta_text="Click 3",
+            metadata={"conversion": "completed"},
+        )
+        await store.log_click(
+            user_id="user_4",
+            promo_id="promo_1",
+            cta_text="Click 4",
+            metadata={},
+        )
+        await store.log_click(
+            user_id="user_5",
+            promo_id="promo_1",
+            cta_text="Click 5",
+        )
 
         rate = await store.get_conversion_rate(promo_id="promo_1")
 
         assert rate == 40.0  # 2 out of 5
 
     @pytest.mark.asyncio
-    async def test_update_click_metadata(self):
+    async def test_update_click_metadata(self, db_session):
         """Test updating click metadata."""
-        db_session = AsyncMock()
         store = ClicksStore(db_session=db_session)
 
-        # Mock click
-        mock_click = MagicMock()
-        mock_click.id = "click_1"
-        mock_click.metadata = {"status": "pending"}
+        # Log a click
+        click_id = await store.log_click(
+            user_id="user_1",
+            promo_id="promo_1",
+            cta_text="Click 1",
+            metadata={"status": "pending"},
+        )
 
-        mock_result = AsyncMock()
-        mock_result.scalar_one_or_none.return_value = mock_click
-        db_session.execute.return_value = mock_result
-
+        # Update metadata
         await store.update_click_metadata(
-            click_id="click_1",
+            click_id=click_id,
             metadata={"conversion": "completed"},
         )
 
-        # Verify metadata was merged
-        assert mock_click.metadata == {"status": "pending", "conversion": "completed"}
-        assert db_session.commit.called
+        # Verify metadata was updated
+        clicks = await store.get_user_clicks(user_id="user_1")
+        assert len(clicks) == 1
+        assert clicks[0]["metadata"]["status"] == "pending"
+        assert clicks[0]["metadata"]["conversion"] == "completed"

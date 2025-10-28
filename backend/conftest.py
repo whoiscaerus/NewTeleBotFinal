@@ -16,6 +16,13 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 
 def pytest_configure(config):
     """Configure pytest before test collection."""
+    print("\n[ROOT CONFTEST] pytest_configure called")
+    # Import only essential models to avoid circular dependencies
+    print("[ROOT CONFTEST] Importing minimal models...")
+    from backend.app.core.db import Base
+
+    print(f"[ROOT CONFTEST] Base.metadata.tables: {list(Base.metadata.tables.keys())}")
+
     # Ensure event loop is set up for asyncio tests
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

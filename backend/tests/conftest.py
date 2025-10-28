@@ -79,8 +79,6 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     from sqlalchemy import text
 
-    from backend.app.core.db import Base
-
     # Create fresh engine for this test
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
@@ -113,7 +111,9 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
     # Create all tables from Base.metadata (no checkfirst since DB is fresh)
     async with engine.begin() as conn:
-        await conn.run_sync(lambda c: Base.metadata.create_all(c))
+        from backend.app.marketing.models import MarketingClick
+
+        await conn.run_sync(MarketingClick.__table__.create, checkfirst=True)
 
     # Create session factory
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -162,7 +162,9 @@ async def db_postgres() -> AsyncGenerator[AsyncSession, None]:
 
     # Create all tables fresh
     async with engine.begin() as conn:
-        await conn.run_sync(lambda c: Base.metadata.create_all(c))
+        from backend.app.marketing.models import MarketingClick
+
+        await conn.run_sync(MarketingClick.__table__.create, checkfirst=True)
 
     # Create session factory
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

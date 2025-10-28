@@ -79,7 +79,7 @@ class ClicksStore:
                 cta_text=cta_text,
                 chat_id=chat_id,
                 message_id=message_id,
-                metadata=metadata or {},
+                click_data=metadata or {},
                 clicked_at=datetime.utcnow(),
             )
 
@@ -97,7 +97,7 @@ class ClicksStore:
             )
 
             # Record telemetry
-            get_metrics().marketing_clicks_total.inc()
+            get_metrics().marketing_clicks_total.labels(promo_id=promo_id).inc()
 
             return str(click.id)
 
@@ -152,7 +152,7 @@ class ClicksStore:
                     "promo_id": click.promo_id,
                     "cta_text": click.cta_text,
                     "clicked_at": click.clicked_at.isoformat(),
-                    "metadata": click.metadata or {},
+                    "metadata": click.click_data or {},
                 }
                 for click in clicks
             ]
@@ -203,7 +203,7 @@ class ClicksStore:
                     "promo_id": click.promo_id,
                     "cta_text": click.cta_text,
                     "clicked_at": click.clicked_at.isoformat(),
-                    "metadata": click.metadata or {},
+                    "metadata": click.click_data or {},
                 }
                 for click in clicks
             ]
@@ -272,11 +272,12 @@ class ClicksStore:
             if not all_clicks:
                 return 0.0
 
-            # Count conversions (metadata.conversion == "completed")
+            # Count conversions (click_data.conversion == "completed")
             conversions = sum(
                 1
                 for click in all_clicks
-                if click.metadata and click.metadata.get("conversion") == "completed"
+                if click.click_data
+                and click.click_data.get("conversion") == "completed"
             )
 
             return (conversions / len(all_clicks)) * 100.0
@@ -318,7 +319,7 @@ class ClicksStore:
                 return
 
             # Merge metadata
-            click.metadata = {**(click.metadata or {}), **metadata}
+            click.click_data = {**(click.click_data or {}), **metadata}
             await self.db_session.commit()
 
             self.logger.info(

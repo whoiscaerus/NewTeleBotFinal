@@ -132,6 +132,14 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Marketing metrics
+        self.marketing_clicks_total = Counter(
+            "marketing_clicks_total",
+            "Total marketing CTA clicks",
+            ["promo_id"],
+            registry=self.registry,
+        )
+
         self.signals_create_seconds = Histogram(
             "signals_create_seconds",
             "Signal creation duration in seconds",
