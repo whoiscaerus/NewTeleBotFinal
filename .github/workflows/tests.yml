@@ -113,17 +113,32 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Run pytest with coverage (Backend)
+        timeout-minutes: 15
         env:
           DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/trading_db
           REDIS_URL: redis://localhost:6379/0
           APP_ENV: test
           APP_LOG_LEVEL: DEBUG
+          PYTHONFAULTHANDLER: "1"
         run: |
+          set -eux
           python -m pytest backend/tests \
             --cov=backend/app \
             --cov-report=xml:coverage/backend/coverage.xml \
             --cov-report=term-missing \
-            -v
+            -vv --maxfail=1
+
+      - name: Post-mortem diagnostics (on failure/timeout)
+        if: failure() || cancelled()
+        run: |
+          echo "==== Process list ===="
+          ps aux || true
+          echo "==== Top memory consumers ===="
+          ps -eo pid,ppid,pcpu,pmem,cmd --sort=-pmem | head -n 20 || true
+          echo "==== PostgreSQL status ===="
+          docker logs ${{ job.services.postgres.id }} --tail 50 || true
+          echo "==== Redis status ===="
+          docker logs ${{ job.services.redis.id }} --tail 50 || true
 
       - name: Install Node dependencies (Frontend)
         run: npm ci
