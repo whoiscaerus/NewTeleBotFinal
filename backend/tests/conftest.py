@@ -70,61 +70,6 @@ def reset_context():
     _request_id_var.reset(token)
 
 
-@pytest_asyncio.fixture(scope="function")
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create test database session with fresh schema each test.
-
-    Uses in-memory SQLite with checkfirst=True to avoid duplicate index errors.
-    Each test gets a completely fresh database.
-    """
-    from sqlalchemy import text
-
-    # Create fresh engine for this test
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        echo=False,
-        connect_args={"check_same_thread": False},
-    )
-
-    # Drop all existing tables and indexes
-    async with engine.begin() as conn:
-        # Get list of all tables
-        result = await conn.execute(
-            text(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-            )
-        )
-        tables = [row[0] for row in result.fetchall()]
-
-        # Drop all tables (cascade not needed in SQLite for this case)
-        for table in tables:
-            await conn.execute(text(f"DROP TABLE IF EXISTS [{table}]"))
-
-        # Drop all indexes
-        result = await conn.execute(
-            text("SELECT name FROM sqlite_master WHERE type='index'")
-        )
-        indexes = [row[0] for row in result.fetchall()]
-        for index in indexes:
-            if not index.startswith("sqlite_"):
-                await conn.execute(text(f"DROP INDEX IF EXISTS [{index}]"))
-
-    # Create all tables from Base.metadata (no checkfirst since DB is fresh)
-    async with engine.begin() as conn:
-        from backend.app.marketing.models import MarketingClick
-
-        await conn.run_sync(MarketingClick.__table__.create, checkfirst=True)
-
-    # Create session factory
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-    async with async_session() as session:
-        yield session
-
-    # Cleanup: close session and dispose engine
-    await engine.dispose()
-
-
 @pytest_asyncio.fixture
 async def db_postgres() -> AsyncGenerator[AsyncSession, None]:
     """Create test database session with REAL PostgreSQL backend.

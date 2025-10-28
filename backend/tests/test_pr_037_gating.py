@@ -309,18 +309,3 @@ class TestEntitlementExpiry:
 
         result = await gate.check(user, db_session)
         assert result is True
-
-
-# Fixtures
-@pytest.fixture
-async def db_session():
-    """Create test database session."""
-    # Use test DB from conftest
-    pass
-
-
-@pytest.fixture
-async def client():
-    """Create test HTTP client."""
-    # Use test client from conftest
-    pass

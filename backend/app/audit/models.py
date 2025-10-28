@@ -1,9 +1,18 @@
 """Audit logging models and service for immutable event trails."""
 
+# Use Text for meta column in SQLite, JSON for PostgreSQL
+import os
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, Index, String
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import Column, DateTime, Index, String, Text
+from sqlalchemy.types import TypeEngine
+
+if os.environ.get("DATABASE_URL", "").startswith("sqlite"):
+    MetaType: type[TypeEngine] = Text
+else:
+    from sqlalchemy.dialects.postgresql import JSON
+
+    MetaType = JSON
 
 from backend.app.core.db import Base
 
@@ -41,7 +50,7 @@ class AuditLog(Base):
     target_id = Column(String(36), nullable=True, index=True)  # Resource ID
 
     # Details
-    meta = Column(JSON, nullable=True)  # Structured data (no PII, no secrets)
+    meta = Column(MetaType, nullable=True)  # Structured data (no PII, no secrets)
 
     # Network
     ip_address = Column(String(45), nullable=True)  # IPv4 or IPv6
