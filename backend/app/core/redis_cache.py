@@ -47,7 +47,7 @@ async def init_redis(redis_url: str) -> Any | None:
             logger.warning("aioredis not installed - caching disabled")
             return None
 
-        _redis_client = await aioredis.create_redis_pool(redis_url, encoding="utf8")  # type: ignore
+        _redis_client = await aioredis.create_redis_pool(redis_url, encoding="utf8")  # type: ignore[attr-defined]
         logger.info("Redis cache initialized successfully", extra={"url": redis_url})
         return _redis_client
     except Exception as e:

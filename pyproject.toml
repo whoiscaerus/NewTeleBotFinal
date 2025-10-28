@@ -59,6 +59,8 @@ dev = [
     "types-pyyaml>=6.0.12",
     "types-requests>=2.31.0",
     "types-pytz>=2025.1.0",
+    "apscheduler>=3.10.0",
+    "locust>=2.0.0",
 ]
 # MetaTrader5 is Windows-only and not available on PyPI for Linux
 # For CI/CD testing, we mock MT5 imports. For Windows production, install separately:

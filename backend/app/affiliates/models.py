@@ -341,3 +341,7 @@ class AffiliateEarnings(Base):
         Index("ix_affiliate_earnings_affiliate", "affiliate_id"),
         Index("ix_affiliate_earnings_period", "period"),
     )
+
+
+# Alias for backward compatibility and semantic clarity
+AffiliatePayout = Payout
