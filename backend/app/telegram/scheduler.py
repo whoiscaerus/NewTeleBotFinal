@@ -159,6 +159,7 @@ class GuideScheduler:
             self.logger.error(
                 "Error stopping scheduler", extra={"error": str(e)}, exc_info=True
             )
+            raise
 
     async def _post_guide(self) -> None:
         """Post a guide to all configured chat IDs.
