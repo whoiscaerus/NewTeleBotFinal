@@ -76,13 +76,13 @@ class TestGuideSchedulerStartStop:
             with patch.object(scheduler.scheduler, "start"):
                 scheduler.start()
 
-        assert scheduler.is_running is True
+        assert scheduler.is_running() is True
 
     def test_start_scheduler_already_running(self):
         """Test starting scheduler when already running."""
         bot = MagicMock(spec=Bot)
         scheduler = GuideScheduler(bot=bot, guide_chat_ids=[-1001234567890])
-        scheduler.is_running = True
+        scheduler._is_running = True
 
         with patch.object(scheduler.scheduler, "start") as mock_start:
             scheduler.start()
@@ -93,18 +93,18 @@ class TestGuideSchedulerStartStop:
         """Test stopping the scheduler."""
         bot = MagicMock(spec=Bot)
         scheduler = GuideScheduler(bot=bot, guide_chat_ids=[-1001234567890])
-        scheduler.is_running = True
+        scheduler._is_running = True
 
         with patch.object(scheduler.scheduler, "shutdown"):
             scheduler.stop()
 
-        assert scheduler.is_running is False
+        assert scheduler.is_running() is False
 
     def test_stop_scheduler_not_running(self):
         """Test stopping scheduler when not running."""
         bot = MagicMock(spec=Bot)
         scheduler = GuideScheduler(bot=bot, guide_chat_ids=[-1001234567890])
-        scheduler.is_running = False
+        scheduler._is_running = False
 
         with patch.object(scheduler.scheduler, "shutdown") as mock_shutdown:
             scheduler.stop()
@@ -364,7 +364,7 @@ class TestErrorHandling:
         """Test error handling when stopping scheduler."""
         bot = MagicMock(spec=Bot)
         scheduler = GuideScheduler(bot=bot, guide_chat_ids=[-1001234567890])
-        scheduler.is_running = True
+        scheduler._is_running = True
 
         with patch.object(
             scheduler.scheduler, "shutdown", side_effect=Exception("Error")
