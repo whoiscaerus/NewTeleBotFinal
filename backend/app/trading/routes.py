@@ -323,7 +323,7 @@ async def get_guards_status(
         )
 
         result = GuardsStatusOut(
-            user_id=user_id,
+            user_id=str(user_id),
             system_status="healthy" if not any_should_close else "warning",
             drawdown_guard=drawdown_alert,
             market_guard_alerts=market_alerts,

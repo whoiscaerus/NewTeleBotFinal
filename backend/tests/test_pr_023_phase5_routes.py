@@ -380,7 +380,7 @@ class TestOpenPositionsEndpoint:
 
     @pytest.mark.asyncio
     async def test_get_open_positions_empty_list(
-        self, client: AsyncClient, test_user, auth_headers: dict
+        self, client: AsyncClient, auth_headers: dict
     ):
         """Test open positions returns empty list when no positions exist."""
         response = await client.get(

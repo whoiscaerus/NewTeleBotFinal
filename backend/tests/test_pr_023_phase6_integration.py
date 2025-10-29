@@ -13,8 +13,6 @@ Author: Trading System
 Date: 2024-10-26
 """
 
-from uuid import UUID
-
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,10 +33,13 @@ class TestReconciliationQueryService:
     async def test_get_reconciliation_status_healthy_no_data(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test reconciliation status when no logs exist."""
         # Should return healthy idle status with empty events
+        from uuid import uuid4
+
+        test_user_id = str(uuid4())
+
         status = await ReconciliationQueryService.get_reconciliation_status(
             db_session,
             test_user_id,
@@ -55,9 +56,12 @@ class TestReconciliationQueryService:
     async def test_get_reconciliation_status_with_matched_positions(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test reconciliation status with matched positions in database."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
+
         # Create test reconciliation log
         log = ReconciliationLog(
             user_id=test_user_id,
@@ -93,9 +97,11 @@ class TestReconciliationQueryService:
     async def test_get_reconciliation_status_with_divergences(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test reconciliation status when divergences exist."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         # Create divergence log
         log = ReconciliationLog(
             user_id=test_user_id,
@@ -126,9 +132,11 @@ class TestReconciliationQueryService:
     async def test_get_recent_reconciliation_logs(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test fetching recent reconciliation logs."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         # Create multiple logs
         for i in range(3):
             log = ReconciliationLog(
@@ -164,9 +172,11 @@ class TestPositionQueryService:
     async def test_get_open_positions_empty(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test fetching positions when none exist."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         positions, total_pnl, total_pnl_pct = (
             await PositionQueryService.get_open_positions(
                 db_session,
@@ -181,9 +191,11 @@ class TestPositionQueryService:
     async def test_get_open_positions_with_data(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test fetching open positions with data."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         # Create test position
         log = ReconciliationLog(
             user_id=test_user_id,
@@ -220,9 +232,11 @@ class TestPositionQueryService:
     async def test_get_open_positions_with_symbol_filter(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test filtering positions by symbol."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         # Create two positions
         for symbol in ["XAUUSD", "EURUSD"]:
             log = ReconciliationLog(
@@ -255,9 +269,11 @@ class TestPositionQueryService:
     async def test_get_position_by_id(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test fetching a specific position by ID."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         # Create position
         log = ReconciliationLog(
             user_id=test_user_id,
@@ -292,9 +308,11 @@ class TestGuardQueryService:
     async def test_get_drawdown_alert_normal(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test drawdown alert when equity is healthy."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         alert = await GuardQueryService.get_drawdown_alert(
             db_session,
             test_user_id,
@@ -310,9 +328,11 @@ class TestGuardQueryService:
     async def test_get_drawdown_alert_warning(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test drawdown alert in warning state."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         alert = await GuardQueryService.get_drawdown_alert(
             db_session,
             test_user_id,
@@ -328,9 +348,11 @@ class TestGuardQueryService:
     async def test_get_drawdown_alert_critical(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test drawdown alert in critical state (should liquidate)."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         alert = await GuardQueryService.get_drawdown_alert(
             db_session,
             test_user_id,
@@ -347,9 +369,11 @@ class TestGuardQueryService:
     async def test_get_market_condition_alerts_empty(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test market condition alerts when none exist."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         alerts = await GuardQueryService.get_market_condition_alerts(
             db_session,
             test_user_id,
@@ -360,9 +384,11 @@ class TestGuardQueryService:
     async def test_get_market_condition_alerts_with_data(
         self,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test market condition alerts with guard triggers."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         # Create guard trigger log
         log = ReconciliationLog(
             user_id=test_user_id,
@@ -398,9 +424,11 @@ class TestPhase6Integration:
         client: AsyncClient,
         auth_headers: dict,
         db_session: AsyncSession,
-        test_user_id: UUID,
     ):
         """Test complete API flow with database integration."""
+        from uuid import uuid4
+
+        test_user_id = uuid4()
         # Create test data
         log = ReconciliationLog(
             user_id=test_user_id,

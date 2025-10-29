@@ -1,6 +1,17 @@
 """Root conftest - runs BEFORE all backend tests."""
 
 import sys
+
+# CRITICAL: Apply gevent monkey-patch BEFORE any imports that use ssl, jwt, anyio, redis
+# This must happen before locust or any other package imports ssl
+try:
+    from gevent import monkey
+
+    monkey.patch_all(ssl=True)
+    print("ROOT CONFTEST: gevent monkey-patch applied", file=sys.stderr)
+except ImportError:
+    print("ROOT CONFTEST: gevent not available, skipping monkey-patch", file=sys.stderr)
+
 from unittest.mock import AsyncMock
 
 from redis.asyncio import Redis as AsyncRedis

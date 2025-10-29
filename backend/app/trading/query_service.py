@@ -43,7 +43,7 @@ class ReconciliationQueryService:
     @staticmethod
     async def get_reconciliation_status(
         db: AsyncSession,
-        user_id: UUID,
+        user_id: UUID | str,
         limit_events: int = 5,
     ) -> ReconciliationStatusOut:
         """
@@ -51,7 +51,7 @@ class ReconciliationQueryService:
 
         Args:
             db: Database session
-            user_id: User ID
+            user_id: User ID (UUID or string)
             limit_events: Number of recent events to include
 
         Returns:
@@ -61,6 +61,10 @@ class ReconciliationQueryService:
             Exception: On database error
         """
         try:
+            # Convert string UUID to UUID object if needed
+            if isinstance(user_id, str):
+                user_id = UUID(user_id)
+
             logger.info(
                 "Querying reconciliation status from database",
                 extra={"user_id": str(user_id)},
@@ -150,9 +154,9 @@ class ReconciliationQueryService:
             events = []
             for log in recent_logs:
                 event_type_map = {
-                    "sync": EventType.POSITION_MATCHED,
+                    "sync": EventType.POSITION_SYNCED,
                     "close": EventType.POSITION_CLOSED,
-                    "guard_trigger": EventType.GUARD_TRIGGERED,
+                    "guard_trigger": EventType.DRAWDOWN_ALERT,
                     "warning": EventType.DIVERGENCE_DETECTED,
                 }
                 event_type = event_type_map.get(
@@ -169,7 +173,7 @@ class ReconciliationQueryService:
                     ReconciliationEventOut(
                         event_id=str(log.id),
                         event_type=event_type,
-                        user_id=user_id,
+                        user_id=str(user_id),
                         created_at=log.created_at,
                         description=description,
                         metadata={
@@ -188,7 +192,7 @@ class ReconciliationQueryService:
                 )
 
             return ReconciliationStatusOut(
-                user_id=user_id,
+                user_id=str(user_id),
                 status=status,
                 last_sync_at=last_sync_at,
                 total_syncs=total_syncs,
@@ -260,7 +264,7 @@ class PositionQueryService:
     @staticmethod
     async def get_open_positions(
         db: AsyncSession,
-        user_id: UUID,
+        user_id: UUID | str,
         symbol: str | None = None,
     ) -> tuple[list[PositionOut], float, float]:
         """
@@ -268,7 +272,7 @@ class PositionQueryService:
 
         Args:
             db: Database session
-            user_id: User ID
+            user_id: User ID (UUID or string)
             symbol: Optional symbol filter
 
         Returns:
@@ -278,6 +282,10 @@ class PositionQueryService:
             Exception: On database error
         """
         try:
+            # Convert string UUID to UUID object if needed
+            if isinstance(user_id, str):
+                user_id = UUID(user_id)
+
             logger.info(
                 "Querying open positions from database",
                 extra={"user_id": str(user_id), "symbol_filter": symbol},
@@ -307,10 +315,26 @@ class PositionQueryService:
             total_pnl = 0.0
 
             for _i, log in enumerate(logs):
+                # Convert direction to 'buy' or 'sell'
+                # Handle both integer (0=buy, 1=sell) and string ('0'/'1', 'buy'/'sell') formats
+                direction = log.direction
+                if isinstance(direction, int):
+                    direction_str = "sell" if direction == 1 else "buy"
+                elif isinstance(direction, str):
+                    direction = direction.strip().lower()
+                    if direction in ("0", "buy"):
+                        direction_str = "buy"
+                    elif direction in ("1", "sell"):
+                        direction_str = "sell"
+                    else:
+                        direction_str = direction  # Keep as-is if unknown
+                else:
+                    direction_str = str(direction).lower()
+
                 # Calculate unrealized PnL
                 if log.current_price and log.entry_price:
                     price_diff = log.current_price - log.entry_price
-                    if log.direction.lower() == "sell":
+                    if direction_str == "sell":
                         price_diff = -price_diff
                     unrealized_pnl = (
                         price_diff * log.volume * 100
@@ -330,7 +354,7 @@ class PositionQueryService:
                     position_id=str(log.id),
                     ticket=log.mt5_position_id,
                     symbol=log.symbol,
-                    direction=log.direction.lower(),
+                    direction=direction_str,
                     volume=log.volume,
                     entry_price=log.entry_price,
                     entry_time=log.created_at,
@@ -454,7 +478,7 @@ class GuardQueryService:
     @staticmethod
     async def get_drawdown_alert(
         db: AsyncSession,
-        user_id: UUID,
+        user_id: UUID | str,
         current_equity: float = 8000.0,
         peak_equity: float = 10000.0,
         alert_threshold_pct: float = 20.0,
@@ -467,7 +491,7 @@ class GuardQueryService:
 
         Args:
             db: Database session (for extensibility)
-            user_id: User ID
+            user_id: User ID (UUID or string)
             current_equity: Current account equity
             peak_equity: Peak account equity
             alert_threshold_pct: Threshold % for alert
@@ -476,6 +500,10 @@ class GuardQueryService:
             DrawdownAlertOut with current drawdown status
         """
         try:
+            # Convert string UUID to UUID object if needed
+            if isinstance(user_id, str):
+                user_id = UUID(user_id)
+
             logger.info(
                 "Querying drawdown alert status",
                 extra={"user_id": str(user_id)},
@@ -503,7 +531,7 @@ class GuardQueryService:
                 time_to_liquidation = None
 
             return DrawdownAlertOut(
-                user_id=user_id,
+                user_id=str(user_id),
                 current_equity=current_equity,
                 peak_equity=peak_equity,
                 current_drawdown_pct=round(drawdown_pct, 2),
@@ -525,7 +553,7 @@ class GuardQueryService:
     @staticmethod
     async def get_market_condition_alerts(
         db: AsyncSession,
-        user_id: UUID,
+        user_id: UUID | str,
     ) -> list[MarketConditionAlertOut]:
         """
         Get market condition alerts for user's open positions.
@@ -534,12 +562,16 @@ class GuardQueryService:
 
         Args:
             db: Database session
-            user_id: User ID
+            user_id: User ID (UUID or string)
 
         Returns:
             List of MarketConditionAlertOut
         """
         try:
+            # Convert string UUID to UUID object if needed
+            if isinstance(user_id, str):
+                user_id = UUID(user_id)
+
             logger.info(
                 "Querying market condition alerts",
                 extra={"user_id": str(user_id)},
@@ -566,9 +598,9 @@ class GuardQueryService:
                 # Determine condition type from divergence reason
                 condition_type_map = {
                     "gap": ConditionType.PRICE_GAP,
-                    "spread": ConditionType.BID_ASK_SPREAD,
-                    "liquidity": ConditionType.LOW_LIQUIDITY,
-                    "volatility": ConditionType.HIGH_VOLATILITY,
+                    "spread": ConditionType.LIQUIDITY_CRISIS,
+                    "liquidity": ConditionType.LIQUIDITY_CRISIS,
+                    "volatility": ConditionType.PRICE_GAP,
                 }
                 condition_type = condition_type_map.get(
                     log.divergence_reason or "",
