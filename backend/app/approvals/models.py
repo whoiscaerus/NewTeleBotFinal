@@ -50,11 +50,11 @@ class Approval(Base):
         nullable=False,
         index=True,
     )
-    client_id: Mapped[str] = mapped_column(
+    client_id: Mapped[str | None] = mapped_column(
         String(36),
-        nullable=False,
+        nullable=True,
         index=True,
-        doc="Client ID (denormalized for fast device polling queries)",
+        doc="Client ID (denormalized for fast device polling queries). TODO: Determine source and make NOT NULL.",
     )
     user_id: Mapped[str] = mapped_column(
         String(36),

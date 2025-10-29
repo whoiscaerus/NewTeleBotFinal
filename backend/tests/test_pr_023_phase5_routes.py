@@ -19,7 +19,7 @@ Author: Trading System
 Date: 2024-10-26
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -48,7 +48,8 @@ async def auth_headers_test_user(db_session: AsyncSession):
     from backend.app.core.settings import settings
 
     # Create a fresh user for this test
-    user_id = uuid4()
+    # Convert UUID to string for SQLite compatibility
+    user_id = str(uuid4())
     user = User(
         id=user_id,
         email="test_phase5@example.com",
@@ -75,6 +76,121 @@ async def auth_headers_test_user(db_session: AsyncSession):
         "user": user,
         "headers": {"Authorization": f"Bearer {token}"},
     }
+
+
+@pytest_asyncio.fixture
+async def sample_user_with_data(db_session: AsyncSession, auth_headers_test_user):
+    """Create test user with sample reconciliation log data.
+
+    Creates:
+      - 1 test user (from auth_headers_test_user fixture)
+      - 3 ReconciliationLog records (sync events with various states)
+
+    Use this fixture in tests that need actual database records.
+    """
+    from uuid import UUID, uuid4
+
+    from backend.app.trading.reconciliation.models import ReconciliationLog
+
+    test_user = auth_headers_test_user["user"]
+
+    # Convert test_user.id string back to UUID for the reconciliation logs
+    user_uuid = UUID(test_user.id)
+
+    # Create sample reconciliation logs for the test user
+    logs = [
+        ReconciliationLog(
+            id=uuid4(),
+            user_id=user_uuid,
+            signal_id=None,
+            approval_id=None,
+            mt5_position_id=123456,  # MT5 ticket number
+            symbol="XAUUSD",
+            direction=0,  # buy
+            volume=0.5,
+            entry_price=1950.00,
+            current_price=1952.50,
+            take_profit=1960.00,
+            stop_loss=1940.00,
+            matched=1,  # matched
+            divergence_reason=None,
+            slippage_pips=0.5,
+            close_reason=None,
+            closed_price=None,
+            pnl_gbp=None,
+            pnl_percent=None,
+            event_type="sync",
+            status="success",
+            error_message=None,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        ),
+        ReconciliationLog(
+            id=uuid4(),
+            user_id=user_uuid,
+            signal_id=None,
+            approval_id=None,
+            mt5_position_id=123457,  # MT5 ticket number
+            symbol="EURUSD",
+            direction=1,  # sell
+            volume=1.0,
+            entry_price=1.0950,
+            current_price=1.0945,
+            take_profit=1.0930,
+            stop_loss=1.0970,
+            matched=1,  # matched
+            divergence_reason=None,
+            slippage_pips=0.2,
+            close_reason=None,
+            closed_price=None,
+            pnl_gbp=None,
+            pnl_percent=None,
+            event_type="sync",
+            status="success",
+            error_message=None,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        ),
+        ReconciliationLog(
+            id=uuid4(),
+            user_id=user_uuid,
+            signal_id=None,
+            approval_id=None,
+            mt5_position_id=123458,  # MT5 ticket number
+            symbol="BTCUSD",
+            direction=0,  # buy
+            volume=0.1,
+            entry_price=27000.00,
+            current_price=27500.00,
+            take_profit=28000.00,
+            stop_loss=26500.00,
+            matched=2,  # divergence
+            divergence_reason="Price mismatch: expected 27000, got 27100",
+            slippage_pips=1.0,
+            close_reason=None,
+            closed_price=None,
+            pnl_gbp=None,
+            pnl_percent=None,
+            event_type="sync",
+            status="warning",
+            error_message=None,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        ),
+    ]
+
+    for log in logs:
+        db_session.add(log)
+
+    await db_session.commit()
+
+    return test_user
+
+
+@pytest_asyncio.fixture
+async def auth_headers(auth_headers_test_user):
+    """Provide auth headers dict from the test user fixture."""
+    return auth_headers_test_user["headers"]
 
 
 # ================================================================
@@ -197,7 +313,7 @@ class TestOpenPositionsEndpoint:
         # Verify types
         assert isinstance(data["positions"], list)
         assert isinstance(data["total_positions"], int)
-        assert isinstance(data["total_unrealized_pnl"], (int, float))
+        assert isinstance(data["total_unrealized_pnl"], int | float)
 
     @pytest.mark.asyncio
     async def test_get_open_positions_position_structure(
@@ -351,7 +467,7 @@ class TestGuardsStatusEndpoint:
         assert "last_checked_at" in drawdown
 
         # Verify types
-        assert isinstance(drawdown["current_equity"], (int, float))
+        assert isinstance(drawdown["current_equity"], int | float)
         assert drawdown["current_equity"] > 0
         assert drawdown["alert_type"] in [e.value for e in AlertType]
         assert isinstance(drawdown["should_close_all"], bool)

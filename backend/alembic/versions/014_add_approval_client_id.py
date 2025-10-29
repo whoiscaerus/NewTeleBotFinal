@@ -28,12 +28,15 @@ def upgrade() -> None:
         "ix_approval_client_decision", "approvals", ["client_id", "decision"]
     )
 
-    # Set NOT NULL constraint after data is populated
-    # For now, allow NULL since we can't derive client_id from existing data without joining signals
-    # In a real migration, you'd populate it from signal → user → client relationships
-    op.alter_column(
-        "approvals", "client_id", existing_type=sa.String(36), nullable=False
-    )
+    # NOTE: Keeping client_id nullable for now since:
+    # 1. Business logic hasn't defined where client_id comes from
+    # 2. Signal model doesn't have client_id field to derive from
+    # 3. Tests don't provide client_id in approval creation
+    # TODO: In future, determine if client_id should come from:
+    #   - Request headers (device identifier)
+    #   - User account (primary device)
+    #   - Signal metadata
+    # Then populate existing records and make NOT NULL
 
 
 def downgrade() -> None:
