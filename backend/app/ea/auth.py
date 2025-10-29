@@ -203,7 +203,7 @@ class DeviceAuthDependency:
         Raises:
             HTTPException: 401 if signature invalid.
         """
-        if not self.device or not self.device.hmac_key:
+        if not self.device or not self.device.hmac_key_hash:
             logger.error(
                 "Device loaded but HMAC key not available",
                 extra={"device_id": self.device_id},
@@ -235,7 +235,7 @@ class DeviceAuthDependency:
 
         # Verify signature against device HMAC key
         verified = HMACBuilder.verify(
-            canonical, self.signature, self.device.hmac_key.encode()
+            canonical, self.signature, self.device.hmac_key_hash.encode()
         )
 
         if not verified:
