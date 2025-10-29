@@ -554,22 +554,20 @@ async def approval(client_obj: Client, db_session: AsyncSession):
     from backend.app.signals.models import Signal
 
     signal = Signal(
-        client_id=client_obj.id,
-        strategy_id=uuid4(),
+        user_id=client_obj.id,
         instrument="XAUUSD",
         side=0,  # BUY
-        entry_price=1950.50,
-        stop_loss=1940.50,
-        take_profit=1960.50,
-        volume=0.5,
+        price=1950.50,
+        status=0,
     )
     db_session.add(signal)
     await db_session.flush()
 
     approval = Approval(
-        client_id=client_obj.id,
         signal_id=signal.id,
-        decision=ApprovalDecision.APPROVED,
+        client_id=client_obj.id,
+        user_id=client_obj.id,
+        decision=ApprovalDecision.APPROVED.value,
     )
     db_session.add(approval)
     await db_session.commit()
