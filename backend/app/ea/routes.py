@@ -88,7 +88,7 @@ async def poll_approved_signals(
         stmt = select(Approval).where(
             and_(
                 Approval.client_id == device_auth.client_id,
-                Approval.decision == ApprovalDecision.APPROVED,
+                Approval.decision == ApprovalDecision.APPROVED.value,
             )
         )
 

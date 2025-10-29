@@ -29,6 +29,7 @@ class Approval(Base):
     Fields:
         id: Unique approval ID
         signal_id: Associated signal (foreign key)
+        client_id: Client ID (for fast filtering by device polling)
         user_id: User making decision
         decision: Approved (1) or rejected (0)
         consent_version: Version of consent text user agreed to
@@ -48,6 +49,12 @@ class Approval(Base):
         ForeignKey("signals.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+    )
+    client_id: Mapped[str] = mapped_column(
+        String(36),
+        nullable=False,
+        index=True,
+        doc="Client ID (denormalized for fast device polling queries)",
     )
     user_id: Mapped[str] = mapped_column(
         String(36),
@@ -91,6 +98,8 @@ class Approval(Base):
     )
 
     __table_args__ = (
+        Index("ix_approval_client_created", "client_id", "created_at"),
+        Index("ix_approval_client_decision", "client_id", "decision"),
         Index("ix_approval_user_created", "user_id", "created_at"),
         Index("ix_approval_signal_user", "signal_id", "user_id"),
     )

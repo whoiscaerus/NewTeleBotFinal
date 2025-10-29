@@ -273,20 +273,27 @@ async def problem_detail_exception_handler(request: Request, exc: APIException):
 async def pydantic_validation_exception_handler(request: Request, exc: Exception):
     """Handle Pydantic validation errors and convert to RFC 7807.
 
+    Missing required headers return 400 Bad Request.
+    Other validation errors return 422 Unprocessable Entity.
+
     Args:
         request: HTTP request
-        exc: Exception from Pydantic
+        exc: Exception from Pydantic/FastAPI validation
 
     Returns:
         JSONResponse: RFC 7807 formatted validation error response
     """
     from fastapi.responses import JSONResponse
-    from pydantic_core import ValidationError as PydanticValidationError
 
-    # Extract field errors from Pydantic ValidationError
+    # Extract field errors from validation error
     errors = []
-    if isinstance(exc, PydanticValidationError):
-        for error in exc.errors():
+    has_missing_header = False
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    # RequestValidationError has an errors() method
+    if hasattr(exc, "errors"):
+        error_list = exc.errors() if callable(exc.errors) else exc.errors
+        for error in error_list:
             field_path = ".".join(str(p) for p in error["loc"])
             errors.append(
                 {
@@ -295,14 +302,27 @@ async def pydantic_validation_exception_handler(request: Request, exc: Exception
                     "type": error["type"],
                 }
             )
+            # Check if this is a missing header error
+            # Headers come from location tuple like ('header', 'X-Device-Id')
+            if len(error["loc"]) >= 2 and error["loc"][0] == "header":
+                if error["type"] in ("missing", "value_error"):
+                    has_missing_header = True
+
+    # Missing required headers should return 400 Bad Request, not 422
+    if has_missing_header:
+        status_code = status.HTTP_400_BAD_REQUEST
 
     request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
 
     problem_detail = ProblemDetail(
         type=ERROR_TYPES["validation"],
         title="Request Validation Error",
-        status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        detail="Request body validation failed",
+        status=status_code,
+        detail=(
+            "Missing required header(s)"
+            if has_missing_header
+            else "Request validation failed"
+        ),
         instance=request.url.path,
         request_id=request_id,
         timestamp=datetime.now(UTC).isoformat(),
@@ -319,7 +339,7 @@ async def pydantic_validation_exception_handler(request: Request, exc: Exception
     )
 
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status_code,
         content=problem_detail.model_dump(exclude_none=True),
     )
 

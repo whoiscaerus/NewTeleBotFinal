@@ -132,7 +132,7 @@ class DeviceAuthDependency:
                 f"Timestamp skew exceeded: {skew}s > {self.timestamp_skew_seconds}s",
                 extra={"device_id": self.device_id, "skew_seconds": skew},
             )
-            raise DeviceAuthError("Request timestamp outside acceptable window")
+            raise DeviceAuthError("Request timestamp outside acceptable window", 400)
 
     async def _validate_nonce(self) -> None:
         """
@@ -142,8 +142,16 @@ class DeviceAuthDependency:
         Nonce is stored with TTL equal to timestamp skew + nonce TTL.
 
         Raises:
+            HTTPException: 400 if nonce is empty or invalid format.
             HTTPException: 401 if nonce has been replayed.
         """
+        # Validate nonce format
+        if not self.nonce or not isinstance(self.nonce, str):
+            raise DeviceAuthError("Invalid nonce: must be non-empty string", 400)
+
+        if len(self.nonce) > 255:
+            raise DeviceAuthError("Invalid nonce: too long (max 255 chars)", 400)
+
         nonce_key = f"nonce:{self.device_id}:{self.nonce}"
         ttl = self.timestamp_skew_seconds + self.nonce_ttl_seconds
 
