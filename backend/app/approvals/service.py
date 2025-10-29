@@ -85,6 +85,7 @@ class ApprovalService:
             logger.error(f"Approval creation failed: {e}", exc_info=True)
             raise APIError(
                 status_code=500,
-                code="APPROVAL_ERROR",
-                message="Failed to create approval",
+                error_type="server_error",
+                title="Approval Error",
+                detail="Failed to create approval",
             ) from e

@@ -233,7 +233,7 @@ class ServerError(APIException):
         )
 
 
-async def problem_detail_exception_handler(request: Request, exc: APIException):
+def problem_detail_exception_handler(request: Request, exc: APIException):
     """FastAPI exception handler for APIException.
 
     Converts APIException to RFC 7807 ProblemDetail response.
@@ -270,7 +270,7 @@ async def problem_detail_exception_handler(request: Request, exc: APIException):
     )
 
 
-async def pydantic_validation_exception_handler(request: Request, exc: Exception):
+def pydantic_validation_exception_handler(request: Request, exc: Exception):
     """Handle Pydantic validation errors and convert to RFC 7807.
 
     Missing required headers return 400 Bad Request.
@@ -344,7 +344,7 @@ async def pydantic_validation_exception_handler(request: Request, exc: Exception
     )
 
 
-async def permission_error_handler(request: Request, exc: PermissionError):
+def permission_error_handler(request: Request, exc: PermissionError):
     """Handle PermissionError and convert to RFC 7807 403 response.
 
     Args:
@@ -383,7 +383,7 @@ async def permission_error_handler(request: Request, exc: PermissionError):
     )
 
 
-async def generic_exception_handler(request: Request, exc: Exception):
+def generic_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions and convert to RFC 7807.
 
     Args:
