@@ -42,12 +42,12 @@ async def init_redis(redis_url: str) -> Any | None:
     try:
         # Try to import redis - it may not be installed
         try:
-            import aioredis
+            import redis.asyncio as redis
         except ImportError:
-            logger.warning("aioredis not installed - caching disabled")
+            logger.warning("redis not installed - caching disabled")
             return None
 
-        _redis_client = await aioredis.create_redis_pool(redis_url, encoding="utf8")
+        _redis_client = redis.from_url(redis_url)
         logger.info("Redis cache initialized successfully", extra={"url": redis_url})
         return _redis_client
     except Exception as e:

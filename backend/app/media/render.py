@@ -2,7 +2,7 @@
 
 import io
 import logging
-from typing import cast
+from typing import Any, cast
 
 from backend.app.core.cache import CacheManager
 
@@ -18,12 +18,14 @@ except Exception:
     import numpy as np  # numpy still useful for ticks
     import pandas as pd
 
+_pil_image: Any
 try:
     from PIL import Image as PILImage
 
+    _pil_image = PILImage
     _HAS_PIL = True
 except Exception:
-    PILImage = None
+    _pil_image = None
     _HAS_PIL = False
 
 
@@ -123,9 +125,9 @@ class ChartRenderer:
         # If matplotlib is not available, generate a simple placeholder PNG
         if not _HAS_MATPLOTLIB:
             logger.warning("matplotlib not available; returning placeholder image")
-            if _HAS_PIL and PILImage is not None:
+            if _HAS_PIL and _pil_image is not None:
                 buffer = io.BytesIO()
-                img = PILImage.new("RGB", (width, height), color=(255, 255, 255))
+                img = _pil_image.new("RGB", (width, height), color=(255, 255, 255))
                 img.save(buffer, format="PNG")
                 png_clean = buffer.getvalue()
             else:
@@ -257,9 +259,9 @@ class ChartRenderer:
 
         if not _HAS_MATPLOTLIB:
             logger.warning("matplotlib not available; returning placeholder equity PNG")
-            if _HAS_PIL and PILImage is not None:
+            if _HAS_PIL and _pil_image is not None:
                 buffer = io.BytesIO()
-                img = PILImage.new("RGB", (width, height), color=(255, 255, 255))
+                img = _pil_image.new("RGB", (width, height), color=(255, 255, 255))
                 img.save(buffer, format="PNG")
                 png_clean = buffer.getvalue()
             else:
@@ -488,10 +490,10 @@ class ChartRenderer:
         """
         try:
             # Load image, remove metadata, save clean
-            img = PILImage.open(io.BytesIO(png_bytes))
+            img = _pil_image.open(io.BytesIO(png_bytes))
             # Remove metadata by creating new image
             data = list(img.getdata())
-            img_clean = PILImage.new(img.mode, img.size)
+            img_clean = _pil_image.new(img.mode, img.size)
             img_clean.putdata(data)
 
             # Save without metadata

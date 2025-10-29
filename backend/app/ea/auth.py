@@ -24,7 +24,6 @@ Example:
 
 import logging
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, Request
@@ -199,17 +198,17 @@ class DeviceAuthDependency:
         Validate HMAC signature.
 
         Constructs canonical string from request and verifies signature
-        against device's secret (stored as hash).
+        against device's HMAC key.
 
         Raises:
             HTTPException: 401 if signature invalid.
         """
-        if not self.device or not self.device.hmac_key_hash:
+        if not self.device or not self.device.hmac_key:
             logger.error(
-                "Device loaded but secret not available",
+                "Device loaded but HMAC key not available",
                 extra={"device_id": self.device_id},
             )
-            raise DeviceAuthError("Device secret not configured")
+            raise DeviceAuthError("Device HMAC key not configured")
 
         # Get request body
         try:
@@ -234,9 +233,9 @@ class DeviceAuthDependency:
             timestamp=self.timestamp_str,
         )
 
-        # Verify signature against device secret
+        # Verify signature against device HMAC key
         verified = HMACBuilder.verify(
-            canonical, self.signature, self.device.hmac_key_hash.encode()
+            canonical, self.signature, self.device.hmac_key.encode()
         )
 
         if not verified:
