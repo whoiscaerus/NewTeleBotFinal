@@ -12,7 +12,7 @@ import logging
 import time
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,10 +40,6 @@ async def poll_approved_signals(
     since: datetime | None = Query(
         None, description="Only return signals approved after this time"
     ),
-    x_device_id: str = Header(..., alias="X-Device-Id"),
-    x_nonce: str = Header(..., alias="X-Nonce"),
-    x_timestamp: str = Header(..., alias="X-Timestamp"),
-    x_signature: str = Header(..., alias="X-Signature"),
 ) -> PollResponse:
     """
     Poll for approved signals ready for execution.
@@ -185,10 +181,6 @@ async def acknowledge_execution(
     request: AckRequest,
     db: AsyncSession = Depends(get_db),
     device_auth: DeviceAuthDependency = Depends(get_device_auth),
-    x_device_id: str = Header(..., alias="X-Device-Id"),
-    x_nonce: str = Header(..., alias="X-Nonce"),
-    x_timestamp: str = Header(..., alias="X-Timestamp"),
-    x_signature: str = Header(..., alias="X-Signature"),
 ) -> AckResponse:
     """
     Acknowledge execution attempt.

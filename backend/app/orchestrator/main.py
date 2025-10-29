@@ -18,6 +18,7 @@ from backend.app.core.errors import (
     pydantic_validation_exception_handler,
 )
 from backend.app.core.middleware import RequestIDMiddleware
+from backend.app.ea.routes import router as ea_router
 from backend.app.miniapp.auth_bridge import router as miniapp_router
 from backend.app.signals.routes import router as signals_router
 from backend.app.telegram.webhook import router as telegram_router
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(affiliates_router)
     app.include_router(approvals_router)
     app.include_router(devices_router)
+    app.include_router(ea_router)
     app.include_router(exec_router)
     app.include_router(signals_router)
     app.include_router(telegram_router)

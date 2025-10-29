@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,14 +34,14 @@ class TestTimestampFreshness:
         now = datetime.utcnow().isoformat() + "Z"
         nonce = "nonce_fresh_001"
         canonical = HMACBuilder.build_canonical_string(
-            "GET", "/api/v1/client/poll", "", device.id.hex, nonce, now
+            "GET", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": now,
                 "X-Signature": signature,
@@ -57,14 +58,14 @@ class TestTimestampFreshness:
         stale_time = (datetime.utcnow() - timedelta(minutes=6)).isoformat() + "Z"
         nonce = "nonce_stale_001"
         canonical = HMACBuilder.build_canonical_string(
-            "GET", "/api/v1/client/poll", "", device.id.hex, nonce, stale_time
+            "GET", "/api/v1/client/poll", "", device.id, nonce, stale_time
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": stale_time,
                 "X-Signature": signature,
@@ -82,14 +83,14 @@ class TestTimestampFreshness:
         future_time = (datetime.utcnow() + timedelta(minutes=6)).isoformat() + "Z"
         nonce = "nonce_future_001"
         canonical = HMACBuilder.build_canonical_string(
-            "GET", "/api/v1/client/poll", "", device.id.hex, nonce, future_time
+            "GET", "/api/v1/client/poll", "", device.id, nonce, future_time
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": future_time,
                 "X-Signature": signature,
@@ -111,7 +112,7 @@ class TestTimestampFreshness:
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": bad_timestamp,
                 "X-Signature": signature,
@@ -131,14 +132,14 @@ class TestNonceReplayDetection:
         now = datetime.utcnow().isoformat() + "Z"
         unique_nonce = f"nonce_unique_{uuid4().hex[:8]}"
         canonical = HMACBuilder.build_canonical_string(
-            "GET", "/api/v1/client/poll", "", device.id.hex, unique_nonce, now
+            "GET", "/api/v1/client/poll", "", device.id, unique_nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": unique_nonce,
                 "X-Timestamp": now,
                 "X-Signature": signature,
@@ -155,12 +156,12 @@ class TestNonceReplayDetection:
         now = datetime.utcnow().isoformat() + "Z"
         replay_nonce = "nonce_replay_test_001"
         canonical = HMACBuilder.build_canonical_string(
-            "GET", "/api/v1/client/poll", "", device.id.hex, replay_nonce, now
+            "GET", "/api/v1/client/poll", "", device.id, replay_nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         headers = {
-            "X-Device-Id": device.id.hex,
+            "X-Device-Id": device.id,
             "X-Nonce": replay_nonce,
             "X-Timestamp": now,
             "X-Signature": signature,
@@ -184,7 +185,7 @@ class TestNonceReplayDetection:
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": "",
                 "X-Timestamp": now,
                 "X-Signature": signature,
@@ -205,14 +206,14 @@ class TestSignatureValidation:
         now = datetime.utcnow().isoformat() + "Z"
         nonce = f"nonce_valid_{uuid4().hex[:8]}"
         canonical = HMACBuilder.build_canonical_string(
-            "GET", "/api/v1/client/poll", "", device.id.hex, nonce, now
+            "GET", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": now,
                 "X-Signature": signature,
@@ -232,7 +233,7 @@ class TestSignatureValidation:
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": now,
                 "X-Signature": "invalid_base64_signature_1234567890",
@@ -250,9 +251,9 @@ class TestSignatureValidation:
         now = datetime.utcnow().isoformat() + "Z"
         nonce = f"nonce_tampered_{uuid4().hex[:8]}"
         canonical = HMACBuilder.build_canonical_string(
-            "GET", "/api/v1/client/poll", "", device.id.hex, nonce, now
+            "GET", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         # Tamper with signature: change first character
         tampered = (
@@ -264,7 +265,7 @@ class TestSignatureValidation:
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": now,
                 "X-Signature": tampered,
@@ -283,15 +284,15 @@ class TestSignatureValidation:
 
         # Sign for POST
         canonical = HMACBuilder.build_canonical_string(
-            "POST", "/api/v1/client/poll", "", device.id.hex, nonce, now
+            "POST", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         # Use for GET (wrong method)
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": now,
                 "X-Signature": signature,
@@ -384,14 +385,14 @@ class TestDeviceNotFound:
         now = datetime.utcnow().isoformat() + "Z"
         nonce = f"nonce_revoked_{uuid4().hex[:8]}"
         canonical = HMACBuilder.build_canonical_string(
-            "GET", "/api/v1/client/poll", "", device.id.hex, nonce, now
+            "GET", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": now,
                 "X-Signature": signature,
@@ -431,7 +432,7 @@ class TestMissingHeaders:
         response = await client.get(
             "/api/v1/client/poll",
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": "nonce",
                 "X-Timestamp": now,
                 # X-Signature: MISSING
@@ -465,15 +466,15 @@ class TestAckSpecificSecurity:
         body = f'{{"approval_id":"{approval.id}","status":"placed"}}'
 
         canonical = HMACBuilder.build_canonical_string(
-            "POST", "/api/v1/client/ack", body, device.id.hex, nonce, now
+            "POST", "/api/v1/client/ack", body, device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         response = await client.post(
             "/api/v1/client/ack",
             json={"approval_id": str(approval.id), "status": "placed"},
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": now,
                 "X-Signature": signature,
@@ -492,9 +493,9 @@ class TestAckSpecificSecurity:
         body = f'{{"approval_id":"{approval.id}","status":"placed"}}'
 
         canonical = HMACBuilder.build_canonical_string(
-            "POST", "/api/v1/client/ack", body, device.id.hex, nonce, now
+            "POST", "/api/v1/client/ack", body, device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
 
         # Use different body than what was signed
 
@@ -502,7 +503,7 @@ class TestAckSpecificSecurity:
             "/api/v1/client/ack",
             json={"approval_id": str(approval.id), "status": "failed"},
             headers={
-                "X-Device-Id": device.id.hex,
+                "X-Device-Id": device.id,
                 "X-Nonce": nonce,
                 "X-Timestamp": now,
                 "X-Signature": signature,
@@ -515,16 +516,28 @@ class TestAckSpecificSecurity:
 # Fixtures for security tests
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
+async def client_obj(db_session: AsyncSession) -> Client:
+    """Create a test client."""
+    client = Client(
+        email="test_device_auth@example.com",
+        telegram_id="12345",
+    )
+    db_session.add(client)
+    await db_session.commit()
+    await db_session.refresh(client)
+    return client
+
+
+@pytest_asyncio.fixture
 async def device(client_obj: Client, db_session: AsyncSession) -> Device:
     """Create a test device for security tests."""
     from backend.app.clients.models import Device
 
     device = Device(
-        client_id=client_obj.id,
-        name="test_device_security",
-        hmac_key_hash="test_secret_key_32_bytes_long!!!",
-        revoked=False,
+        user_id=client_obj.id,
+        device_name="test_device_security",
+        hmac_key="test_secret_key_32_bytes_long!!!",
         is_active=True,
     )
     db_session.add(device)
@@ -533,7 +546,7 @@ async def device(client_obj: Client, db_session: AsyncSession) -> Device:
     return device
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def approval(client_obj: Client, db_session: AsyncSession):
     """Create a test approval for ACK endpoint tests."""
     from backend.app.approvals.models import Approval, ApprovalDecision

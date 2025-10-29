@@ -23,10 +23,12 @@ Example:
 """
 
 import logging
+from collections.abc import Callable, Coroutine
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -163,16 +165,19 @@ class DeviceAuthDependency:
         Raises:
             HTTPException: 404 if device not found, 401 if revoked.
         """
+        # Device.id is stored as String(36), not UUID
+        # Validate format but use as string for query
         try:
-            device_uuid = UUID(self.device_id)
+            # Validate it's a valid UUID format (without converting to UUID object)
+            _ = UUID(self.device_id)
         except (ValueError, AttributeError) as e:
             logger.warning(
                 "Invalid device ID format", extra={"device_id": self.device_id}
             )
             raise DeviceAuthError("Invalid device ID format", 400) from e
 
-        # Load device with client relationship
-        stmt = select(Device).where(Device.id == device_uuid)
+        # Load device with client relationship (query with string ID)
+        stmt = select(Device).where(Device.id == self.device_id)
         result = await self.db.execute(stmt)
         device = result.scalar_one_or_none()
 
@@ -256,32 +261,31 @@ class DeviceAuthDependency:
         return self.device.client_id
 
 
-async def get_device_auth(
-    device_id: str | None = None,
-    nonce: str | None = None,
-    timestamp: str | None = None,
-    signature: str | None = None,
-) -> DeviceAuthDependency:
+def get_device_auth(
+    device_id: str = Header(..., alias="X-Device-Id"),
+    nonce: str = Header(..., alias="X-Nonce"),
+    timestamp: str = Header(..., alias="X-Timestamp"),
+    signature: str = Header(..., alias="X-Signature"),
+) -> Callable[..., Coroutine[Any, Any, DeviceAuthDependency]]:
     """
-    FastAPI dependency that validates device headers.
+    FastAPI dependency factory that validates device headers.
 
-    Extracts X-Device-Id, X-Nonce, X-Timestamp, X-Signature from request headers
-    and validates them.
-
-    Returns:
-        DeviceAuthDependency instance with device and client populated.
-
-    Raises:
-        HTTPException: 401 if auth fails, 400 if malformed.
+    Returns a callable that will be awaited by FastAPI.
     """
-    if not all([device_id, nonce, timestamp, signature]):
-        raise DeviceAuthError(
-            "Missing required headers: X-Device-Id, X-Nonce, X-Timestamp, X-Signature"
+
+    async def _validate_device_auth(
+        db: AsyncSession = Depends(get_db),  # noqa: B008
+        redis: Redis = Depends(get_redis),  # noqa: B008
+    ) -> DeviceAuthDependency:
+        auth = DeviceAuthDependency(
+            request=None,
+            device_id=device_id,
+            nonce=nonce,
+            timestamp=timestamp,
+            signature=signature,
+            db=db,
+            redis=redis,
         )
+        return await auth()
 
-    return await DeviceAuthDependency(
-        device_id=device_id,
-        nonce=nonce,
-        timestamp=timestamp,
-        signature=signature,
-    )()
+    return _validate_device_auth

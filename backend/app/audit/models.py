@@ -2,7 +2,8 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, Index, JSON, String
+from sqlalchemy import JSON, Column, DateTime, Index, String
+
 from backend.app.core.db import Base
 
 
