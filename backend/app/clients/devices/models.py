@@ -2,12 +2,17 @@
 
 import secrets
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Index, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey, Index, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.db import Base
+
+if TYPE_CHECKING:
+    from backend.app.clients.models import Client
+    from backend.app.ea.models import Execution
 
 
 class Device(Base):
@@ -27,6 +32,7 @@ class Device(Base):
     )
     user_id: Mapped[str] = mapped_column(
         String(36),
+        ForeignKey("clients.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
         doc="User ID who owns this device",
@@ -65,6 +71,14 @@ class Device(Base):
         nullable=False,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
+    )
+
+    # Relationship to Client
+    client: Mapped["Client"] = relationship("Client", back_populates="devices")
+
+    # Relationship to Executions (executions triggered from this device)
+    executions: Mapped[list["Execution"]] = relationship(
+        "Execution", back_populates="device", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
