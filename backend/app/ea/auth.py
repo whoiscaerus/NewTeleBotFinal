@@ -23,7 +23,6 @@ Example:
 """
 
 import logging
-from collections.abc import Callable, Coroutine
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -261,31 +260,28 @@ class DeviceAuthDependency:
         return self.device.client_id
 
 
-def get_device_auth(
+async def get_device_auth(
+    request: Request,
     device_id: str = Header(..., alias="X-Device-Id"),
     nonce: str = Header(..., alias="X-Nonce"),
     timestamp: str = Header(..., alias="X-Timestamp"),
     signature: str = Header(..., alias="X-Signature"),
-) -> Callable[..., Coroutine[Any, Any, DeviceAuthDependency]]:
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
+) -> DeviceAuthDependency:
     """
-    FastAPI dependency factory that validates device headers.
+    FastAPI dependency for device HMAC authentication.
 
-    Returns a callable that will be awaited by FastAPI.
+    Validates headers, device status, signature, and nonce freshness.
+    Returns authenticated DeviceAuthDependency or raises HTTPException.
     """
-
-    async def _validate_device_auth(
-        db: AsyncSession = Depends(get_db),  # noqa: B008
-        redis: Redis = Depends(get_redis),  # noqa: B008
-    ) -> DeviceAuthDependency:
-        auth = DeviceAuthDependency(
-            request=None,
-            device_id=device_id,
-            nonce=nonce,
-            timestamp=timestamp,
-            signature=signature,
-            db=db,
-            redis=redis,
-        )
-        return await auth()
-
-    return _validate_device_auth
+    auth = DeviceAuthDependency(
+        request=request,
+        device_id=device_id,
+        nonce=nonce,
+        timestamp=timestamp,
+        signature=signature,
+        db=db,
+        redis=redis,
+    )
+    return await auth()
