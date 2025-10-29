@@ -63,6 +63,12 @@ class Device(Base):
         index=True,
         doc="Whether device is active",
     )
+    revoked: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=False,
+        index=True,
+        doc="Whether device has been revoked (permanent disable)",
+    )
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,
         default=datetime.utcnow,
