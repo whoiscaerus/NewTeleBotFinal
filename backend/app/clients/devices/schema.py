@@ -17,9 +17,9 @@ class DeviceOut(BaseModel):
     """Device information."""
 
     id: str
-    user_id: str
+    client_id: str
     device_name: str
-    hmac_key: str
+    hmac_key_hash: str
     last_poll: datetime | None
     last_ack: datetime | None
     is_active: bool

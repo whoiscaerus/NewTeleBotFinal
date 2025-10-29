@@ -49,9 +49,9 @@ class DeviceService:
 
             # Create device
             device = Device(
-                user_id=user_id,
+                client_id=user_id,
                 device_name=device_name,
-                hmac_key=hmac_key,
+                hmac_key_hash=hmac_key,
                 is_active=True,
             )
 
@@ -87,7 +87,7 @@ class DeviceService:
         try:
             result = await self.db.execute(
                 select(Device)
-                .where(Device.user_id == user_id)
+                .where(Device.client_id == user_id)
                 .order_by(Device.created_at.desc())
             )
             devices = result.scalars().all()
@@ -119,7 +119,7 @@ class DeviceService:
             result = await self.db.execute(
                 select(Device).where(
                     and_(
-                        Device.user_id == user_id,
+                        Device.client_id == user_id,
                         Device.id == device_id,
                     )
                 )
@@ -159,7 +159,7 @@ class DeviceService:
             result = await self.db.execute(
                 select(Device).where(
                     and_(
-                        Device.user_id == user_id,
+                        Device.client_id == user_id,
                         Device.id == device_id,
                     )
                 )

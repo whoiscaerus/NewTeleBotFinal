@@ -19,7 +19,8 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.clients.models import Client, Device
+from backend.app.clients.devices.models import Device
+from backend.app.clients.models import Client
 from backend.app.ea.hmac import HMACBuilder
 
 
@@ -36,7 +37,7 @@ class TestTimestampFreshness:
         canonical = HMACBuilder.build_canonical_string(
             "GET", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
@@ -60,7 +61,7 @@ class TestTimestampFreshness:
         canonical = HMACBuilder.build_canonical_string(
             "GET", "/api/v1/client/poll", "", device.id, nonce, stale_time
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
@@ -85,7 +86,7 @@ class TestTimestampFreshness:
         canonical = HMACBuilder.build_canonical_string(
             "GET", "/api/v1/client/poll", "", device.id, nonce, future_time
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
@@ -134,7 +135,7 @@ class TestNonceReplayDetection:
         canonical = HMACBuilder.build_canonical_string(
             "GET", "/api/v1/client/poll", "", device.id, unique_nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
@@ -158,7 +159,7 @@ class TestNonceReplayDetection:
         canonical = HMACBuilder.build_canonical_string(
             "GET", "/api/v1/client/poll", "", device.id, replay_nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         headers = {
             "X-Device-Id": device.id,
@@ -208,7 +209,7 @@ class TestSignatureValidation:
         canonical = HMACBuilder.build_canonical_string(
             "GET", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
@@ -253,7 +254,7 @@ class TestSignatureValidation:
         canonical = HMACBuilder.build_canonical_string(
             "GET", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         # Tamper with signature: change first character
         tampered = (
@@ -286,7 +287,7 @@ class TestSignatureValidation:
         canonical = HMACBuilder.build_canonical_string(
             "POST", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         # Use for GET (wrong method)
         response = await client.get(
@@ -387,7 +388,7 @@ class TestDeviceNotFound:
         canonical = HMACBuilder.build_canonical_string(
             "GET", "/api/v1/client/poll", "", device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         response = await client.get(
             "/api/v1/client/poll",
@@ -468,7 +469,7 @@ class TestAckSpecificSecurity:
         canonical = HMACBuilder.build_canonical_string(
             "POST", "/api/v1/client/ack", body, device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         response = await client.post(
             "/api/v1/client/ack",
@@ -495,7 +496,7 @@ class TestAckSpecificSecurity:
         canonical = HMACBuilder.build_canonical_string(
             "POST", "/api/v1/client/ack", body, device.id, nonce, now
         )
-        signature = HMACBuilder.sign(canonical, device.hmac_key.encode())
+        signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         # Use different body than what was signed
 
@@ -532,12 +533,12 @@ async def client_obj(db_session: AsyncSession) -> Client:
 @pytest_asyncio.fixture
 async def device(client_obj: Client, db_session: AsyncSession) -> Device:
     """Create a test device for security tests."""
-    from backend.app.clients.models import Device
+    from backend.app.clients.devices.models import Device
 
     device = Device(
-        user_id=client_obj.id,
+        client_id=client_obj.id,
         device_name="test_device_security",
-        hmac_key="test_secret_key_32_bytes_long!!!",
+        hmac_key_hash="test_secret_key_32_bytes_long!!!",
         is_active=True,
     )
     db_session.add(device)

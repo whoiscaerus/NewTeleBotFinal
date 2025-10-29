@@ -30,24 +30,24 @@ class Device(Base):
         default=lambda: str(uuid4()),
         doc="Device ID",
     )
-    user_id: Mapped[str] = mapped_column(
+    client_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("clients.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        doc="User ID who owns this device",
+        doc="Client ID who owns this device",
     )
     device_name: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
         doc="Device name (e.g., 'Trading PC', 'VPS-1')",
     )
-    hmac_key: Mapped[str] = mapped_column(
-        String(64),
+    hmac_key_hash: Mapped[str] = mapped_column(
+        String(255),
         nullable=False,
         unique=True,
         index=True,
-        doc="HMAC key for signal polling authentication",
+        doc="HMAC key hash for signal polling authentication",
     )
     last_poll: Mapped[datetime | None] = mapped_column(
         nullable=True,
@@ -88,8 +88,8 @@ class Device(Base):
     )
 
     __table_args__ = (
-        Index("ix_devices_user", "user_id", "is_active"),
-        Index("ix_devices_user_created", "user_id", "created_at"),
+        Index("ix_devices_client", "client_id", "is_active"),
+        Index("ix_devices_client_created", "client_id", "created_at"),
     )
 
     @staticmethod
