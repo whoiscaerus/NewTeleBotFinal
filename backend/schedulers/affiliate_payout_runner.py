@@ -148,6 +148,23 @@ class AffiliatePayoutService:
             )
             return False
 
+        # Check: verify there are unpaid earnings for this affiliate (idempotency)
+        stmt_check = select(AffiliateEarnings).where(
+            and_(
+                AffiliateEarnings.affiliate_id == affiliate_id,
+                AffiliateEarnings.paid.is_(False),
+            )
+        )
+        result_check = await self.db.execute(stmt_check)
+        unpaid_earnings = result_check.scalars().all()
+
+        if not unpaid_earnings:
+            logger.info(
+                "No unpaid earnings found for affiliate",
+                extra={"affiliate_id": affiliate_id},
+            )
+            return False
+
         try:
             # Create Stripe payout
             # Requires: affiliate has Stripe Connect account/bank details
@@ -182,14 +199,14 @@ class AffiliatePayoutService:
             stmt_clear = select(AffiliateEarnings).where(
                 and_(
                     AffiliateEarnings.affiliate_id == affiliate_id,
-                    AffiliateEarnings.status == "pending",
+                    AffiliateEarnings.paid.is_(False),
                 )
             )
             result_earnings = await self.db.execute(stmt_clear)
             pending_earnings = result_earnings.scalars().all()
 
             for earning in pending_earnings:
-                earning.status = "paid"
+                earning.paid = True  # Set actual column, not property
                 earning.payout_id = payout_record.id
                 earning.paid_at = datetime.utcnow()
 

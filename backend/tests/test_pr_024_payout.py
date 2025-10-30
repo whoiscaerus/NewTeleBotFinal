@@ -63,6 +63,7 @@ class TestPayoutTriggering:
         self,
         db_session: AsyncSession,
         affiliate_user: User,
+        earnings: list,  # Add earnings fixture
     ):
         """Test successful payout creation."""
         from backend.schedulers.affiliate_payout_runner import AffiliatePayoutService
@@ -87,6 +88,7 @@ class TestPayoutTriggering:
         self,
         db_session: AsyncSession,
         affiliate_user: User,
+        earnings: list,  # Add earnings fixture
     ):
         """Test payout below minimum threshold is not created."""
         from backend.schedulers.affiliate_payout_runner import AffiliatePayoutService
@@ -125,6 +127,7 @@ class TestPayoutTriggering:
         self,
         db_session: AsyncSession,
         affiliate_user: User,
+        earnings: list,  # Add earnings fixture
     ):
         """Test payout handles Stripe errors gracefully."""
         from backend.schedulers.affiliate_payout_runner import AffiliatePayoutService
@@ -316,6 +319,7 @@ class TestPayoutIdempotency:
         self,
         db_session: AsyncSession,
         affiliate_user: User,
+        earnings: list,  # Add earnings fixture
     ):
         """Test that duplicate payouts are prevented."""
         from backend.schedulers.affiliate_payout_runner import AffiliatePayoutService
@@ -340,6 +344,7 @@ class TestPayoutIdempotency:
         self,
         db_session: AsyncSession,
         affiliate_user: User,
+        earnings: list,  # Add earnings fixture
     ):
         """Test Stripe transaction ID ensures idempotency."""
         from backend.schedulers.affiliate_payout_runner import AffiliatePayoutService
@@ -406,6 +411,7 @@ class TestEdgeCases:
         self,
         db_session: AsyncSession,
         affiliate_user: User,
+        earnings: list,  # Add earnings fixture
     ):
         """Test payout at exact minimum threshold."""
         from backend.schedulers.affiliate_payout_runner import AffiliatePayoutService
@@ -431,6 +437,7 @@ class TestEdgeCases:
         self,
         db_session: AsyncSession,
         affiliate_user: User,
+        earnings: list,  # Add earnings fixture
     ):
         """Test payout with large amount."""
         from backend.schedulers.affiliate_payout_runner import AffiliatePayoutService
@@ -454,6 +461,7 @@ class TestEdgeCases:
         self,
         db_session: AsyncSession,
         affiliate_user: User,
+        earnings: list,  # Add earnings fixture
     ):
         """Test payout with decimal amounts."""
         from backend.schedulers.affiliate_payout_runner import AffiliatePayoutService
