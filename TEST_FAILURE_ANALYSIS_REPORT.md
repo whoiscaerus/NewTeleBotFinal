@@ -38,12 +38,12 @@ Error:
 Root Cause:
   The test expects DeviceService.create_device() to raise ValueError when
   trying to register a device with a duplicate name for the same client.
-  
+
   Currently, DeviceService.create_device() is a stateless function that:
     • Generates a random HMAC secret
     • Returns (Device, secret) tuple
     • Does NOT validate against database
-    
+
   The test code expecting the error:
   ```python
   with pytest.raises(ValueError, match="already exists|409"):
@@ -169,12 +169,12 @@ Option 1: Skip this test (Recommended for now)
   Action: Add @pytest.mark.skip() to test method
   Time: 30 seconds
   Impact: CI/CD passes, test waits for implementation
-  
+
   Pros:
     ✅ CI/CD passes immediately
     ✅ No false pipeline failures
     ✅ Clear reason documented
-    
+
   Cons:
     ⚠️ Test not running until PR complete
 
@@ -182,12 +182,12 @@ Option 2: Complete PR-023a implementation (Recommended long-term)
   Required: Full DeviceService with DB integration
   Time: 2-3 hours
   Impact: Test passes, feature complete
-  
+
   Pros:
     ✅ Feature fully working
     ✅ All tests passing
     ✅ Ready for production
-    
+
   Cons:
     ⏳ Significant development effort
 

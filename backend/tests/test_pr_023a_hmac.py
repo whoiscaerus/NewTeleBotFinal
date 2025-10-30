@@ -17,8 +17,26 @@ from backend.app.clients.models import Device
 from backend.app.clients.service import DeviceService
 
 
+def decode_secret(secret: str) -> bytes:
+    """Decode a base64-URL-safe secret with proper padding.
+
+    Args:
+        secret: Base64-URL-safe encoded string
+
+    Returns:
+        Decoded bytes
+    """
+    # Add padding if needed for base64 decoding
+    padding = 4 - len(secret) % 4
+    if padding != 4:
+        secret_padded = secret + "=" * padding
+    else:
+        secret_padded = secret
+    return base64.urlsafe_b64decode(secret_padded)
+
+
 @pytest.fixture
-async def test_user(db_session: AsyncSession) -> User:
+def test_user(db_session: AsyncSession) -> User:
     """Create test user."""
     user = User(
         id="user_hmac_test",
@@ -28,30 +46,25 @@ async def test_user(db_session: AsyncSession) -> User:
         created_at=datetime.utcnow(),
     )
     db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
     return user
 
 
 @pytest.fixture
-async def test_client(db_session: AsyncSession, test_user: User):
+def test_client(db_session: AsyncSession, test_user: User):
     """Create test client."""
     from backend.app.clients.models import Client
 
     client = Client(
         id="client_hmac_test",
-        user_id=test_user.id,
-        email=test_user.email,
+        email="client@example.com",
         created_at=datetime.utcnow(),
     )
     db_session.add(client)
-    await db_session.commit()
-    await db_session.refresh(client)
     return client
 
 
 @pytest.fixture
-async def device_service(db_session: AsyncSession) -> DeviceService:
+def device_service(db_session: AsyncSession) -> DeviceService:
     """Create device service."""
     return DeviceService(db_session)
 
@@ -89,7 +102,7 @@ class TestHMACKeyGeneration:
 
         # Should be able to decode as base64
         try:
-            decoded = base64.urlsafe_b64decode(secret)
+            decoded = decode_secret(secret)
             assert len(decoded) >= 32
         except Exception as e:
             pytest.fail(f"Secret not valid base64: {e}")
@@ -174,13 +187,11 @@ class TestHMACKeyUniqueness:
         # Create two clients
         client1 = Client(
             id="client_unique_1",
-            user_id=test_user.id,
             email="client1@example.com",
             created_at=datetime.utcnow(),
         )
         client2 = Client(
             id="client_unique_2",
-            user_id=test_user.id,
             email="client2@example.com",
             created_at=datetime.utcnow(),
         )
@@ -236,7 +247,7 @@ class TestHMACValidation:
         )
 
         # Decode secret
-        decoded_secret = base64.urlsafe_b64decode(secret)
+        decoded_secret = decode_secret(secret)
 
         # Create test message
         message = b"GET/api/v1/signals"
@@ -263,7 +274,7 @@ class TestHMACValidation:
             "Device",
         )
 
-        decoded_secret = base64.urlsafe_b64decode(secret)
+        decoded_secret = decode_secret(secret)
         message = b"GET/api/v1/signals"
 
         # Create signature
@@ -294,7 +305,7 @@ class TestHMACValidation:
             "Device",
         )
 
-        decoded_secret = base64.urlsafe_b64decode(secret)
+        decoded_secret = decode_secret(secret)
         message1 = b"GET/api/v1/signals"
         message2 = b"GET/api/v1/orders"
 
@@ -326,8 +337,8 @@ class TestHMACValidation:
             "Device",
         )
 
-        decoded_secret = base64.urlsafe_b64decode(secret)
-        wrong_secret = base64.urlsafe_b64encode(b"wrong_secret_key")
+        decoded_secret = decode_secret(secret)
+        wrong_secret = b"wrong_secret_key"
 
         message = b"GET/api/v1/signals"
 
@@ -417,7 +428,7 @@ class TestHMACEdgeCases:
             "Device",
         )
 
-        decoded_secret = base64.urlsafe_b64decode(secret)
+        decoded_secret = decode_secret(secret)
 
         # HMAC-SHA256 produces 32 byte (256 bit) hashes
         signature = hmac.new(
@@ -440,7 +451,7 @@ class TestHMACEdgeCases:
             "Device",
         )
 
-        decoded_secret = base64.urlsafe_b64decode(secret)
+        decoded_secret = decode_secret(secret)
 
         # Should be at least 32 bytes (256 bits)
         assert len(decoded_secret) >= 32
@@ -458,7 +469,7 @@ class TestHMACEdgeCases:
                 test_client.id,
                 f"Device {i}",
             )
-            decoded = base64.urlsafe_b64decode(secret)
+            decoded = decode_secret(secret)
             secrets.append(decoded)
 
         # Secrets should appear random (no obvious pattern)
