@@ -61,11 +61,11 @@ All endpoints require JWT authentication.
 
 ## Key Features
 
-✅ **HMAC Secrets** — Cryptographically secure, shown once, never logged  
-✅ **Device Management** — Register, list, rename, revoke  
-✅ **Security** — JWT auth + ownership validation + cascade delete  
-✅ **Testing** — 24 tests, 86% coverage, all passing  
-✅ **Production Ready** — No TODOs, no placeholders, full documentation  
+✅ **HMAC Secrets** — Cryptographically secure, shown once, never logged
+✅ **Device Management** — Register, list, rename, revoke
+✅ **Security** — JWT auth + ownership validation + cascade delete
+✅ **Testing** — 24 tests, 86% coverage, all passing
+✅ **Production Ready** — No TODOs, no placeholders, full documentation
 
 ---
 
@@ -278,7 +278,7 @@ def verify_device_signature(device_id, provided_signature, message, device_secre
         message.encode(),
         hashlib.sha256
     ).hexdigest()
-    
+
     return hmac.compare_digest(provided_signature, expected)
 ```
 
@@ -302,7 +302,7 @@ For questions or issues:
 
 ---
 
-**PR-023a: Device Registry & HMAC Secrets**  
+**PR-023a: Device Registry & HMAC Secrets**
 ✅ Complete | 🎯 Production Ready | 🚀 Deployed
 
 Commit: `ad191c2` | Branch: `main`

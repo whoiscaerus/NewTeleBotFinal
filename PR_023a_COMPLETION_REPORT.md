@@ -1,7 +1,7 @@
 # PR-023a: Device Registry & HMAC Secrets ✅ COMPLETE
 
-**Session Date**: October 30, 2025  
-**Final Status**: 🟢 PRODUCTION READY - All Tests Passing  
+**Session Date**: October 30, 2025
+**Final Status**: 🟢 PRODUCTION READY - All Tests Passing
 **Commit**: `ad191c2` pushed to `origin/main`
 
 ---
@@ -160,17 +160,17 @@ All endpoints require JWT authentication and validate user ownership.
 
 ## Git Commit Details
 
-**Commit Hash**: `ad191c2`  
-**Branch**: `main`  
-**Message**: 
+**Commit Hash**: `ad191c2`
+**Branch**: `main`
+**Message**:
 ```
 PR-023a: Device Registry & HMAC Secrets - Complete Implementation
 
-* DeviceService with create_device, list_devices, update_device_name, 
+* DeviceService with create_device, list_devices, update_device_name,
   revoke_device, get_device methods
-* Device model with id, client_id, device_name, hmac_key_hash, last_poll, 
+* Device model with id, client_id, device_name, hmac_key_hash, last_poll,
   last_ack, last_seen, is_active, revoked, timestamps
-* Routes with JWT authentication, ownership validation, and comprehensive 
+* Routes with JWT authentication, ownership validation, and comprehensive
   error handling
 * Secret management: shown once at registration, never in logs or list operations
 * All 24 tests passing with 86% coverage
@@ -188,7 +188,7 @@ PR-023a: Device Registry & HMAC Secrets - Complete Implementation
 ### 1. Secret Management Pattern
 **Decision**: Show secret only at registration, never in list/get operations.
 
-**Rationale**: 
+**Rationale**:
 - Similar to AWS API keys, GitHub tokens (show once, cannot be recovered)
 - Prevents accidental exposure in logs or API responses
 - Forces clients to store secret immediately in environment
@@ -466,7 +466,7 @@ git log --oneline -1
 
 ---
 
-**Implementation Date**: October 30, 2025  
-**Status**: 🟢 PRODUCTION READY  
-**Deployed**: GitHub main branch  
+**Implementation Date**: October 30, 2025
+**Status**: 🟢 PRODUCTION READY
+**Deployed**: GitHub main branch
 **Session Duration**: ~2 hours (discovery → implementation → testing → deployment)
