@@ -59,6 +59,9 @@ class Trade(Base):
     )
 
     # Foreign Keys
+    user_id: Mapped[str] = mapped_column(
+        String(36), nullable=False, index=True, doc="User who owns this trade"
+    )
     signal_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     device_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
 

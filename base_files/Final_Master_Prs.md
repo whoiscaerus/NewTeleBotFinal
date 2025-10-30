@@ -1075,31 +1075,48 @@ backend/app/trading/monitoring/
 
 ---
 
-# PR-024 — **Affiliate & Referral System** (Tracking, Payouts, Dashboards)
+# PR-024 — **Affiliate & Referral System** (Tracking, Payouts, Fraud Detection)
 
 **Goal**
-Enable organic growth through referrals: track affiliate links, measure conversions, pay commissions automatically, and provide affiliate dashboard for transparency.
+Enable organic growth through referrals: track affiliate links, measure conversions, pay commissions automatically, and provide fraud detection + trade attribution audit to protect against false claims.
 
-**Depends on**: PR-004 (auth), PR-033 (payments), PR-008 (audit)
+**Depends on**: PR-004 (auth), PR-033 (payments), PR-008 (audit), PR-016 (trade store)
 
 ## Scope
 
 * Affiliate link generation (unique per user/influencer)
-* Conversion tracking (signup → subscription → first trade)
-* Commission calculation (tiered: first month, recurring, performance bonus)
+* **Subscription-based commission tracking** (affiliate earns only from subscription revenue, NOT user's trading)
+* Commission calculation (tiered: 30% month 1, 15% recurring, 5% performance bonus)
 * Automated payout via Stripe/bank transfer
 * Affiliate dashboard (earnings, clicks, conversions, payout status)
-* Fraud detection (self-referrals, wash trades for commissions)
+* **Fraud Detection (Self-Referrals Only)**: Detect users creating fake accounts to earn commission from themselves
+* **Trade Attribution Audit**: Prove which trades came from bot signals vs. user's manual trades (protects against false refund claims)
+
+## Critical Business Model
+
+**How Affiliates Earn:**
+- ✅ Commission from **subscription purchases only** (£20-50/month)
+- ❌ **NOT** from user's trading performance or volume
+- User executing own manual trades does **NOT** affect affiliate earnings
+
+**Real Fraud Risk:**
+- User subscribes (pays £20-50/month)
+- User executes **manual trades** that lose money
+- User claims: "Your bot lost me £500! Refund me!"
+- **Solution:** Trade attribution proof shows losses from user's manual trades, not your bot
 
 ## Deliverables
 
 ```
 backend/app/affiliates/
-  models.py               # Affiliate(id, user_id, referral_code, tier, created_at), ReferralEvent(id, code, event_type, user_id, created_at)
-  schemas.py              # AffiliateOut, ReferralStatsOut
-  service.py              # generate_code(), track_signup(), calculate_commission(), trigger_payout()
-  routes.py               # GET /api/v1/affiliate/me, POST /api/v1/affiliate/claim, GET /api/v1/affiliate/stats
-  fraud.py                # detect_wash_trade(user_id), check_self_referral(referrer, referee)
+  models.py                # Affiliate(id, user_id, referral_code, tier, created_at)
+  schemas.py               # AffiliateOut, ReferralStatsOut
+  service.py               # generate_code(), track_signup(), calculate_commission(), trigger_payout()
+  routes.py                # GET /api/v1/affiliate/me, POST /api/v1/affiliate/claim, GET /api/v1/affiliate/stats
+                           # GET /api/v1/admin/trades/{user_id}/attribution (trade attribution report)
+  fraud.py                 # check_self_referral(referrer, referee)
+                           # get_trade_attribution_report(user_id) → bot vs manual trades breakdown
+                           # validate_referral_before_commission(referrer, referee)
 backend/alembic/versions/00XX_affiliates.py
 
 backend/schedulers/
@@ -1116,35 +1133,75 @@ backend/schedulers/
 
 ## Behavior
 
-* **Link Generation**:
-  - User claims affiliate status (KYC optional; geo-gating for some regions)
-  - System generates unique `referral_code` (e.g., `ref_abc123xyz`)
-  - User gets shareable link: `https://yourdomain.com/?ref=abc123xyz`
-  - Link stored with `utm_source=affiliate`
+### Link Generation
+- User claims affiliate status (KYC optional; geo-gating for some regions)
+- System generates unique `referral_code` (e.g., `ref_abc123xyz`)
+- User gets shareable link: `https://yourdomain.com/?ref=abc123xyz`
+- Link stored with `utm_source=affiliate`
 
-* **Signup Tracking**:
-  - New user clicks link → `ReferralEvent(type='signup', referral_code=...)`
-  - User completes onboarding → `ReferralEvent(type='subscription_created', ...)`
-  - First trade placed → `ReferralEvent(type='first_trade', ...)`
+### Signup Tracking
+- New user clicks link → `ReferralEvent(type='signup', referral_code=...)`
+- User completes onboarding → `ReferralEvent(type='subscription_created', ...)`
+- Commission triggered only on subscription purchase (NOT on first trade)
 
-* **Commission Calculation** (daily batch):
-  - For each referred user:
-    - Month 1: `commission = subscription_price × 0.30`
-    - Month 2+: `commission = subscription_price × 0.15`
-    - If user stays 3+ months: `bonus = subscription_price × 0.05`
-  - Store in `AffiliateEarnings` table
+### Commission Calculation (Daily Batch)
+- For each referred user:
+  - Month 1: `commission = subscription_price × 0.30`
+  - Month 2+: `commission = subscription_price × 0.15`
+  - If user stays 3+ months: `bonus = subscription_price × 0.05`
+- Store in `AffiliateEarnings` table
+- **NOTE:** User's trading activity, win rate, or trade volume does NOT affect commission
 
-* **Payout**:
-  - Daily: aggregate earnings
-  - If balance > MIN_PAYOUT: create payout to Stripe/bank
-  - Async: poll payout status
-  - Mark as paid in DB
+### Payout
+- Daily: aggregate earnings
+- If balance > MIN_PAYOUT: create payout to Stripe/bank
+- Async: poll payout status
+- Mark as paid in DB
 
-* **Fraud Detection**:
-  - Self-referral check: `referrer_id == first_payment_user_id` → reject
-  - Wash trade check: referred user places trade, immediately closes @ tiny loss → flag
-  - Multiple accounts from same IP → flag for manual review
-  - Log all suspicions to Audit Log
+### Fraud Detection: Self-Referral Only
+**Why wash trades don't apply:**
+- Affiliates earn from subscriptions (fixed revenue)
+- Whether user places 0 or 1000 trades, affiliate earns same commission
+- User's trading performance is irrelevant to affiliate earnings
+- Wash trade detection is for prop firms / copy-trading models (not applicable here)
+
+**Self-Referral Detection:**
+1. Same email domain check: Referrer and referee with same `@domain.com`
+2. Account creation timing: Accounts created < 2 hours apart
+3. Action: Flag for manual review, log to audit log, block commission
+
+### Trade Attribution Audit (False Claim Protection)
+
+**Every trade has:**
+- `signal_id` (populated if bot trade, NULL if manual trade)
+- `user_id` (links trade to user)
+- Entry/exit prices, profit/loss, timestamps
+
+**Report function: `get_trade_attribution_report(user_id, days_lookback=30)`**
+
+Returns:
+```json
+{
+  "bot_trades": 3,
+  "manual_trades": 5,
+  "bot_profit": 150.00,
+  "manual_profit": -300.00,
+  "bot_win_rate": 0.67,
+  "manual_win_rate": 0.20,
+  "trades": [
+    {"trade_id": "...", "source": "bot", "profit": 50, "signal_id": "signal_123"},
+    {"trade_id": "...", "source": "manual", "profit": -100, "signal_id": null}
+  ]
+}
+```
+
+**Use Case: Dispute Resolution**
+```
+User: "Your bot lost me £300!"
+Admin: *runs attribution report*
+Result: Bot: +£150 (67% win rate), Manual: -£300 (20% win rate)
+Outcome: Claim rejected with database proof
+```
 
 ## Security
 
@@ -1153,24 +1210,26 @@ backend/schedulers/
 * Rate-limit payout API (1 request per 10 seconds per affiliate)
 * Audit every payout (Audit Log: amount, recipient, timestamp)
 * Stripe webhook verifies payout status (prevents false claims)
+* Trade attribution report immutable (sourced from database only)
 
 ## Telemetry
 
-* `affiliate_signups_total{tier}` counter
+* `affiliate_signups_total` counter
 * `affiliate_subscriptions_created_total` counter
-* `affiliate_earnings_total{tier}` counter
+* `affiliate_earnings_total` counter
 * `affiliate_payouts_total{status}` counter (pending, completed, failed)
-* `affiliate_fraud_detections_total{type}` counter
+* `affiliate_fraud_detections_total{type}` counter (self_referral only)
 * `affiliate_conversion_rate` gauge (conversions / clicks)
+* `trade_attribution_reports_generated_total` counter
 
 ## Tests
 
 * Generate referral link → share → new user signup with link → conversion tracked
 * Referred user subscribes → month 1 commission = 30% of MRR; month 2 = 15%
-* Self-referral attempt → rejected; logged to fraud queue
+* Self-referral attempt (same domain + close timing) → rejected; logged to fraud queue
 * Affiliate balance £100 → payout triggered; confirmed in Stripe logs
-* Wash trade detected (buy/sell same day): flag for review
-* Two accounts from same IP → flag for review
+* Trade attribution: Bot trades separated from manual trades by `signal_id`
+* Dispute scenario: User with 3 bot trades (+£150) and 5 manual trades (-£300) → report proves bot profitability
 
 ## Verification
 
@@ -1179,7 +1238,8 @@ backend/schedulers/
 * Subscribe as test user → commission calculated
 * Trigger daily payout batch → Stripe payout created
 * Observe affiliate dashboard: earnings, pending payout, conversion metrics
-* Manual review: fraud queue is empty (clean runs)
+* Generate trade attribution report: bot vs manual trades clearly separated
+* **API Endpoint Test**: GET `/api/v1/admin/trades/{user_id}/attribution` returns full report
 
 ---
 

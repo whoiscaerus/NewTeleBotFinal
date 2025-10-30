@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Index, String
+from sqlalchemy import JSON, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.core.db import Base
@@ -323,6 +323,11 @@ class ReferralEvent(Base):
         nullable=False,
         index=True,
     )
+    meta: Mapped[dict | None] = mapped_column(
+        JSON(),
+        nullable=True,
+        doc="Event metadata (subscription price, etc)",
+    )
     created_at: Mapped[datetime] = mapped_column(
         nullable=False,
         default=datetime.utcnow,
@@ -354,6 +359,16 @@ class AffiliateEarnings(Base):
         Index("ix_affiliate_earnings_affiliate", "affiliate_id"),
         Index("ix_affiliate_earnings_period", "period"),
     )
+
+    @property
+    def amount_gbp(self) -> float:
+        """Get amount in GBP (alias for amount)."""
+        return self.amount
+
+    @property
+    def status(self) -> str:
+        """Get status based on paid flag."""
+        return "paid" if self.paid else "pending"
 
 
 # Alias for backward compatibility and semantic clarity

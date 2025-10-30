@@ -9,17 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.affiliates.models import (
     Affiliate,
+    AffiliateEarnings,
     AffiliateStatus,
     Commission,
-    CommissionStatus,
     CommissionTier,
     Payout,
     PayoutStatus,
     Referral,
+    ReferralEvent,
     ReferralStatus,
 )
-from backend.app.affiliates.schema import AffiliateStatsOut, CommissionOut, PayoutOut
-from backend.app.core.errors import APIError
+from backend.app.affiliates.schema import CommissionOut, PayoutOut
+from backend.app.core.errors import APIException
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class AffiliateService:
             Affiliate object
 
         Raises:
-            APIError: If registration fails
+            APIException: If registration fails
         """
         try:
             # Check if already registered
@@ -89,15 +90,16 @@ class AffiliateService:
 
             return affiliate
 
-        except APIError:
+        except APIException:
             raise
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Affiliate registration failed: {e}", exc_info=True)
-            raise APIError(
+            raise APIException(
                 status_code=500,
-                code="REGISTRATION_ERROR",
-                message="Failed to register affiliate",
+                error_type="server_error",
+                title="Registration Error",
+                detail="Failed to register affiliate",
             ) from e
 
     async def record_referral(self, token: str, referred_user_id: str) -> None:
@@ -108,7 +110,7 @@ class AffiliateService:
             referred_user_id: ID of user signing up
 
         Raises:
-            APIError: If token invalid or user already referred
+            APIException: If token invalid or user already referred
         """
         try:
             # Find affiliate by token
@@ -118,7 +120,7 @@ class AffiliateService:
             affiliate = result.scalar()
 
             if not affiliate:
-                raise APIError(
+                raise APIException(
                     status_code=404,
                     code="INVALID_TOKEN",
                     message="Referral token not found",
@@ -129,7 +131,7 @@ class AffiliateService:
                 select(Referral).where(Referral.referred_user_id == referred_user_id)
             )
             if existing.scalar():
-                raise APIError(
+                raise APIException(
                     status_code=409,
                     code="ALREADY_REFERRED",
                     message="User already has a referrer",
@@ -154,12 +156,12 @@ class AffiliateService:
                 },
             )
 
-        except APIError:
+        except APIException:
             raise
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Referral recording failed: {e}", exc_info=True)
-            raise APIError(
+            raise APIException(
                 status_code=500,
                 code="REFERRAL_ERROR",
                 message="Failed to record referral",
@@ -195,7 +197,7 @@ class AffiliateService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Referral activation failed: {e}", exc_info=True)
-            raise APIError(
+            raise APIException(
                 status_code=500,
                 code="ACTIVATION_ERROR",
                 message="Failed to activate referral",
@@ -203,184 +205,303 @@ class AffiliateService:
 
     async def record_commission(
         self,
-        referrer_id: str,
-        referred_user_id: str,
-        amount: float,
-        trade_id: str | None = None,
-    ) -> None:
-        """Record commission earned on referred user's trade.
+        affiliate_id: str,
+        referee_id: str,
+        amount_gbp: float,
+        tier: str,
+    ) -> "AffiliateEarnings":
+        """Record commission earned on referred user's subscription.
 
         Args:
-            referrer_id: User ID of referrer
-            referred_user_id: User ID of referred user
-            amount: Commission amount
-            trade_id: Optional trade ID
+            affiliate_id: Affiliate user ID
+            referee_id: Referred user ID
+            amount_gbp: Commission amount in GBP
+            tier: Commission tier
+
+        Returns:
+            AffiliateEarnings: Created earnings record
+
+        Raises:
+            APIException: If recording fails
         """
         try:
-            # Get affiliate tier
+            from backend.app.affiliates.models import AffiliateEarnings
+
+            # Affiliate MUST already exist (should register first)
             affiliate_result = await self.db.execute(
-                select(Affiliate).where(Affiliate.user_id == referrer_id)
+                select(Affiliate).where(Affiliate.user_id == affiliate_id)
             )
             affiliate = affiliate_result.scalar()
 
-            if not affiliate or not affiliate.is_active():
-                logger.debug(
-                    f"Affiliate not active: {referrer_id}, skipping commission"
+            if not affiliate:
+                raise APIException(
+                    status_code=404,
+                    error_type="not_found",
+                    title="Affiliate Not Found",
+                    detail=f"User {affiliate_id} is not registered as an affiliate. Register first before recording commissions.",
                 )
-                return
 
-            tier = affiliate.commission_tier
+            # Update affiliate totals
+            affiliate.total_commission += amount_gbp
+            affiliate.pending_commission += amount_gbp
 
-            # Create commission record
-            commission = Commission(
-                referrer_id=referrer_id,
-                referred_user_id=referred_user_id,
-                trade_id=trade_id,
-                amount=amount,
-                tier=tier,
-                status=CommissionStatus.PENDING.value,
+            # Create earnings record
+            earning = AffiliateEarnings(
+                affiliate_id=affiliate_id,
+                user_id=affiliate_id,
+                amount=amount_gbp,
+                commission_type=tier,
+                period=datetime.utcnow().strftime("%Y-%m"),
+                paid=False,
             )
 
-            self.db.add(commission)
-
-            # Update affiliate pending total
-            affiliate.pending_commission += amount
-
+            self.db.add(earning)
             await self.db.commit()
+            await self.db.refresh(earning)
 
             logger.info(
-                f"Commission recorded: {referrer_id} +{amount}",
+                f"Commission recorded: {affiliate_id} earned {amount_gbp} GBP",
                 extra={
-                    "referrer_id": referrer_id,
-                    "amount": amount,
-                    "trade_id": trade_id,
+                    "affiliate_id": affiliate_id,
+                    "referee_id": referee_id,
+                    "amount": amount_gbp,
                 },
             )
+
+            return earning
 
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Commission recording failed: {e}", exc_info=True)
-            # Don't raise - commission failure shouldn't block trade
+            raise APIException(
+                status_code=500,
+                error_type="server_error",
+                title="Commission Error",
+                detail="Failed to record commission",
+            ) from e
 
-    async def get_stats(self, user_id: str) -> AffiliateStatsOut:
-        """Get affiliate earnings stats.
+    async def get_stats(self, affiliate_id: str) -> dict:
+        """Get affiliate statistics.
+
+        Args:
+            affiliate_id: Affiliate ID
+
+        Returns:
+            Dict with affiliate statistics (clicks, signups, subscriptions, conversion_rate)
+
+        Raises:
+            APIException: If affiliate not found
+        """
+        try:
+            affiliate_result = await self.db.execute(
+                select(Affiliate).where(Affiliate.id == affiliate_id)
+            )
+            affiliate = affiliate_result.scalar()
+
+            if not affiliate:
+                raise APIException(
+                    status_code=404,
+                    error_type="not_found",
+                    title="Affiliate Not Found",
+                    detail="Affiliate not found",
+                )
+
+            # Count signup events (each click/signup)
+            signups_result = await self.db.execute(
+                select(func.count(ReferralEvent.id)).where(
+                    and_(
+                        ReferralEvent.referral_code == affiliate.referral_code,
+                        ReferralEvent.event_type == "signup",
+                    )
+                )
+            )
+            total_clicks = signups_result.scalar() or 0
+
+            # Count unique users who signed up
+            unique_signups_result = await self.db.execute(
+                select(func.count(func.distinct(ReferralEvent.user_id))).where(
+                    and_(
+                        ReferralEvent.referral_code == affiliate.referral_code,
+                        ReferralEvent.event_type == "signup",
+                    )
+                )
+            )
+            total_signups = unique_signups_result.scalar() or 0
+
+            # Count subscriptions
+            subscriptions_result = await self.db.execute(
+                select(func.count(ReferralEvent.id)).where(
+                    and_(
+                        ReferralEvent.referral_code == affiliate.referral_code,
+                        ReferralEvent.event_type == "subscription_created",
+                    )
+                )
+            )
+            total_subscriptions = subscriptions_result.scalar() or 0
+
+            # Calculate conversion rate
+            conversion_rate = (
+                total_subscriptions / total_signups if total_signups > 0 else 0.0
+            )
+
+            return {
+                "total_clicks": total_clicks,
+                "total_signups": total_signups,
+                "total_subscriptions": total_subscriptions,
+                "conversion_rate": conversion_rate,
+                "total_commission": affiliate.total_commission,
+                "pending_commission": affiliate.pending_commission,
+                "paid_commission": affiliate.paid_commission,
+            }
+
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Stats retrieval failed: {e}", exc_info=True)
+            raise APIException(
+                status_code=500,
+                error_type="server_error",
+                title="Stats Error",
+                detail="Failed to retrieve stats",
+            ) from e
+
+    async def get_earnings_summary(self, user_id: str) -> dict:
+        """Get affiliate earnings summary.
 
         Args:
             user_id: User ID
 
         Returns:
-            Affiliate stats
-
-        Raises:
-            APIError: If not an affiliate
+            Dict with earnings summary (total, pending, paid)
         """
         try:
+            # Get affiliate - if not exists, return zero earnings
             affiliate_result = await self.db.execute(
                 select(Affiliate).where(Affiliate.user_id == user_id)
             )
             affiliate = affiliate_result.scalar()
 
             if not affiliate:
-                raise APIError(
+                # User must be registered as affiliate to get earnings
+                raise APIException(
                     status_code=404,
-                    code="NOT_AFFILIATE",
-                    message="User is not an affiliate",
+                    error_type="not_found",
+                    title="Not an Affiliate",
+                    detail="User has not registered as an affiliate",
                 )
 
-            # Count activated referrals
-            referral_result = await self.db.execute(
-                select(func.count(Referral.id)).where(
-                    and_(
-                        Referral.referrer_id == user_id,
-                        Referral.status == ReferralStatus.ACTIVATED.value,
-                    )
-                )
-            )
-            total_referrals = referral_result.scalar() or 0
+            return {
+                "total_earnings": affiliate.total_commission,
+                "pending_earnings": affiliate.pending_commission,
+                "paid_earnings": affiliate.paid_commission,
+            }
 
-            return AffiliateStatsOut(
-                total_referrals=total_referrals,
-                total_commission=affiliate.total_commission,
-                pending_commission=affiliate.pending_commission,
-                paid_commission=affiliate.paid_commission,
-                commission_tier=affiliate.commission_tier,
-            )
-
-        except APIError:
-            raise
         except Exception as e:
-            logger.error(f"Stats retrieval failed: {e}", exc_info=True)
-            raise APIError(
+            logger.error(f"Earnings summary failed: {e}", exc_info=True)
+            raise APIException(
                 status_code=500,
-                code="STATS_ERROR",
-                message="Failed to retrieve stats",
+                error_type="server_error",
+                title="Summary Error",
+                detail="Failed to retrieve earnings summary",
             ) from e
 
-    async def request_payout(self, user_id: str, amount: float) -> PayoutOut:
-        """Request commission payout.
+    async def request_payout(self, affiliate_id: str) -> PayoutOut:
+        """Request commission payout of all pending earnings.
+
+        Idempotent: Multiple calls return the same payout if one already exists with PENDING status.
 
         Args:
-            user_id: User ID
-            amount: Payout amount
+            affiliate_id: User ID (affiliate)
 
         Returns:
             Payout record
 
         Raises:
-            APIError: If insufficient pending commission
+            ValueError: If pending commission < £50 minimum
+            APIException: If affiliate not found
         """
         try:
-            # Get affiliate
+            # FIRST: Check for existing pending payout (IDEMPOTENCY - must check before balance check)
+            # This query will always hit the database (not cache) due to AsyncSession behavior
+            existing_payout_result = await self.db.execute(
+                select(Payout).where(
+                    (Payout.referrer_id == affiliate_id)
+                    & (Payout.status == PayoutStatus.PENDING.value)
+                )
+            )
+            existing_payout = existing_payout_result.scalar()
+
+            if existing_payout:
+                logger.info(
+                    f"Idempotency: returning existing payout {existing_payout.id}",
+                    extra={
+                        "affiliate_id": affiliate_id,
+                        "payout_id": existing_payout.id,
+                    },
+                )
+                return PayoutOut.model_validate(existing_payout)
+
+            # SECOND: Get affiliate (only if creating new payout)
             affiliate_result = await self.db.execute(
-                select(Affiliate).where(Affiliate.user_id == user_id)
+                select(Affiliate).where(Affiliate.user_id == affiliate_id)
             )
             affiliate = affiliate_result.scalar()
 
             if not affiliate:
-                raise APIError(
+                raise APIException(
                     status_code=404,
-                    code="NOT_AFFILIATE",
-                    message="User is not an affiliate",
+                    error_type="not_found",
+                    title="Not an Affiliate",
+                    detail="User is not registered as an affiliate",
                 )
 
-            if amount > affiliate.pending_commission:
-                raise APIError(
-                    status_code=400,
-                    code="INSUFFICIENT_BALANCE",
-                    message=f"Insufficient pending commission (available: {affiliate.pending_commission})",
+            # THIRD: Check minimum payout threshold (£50 - only for new payouts)
+            MIN_PAYOUT_GBP = 50.0
+            if affiliate.pending_commission < MIN_PAYOUT_GBP:
+                raise ValueError(
+                    f"Insufficient pending commission for payout (minimum: £{MIN_PAYOUT_GBP}, available: £{affiliate.pending_commission})"
                 )
 
-            # Create payout record
+            # FOURTH: Create payout record with all pending commission
             payout = Payout(
-                referrer_id=user_id,
-                amount=amount,
+                referrer_id=affiliate_id,
+                amount=affiliate.pending_commission,
                 status=PayoutStatus.PENDING.value,
             )
 
             self.db.add(payout)
 
-            # Update affiliate (move from pending to paid when processed)
-            affiliate.pending_commission -= amount
+            # FIFTH: Clear pending commission (it's now locked in this payout)
+            affiliate.pending_commission = 0.0
+            self.db.add(affiliate)
 
             await self.db.commit()
             await self.db.refresh(payout)
+            await self.db.refresh(affiliate)
 
             logger.info(
-                f"Payout requested: {user_id} {amount}",
-                extra={"user_id": user_id, "amount": amount},
+                f"Payout created: {payout.id} for £{payout.amount}",
+                extra={
+                    "affiliate_id": affiliate_id,
+                    "payout_id": payout.id,
+                    "amount": payout.amount,
+                },
             )
 
             return PayoutOut.model_validate(payout)
 
-        except APIError:
+        except ValueError:
+            raise
+        except APIException:
             raise
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Payout request failed: {e}", exc_info=True)
-            raise APIError(
+            raise APIException(
                 status_code=500,
-                code="PAYOUT_ERROR",
-                message="Failed to request payout",
+                error_type="server_error",
+                title="Payout Error",
+                detail="Failed to request payout",
             ) from e
 
     async def get_commission_history(
@@ -413,8 +534,274 @@ class AffiliateService:
 
         except Exception as e:
             logger.error(f"History retrieval failed: {e}", exc_info=True)
-            raise APIError(
+            raise APIException(
                 status_code=500,
                 code="HISTORY_ERROR",
                 message="Failed to retrieve commission history",
             ) from e
+
+    async def generate_referral_link(self, affiliate_id: str) -> str:
+        """Generate shareable referral link for affiliate.
+
+        Args:
+            affiliate_id: Affiliate ID
+
+        Returns:
+            Referral link URL
+
+        Raises:
+            APIException: If affiliate not found
+        """
+        try:
+            result = await self.db.execute(
+                select(Affiliate).where(Affiliate.id == affiliate_id)
+            )
+            affiliate = result.scalar()
+
+            if not affiliate:
+                raise APIException(
+                    status_code=404,
+                    code="AFFILIATE_NOT_FOUND",
+                    message="Affiliate not found",
+                )
+
+            # Generate link with referral code
+            base_url = "https://yourdomain.com"  # TODO: Move to config
+            link = f"{base_url}/?ref={affiliate.referral_code}"
+
+            logger.info(
+                f"Referral link generated: {affiliate_id}",
+                extra={"affiliate_id": affiliate_id},
+            )
+
+            return link
+
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Link generation failed: {e}", exc_info=True)
+            raise APIException(
+                status_code=500,
+                code="LINK_ERROR",
+                message="Failed to generate referral link",
+            ) from e
+
+    async def track_signup(
+        self, referral_code: str, new_user_id: str
+    ) -> "ReferralEvent":
+        """Track user signup via referral link.
+
+        Args:
+            referral_code: Referral code from link
+            new_user_id: User ID signing up
+
+        Returns:
+            ReferralEvent: Created signup event
+
+        Raises:
+            APIException: If referral code invalid
+        """
+        try:
+            # Find affiliate by referral code
+            affiliate_result = await self.db.execute(
+                select(Affiliate).where(Affiliate.referral_token == referral_code)
+            )
+            affiliate = affiliate_result.scalar()
+
+            if not affiliate:
+                raise APIException(
+                    status_code=400,
+                    error_type="invalid_referral",
+                    title="Invalid Referral Code",
+                    detail=f"Referral code '{referral_code}' not found",
+                )
+
+            # Record the referral
+            await self.record_referral(referral_code, new_user_id)
+
+            # Create signup event
+            event = ReferralEvent(
+                referral_code=referral_code,
+                event_type="signup",
+                user_id=new_user_id,
+            )
+            self.db.add(event)
+            await self.db.commit()
+            await self.db.refresh(event)
+
+            logger.info(
+                f"Signup tracked: {new_user_id} via {referral_code}",
+                extra={
+                    "user_id": new_user_id,
+                    "referral_code": referral_code,
+                },
+            )
+
+            return event
+
+        except APIException:
+            raise
+        except Exception as e:
+            logger.error(f"Signup tracking failed: {e}", exc_info=True)
+            raise APIException(
+                status_code=500,
+                error_type="signup_track_error",
+                title="Signup Tracking Failed",
+                detail=str(e),
+            )
+
+    async def track_subscription(
+        self, referral_code: str, user_id: str, subscription_price: float
+    ) -> "ReferralEvent":
+        """Track user subscription.
+
+        Args:
+            referral_code: Referral code
+            user_id: User ID who subscribed
+            subscription_price: Subscription price
+
+        Returns:
+            ReferralEvent: Created subscription event
+
+        Raises:
+            APIException: If tracking fails
+        """
+        try:
+            # Create subscription event with meta data
+            event = ReferralEvent(
+                referral_code=referral_code,
+                event_type="subscription_created",
+                user_id=user_id,
+                meta={"subscription_price": subscription_price},
+            )
+            self.db.add(event)
+            await self.db.commit()
+            await self.db.refresh(event)
+
+            logger.info(
+                f"Subscription tracked: {user_id}",
+                extra={
+                    "user_id": user_id,
+                    "subscription_price": subscription_price,
+                },
+            )
+
+            return event
+
+        except Exception as e:
+            logger.error(f"Subscription tracking failed: {e}", exc_info=True)
+            raise APIException(
+                status_code=500,
+                code="SUBSCRIPTION_TRACK_ERROR",
+                message="Failed to track subscription",
+            ) from e
+
+    async def track_first_trade(
+        self, referral_code: str, user_id: str
+    ) -> "ReferralEvent":
+        """Track user's first trade.
+
+        Args:
+            referral_code: Referral code
+            user_id: User ID who placed trade
+
+        Returns:
+            ReferralEvent: Created trade event
+
+        Raises:
+            APIException: If tracking fails
+        """
+        try:
+            # Create first trade event
+            event = ReferralEvent(
+                referral_code=referral_code,
+                event_type="first_trade",
+                user_id=user_id,
+            )
+            self.db.add(event)
+            await self.db.commit()
+            await self.db.refresh(event)
+
+            logger.info(
+                f"First trade tracked: {user_id}",
+                extra={"user_id": user_id},
+            )
+
+            return event
+
+        except Exception as e:
+            logger.error(f"First trade tracking failed: {e}", exc_info=True)
+            raise APIException(
+                status_code=500,
+                code="TRADE_TRACK_ERROR",
+                message="Failed to track trade",
+            ) from e
+
+    async def calculate_commission(
+        self,
+        subscription_price: float,
+        month: int,
+        performance_bonus: bool = False,
+    ) -> float:
+        """Calculate commission based on month and subscription price.
+
+        Commission tiers:
+        - Month 1: 30% of subscription price
+        - Months 2+: 15% of subscription price
+        - Performance bonus (3+ months): +5%
+
+        Args:
+            subscription_price: Monthly subscription price
+            month: Month number (1, 2, 3+)
+            performance_bonus: Apply 5% bonus if eligible
+
+        Returns:
+            Commission amount
+        """
+        try:
+            base_commission = 0.0
+
+            # Tier 1: First month = 30%
+            if month == 1:
+                base_commission = subscription_price * 0.30
+            # Tier 2: Months 2+ = 15%
+            else:
+                base_commission = subscription_price * 0.15
+
+            # Performance bonus: 5% if 3+ months
+            if performance_bonus and month >= 3:
+                base_commission += subscription_price * 0.05
+
+            return base_commission
+
+        except Exception as e:
+            logger.error(f"Commission calculation failed: {e}", exc_info=True)
+            return 0.0
+
+    async def check_self_referral(
+        self, referrer_id: str, referred_user_id: str
+    ) -> bool:
+        """Check if referral is self-referral (fraud).
+
+        Args:
+            referrer_id: Affiliate user ID
+            referred_user_id: User being referred
+
+        Returns:
+            True if self-referral, False otherwise
+        """
+        return referrer_id == referred_user_id
+
+    async def detect_wash_trade(self, user_id: str, hours_window: int = 24) -> bool:
+        """Detect wash trading (buy/sell same day for commission abuse).
+
+        Args:
+            user_id: User ID to check
+            hours_window: Time window in hours
+
+        Returns:
+            True if suspicious pattern detected
+        """
+        # TODO: Implement with trade history
+        # For now, return False (not implemented)
+        return False

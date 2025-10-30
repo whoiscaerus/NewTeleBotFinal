@@ -52,7 +52,7 @@ class FraudDetectionService:
 
         # For self-referral: check if referrer_id appears in referee's account setup
         # Simple heuristic: if same email domain and within 5 minutes, flag it
-        from backend.app.users.models import User
+        from backend.app.auth.models import User
 
         stmt_referrer = select(User).where(User.id == referrer_id)
         stmt_referee = select(User).where(User.id == referee_id)
@@ -113,6 +113,10 @@ class FraudDetectionService:
         """
         Detect wash trades: user buys then immediately sells at loss.
 
+        **NOTE**: This detection is NOT used for affiliate commissions.
+        Affiliates earn ONLY from subscription revenue, not trades.
+        This function is kept for potential future use (risk management, prop trading, etc.)
+
         Args:
             db: Database session
             user_id: User to check for wash trades
@@ -150,7 +154,7 @@ class FraudDetectionService:
                         "Wash trade detected: large loss on short position",
                         extra={
                             "user_id": user_id,
-                            "trade_id": trade.id,
+                            "trade_id": trade.trade_id,
                             "loss_percentage": loss_percentage,
                             "profit": trade.profit,
                         },
@@ -181,7 +185,7 @@ class FraudDetectionService:
             >>> if account_count > 1:
             ...     logger.warning(f"Multiple accounts from IP: {account_count}")
         """
-        from backend.app.users.models import User
+        from backend.app.auth.models import User
 
         cutoff_time = datetime.utcnow() - timedelta(days=days_lookback)
 
@@ -259,6 +263,120 @@ class FraudDetectionService:
         return str(audit_entry.id)
 
 
+async def get_trade_attribution_report(
+    db: AsyncSession,
+    user_id: str,
+    days_lookback: int = 30,
+) -> dict:
+    """
+    Generate trade attribution report: bot signals vs. manual trades.
+
+    **CRITICAL FOR BUSINESS PROTECTION:**
+    This proves which trades came from your bot (signal_id populated)
+    vs. user's manual trades (signal_id NULL). Protects against false claims
+    where users execute bad manual trades then blame your bot.
+
+    Args:
+        db: Database session
+        user_id: User to audit
+        days_lookback: Look back window in days (default 30)
+
+    Returns:
+        Dictionary with attribution breakdown:
+        {
+            "total_trades": int,
+            "bot_trades": int (signal_id NOT NULL),
+            "manual_trades": int (signal_id NULL),
+            "bot_profit": Decimal (sum of bot trade profits),
+            "manual_profit": Decimal (sum of manual trade profits),
+            "bot_win_rate": float (0-1),
+            "manual_win_rate": float (0-1),
+            "trades": [
+                {
+                    "trade_id": str,
+                    "source": "bot" | "manual",
+                    "symbol": str,
+                    "profit": Decimal,
+                    "entry_time": datetime,
+                    "signal_id": str | None,
+                }
+            ]
+        }
+
+    Example:
+        >>> report = await get_trade_attribution_report(db, "user_123")
+        >>> print(f"Bot trades: {report['bot_trades']}, Manual: {report['manual_trades']}")
+        >>> if report['manual_profit'] < 0:
+        ...     logger.info("User's manual trades are losing, bot trades profitable")
+    """
+    cutoff_time = datetime.utcnow() - timedelta(days=days_lookback)
+
+    # Fetch all trades for user in window
+    stmt = select(Trade).where(
+        and_(
+            Trade.user_id == user_id,
+            Trade.entry_time >= cutoff_time,
+            Trade.status.in_(["closed", "CLOSED"]),  # Handle both cases
+        )
+    )
+
+    result = await db.execute(stmt)
+    all_trades = result.scalars().all()
+
+    # Categorize trades
+    bot_trades = [t for t in all_trades if t.signal_id is not None]
+    manual_trades = [t for t in all_trades if t.signal_id is None]
+
+    # Calculate metrics
+    bot_profit = sum((t.profit or 0) for t in bot_trades)
+    manual_profit = sum((t.profit or 0) for t in manual_trades)
+
+    bot_wins = sum(1 for t in bot_trades if t.profit and t.profit > 0)
+    manual_wins = sum(1 for t in manual_trades if t.profit and t.profit > 0)
+
+    bot_win_rate = bot_wins / len(bot_trades) if bot_trades else 0.0
+    manual_win_rate = manual_wins / len(manual_trades) if manual_trades else 0.0
+
+    # Format trade details
+    trade_details = [
+        {
+            "trade_id": t.trade_id,
+            "source": "bot" if t.signal_id else "manual",
+            "symbol": t.symbol,
+            "profit": float(t.profit) if t.profit else 0.0,
+            "entry_time": t.entry_time,
+            "signal_id": t.signal_id,
+        }
+        for t in all_trades
+    ]
+
+    report = {
+        "user_id": user_id,
+        "days_lookback": days_lookback,
+        "total_trades": len(all_trades),
+        "bot_trades": len(bot_trades),
+        "manual_trades": len(manual_trades),
+        "bot_profit": float(bot_profit),
+        "manual_profit": float(manual_profit),
+        "bot_win_rate": bot_win_rate,
+        "manual_win_rate": manual_win_rate,
+        "trades": trade_details,
+    }
+
+    logger.info(
+        "Trade attribution report generated",
+        extra={
+            "user_id": user_id,
+            "bot_trades": len(bot_trades),
+            "manual_trades": len(manual_trades),
+            "bot_profit": float(bot_profit),
+            "manual_profit": float(manual_profit),
+        },
+    )
+
+    return report
+
+
 async def validate_referral_before_commission(
     db: AsyncSession,
     referrer_id: str,
@@ -266,6 +384,13 @@ async def validate_referral_before_commission(
 ) -> tuple[bool, str | None]:
     """
     Comprehensive validation before recording commission.
+
+    **NOTE**: This validation is for SUBSCRIPTION-BASED commissions only.
+    Affiliates earn commission when referred users BUY SUBSCRIPTIONS,
+    NOT from user's trading activity. Trades are irrelevant to affiliate earnings.
+
+    Self-referral detection prevents users from creating fake accounts
+    to buy subscriptions and earn commission from themselves.
 
     Args:
         db: Database session
@@ -285,7 +410,7 @@ async def validate_referral_before_commission(
     """
     service = FraudDetectionService()
 
-    # Check 1: Self-referral
+    # Check: Self-referral (only fraud that matters for subscription commissions)
     if await service.check_self_referral(db, referrer_id, referee_id):
         await service.log_fraud_suspicion(
             db,
@@ -298,17 +423,8 @@ async def validate_referral_before_commission(
         )
         return False, "Self-referral detected"
 
-    # Check 2: Wash trade pattern
-    if await service.detect_wash_trade(db, referee_id, time_window_hours=24):
-        await service.log_fraud_suspicion(
-            db,
-            "wash_trade",
-            referee_id,
-            {
-                "referrer_id": referrer_id,
-            },
-        )
-        return False, "Wash trade pattern detected"
+    # NOTE: Wash trade detection removed - not relevant to subscription commissions
+    # Affiliates earn from subscriptions, not from user's trading performance
 
     # All checks passed
     logger.info(
