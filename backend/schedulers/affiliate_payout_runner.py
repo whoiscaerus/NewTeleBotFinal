@@ -23,6 +23,9 @@ from backend.app.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Affiliate payout configuration
+AFFILIATE_MIN_PAYOUT_GBP = 50.0  # Minimum payout threshold
+
 
 class AffiliatePayoutService:
     """Service for processing affiliate payouts."""
@@ -134,14 +137,13 @@ class AffiliatePayoutService:
             return False
 
         # Check: minimum payout threshold
-        min_payout = float(self.settings.get("AFFILIATE_MIN_PAYOUT_GBP", 50.0))
-        if amount_gbp < min_payout:
+        if amount_gbp < AFFILIATE_MIN_PAYOUT_GBP:
             logger.info(
                 "Payout below minimum threshold",
                 extra={
                     "affiliate_id": affiliate_id,
                     "amount_gbp": amount_gbp,
-                    "min_threshold": min_payout,
+                    "min_threshold": AFFILIATE_MIN_PAYOUT_GBP,
                 },
             )
             return False
@@ -167,12 +169,11 @@ class AffiliatePayoutService:
 
             # Record payout in DB
             payout_record = AffiliatePayout(
-                affiliate_id=affiliate_id,
-                amount_gbp=amount_gbp,
-                stripe_payout_id=payout_id,
-                status=payout_status,
-                requested_at=datetime.utcnow(),
-                stripe_response=payout_response,
+                referrer_id=affiliate_id,
+                amount=amount_gbp,
+                reference=payout_id,
+                status=0,  # PayoutStatus.PENDING
+                created_at=datetime.utcnow(),
             )
 
             self.db.add(payout_record)
@@ -238,7 +239,7 @@ class AffiliatePayoutService:
 
         # Get all payouts not yet completed
         stmt = select(AffiliatePayout).where(
-            AffiliatePayout.status.in_(["pending", "in_transit"])
+            AffiliatePayout.status.in_([0, 1])  # PENDING, PROCESSING
         )
         result = await self.db.execute(stmt)
         payouts = result.scalars().all()
@@ -246,8 +247,17 @@ class AffiliatePayoutService:
         for payout in payouts:
             try:
                 # Fetch latest status from Stripe
-                stripe_payout = self.stripe.Payout.retrieve(payout.stripe_payout_id)
-                new_status = stripe_payout.status
+                stripe_payout = self.stripe.Payout.retrieve(payout.reference)
+                new_status_str = stripe_payout.status
+
+                # Map Stripe status to our enum
+                status_map = {
+                    "pending": 0,  # PENDING
+                    "in_transit": 1,  # PROCESSING
+                    "paid": 2,  # COMPLETED
+                    "failed": 3,  # FAILED
+                }
+                new_status = status_map.get(new_status_str, payout.status)
 
                 if new_status != payout.status:
                     logger.info(
@@ -261,7 +271,7 @@ class AffiliatePayoutService:
 
                     payout.status = new_status
 
-                    if new_status == "paid":
+                    if new_status == 2:  # COMPLETED
                         payout.paid_at = datetime.utcnow()
                         stats["count_completed"] += 1
 
@@ -299,9 +309,11 @@ class AffiliatePayoutService:
         stmt = (
             select(
                 AffiliateEarnings.affiliate_id,
-                func.sum(AffiliateEarnings.amount_gbp).label("total_pending"),
+                func.sum(AffiliateEarnings.amount).label("total_pending"),
             )
-            .where(AffiliateEarnings.status == "pending")
+            .where(
+                AffiliateEarnings.paid.is_(False)
+            )  # Use paid column, not status property
             .group_by(AffiliateEarnings.affiliate_id)
         )
 

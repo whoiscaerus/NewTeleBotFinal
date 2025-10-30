@@ -8,13 +8,14 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.affiliates.models import AffiliateEarnings, AffiliatePayout
 from backend.app.auth.models import User
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def affiliate_user(db_session: AsyncSession) -> User:
     """Create test affiliate user with Stripe account."""
     user = User(
@@ -32,7 +33,7 @@ async def affiliate_user(db_session: AsyncSession) -> User:
     return user
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def earnings(db_session: AsyncSession, affiliate_user: User) -> list:
     """Create test affiliate earnings."""
     earnings_list = []
@@ -40,8 +41,11 @@ async def earnings(db_session: AsyncSession, affiliate_user: User) -> list:
         earning = AffiliateEarnings(
             id=f"earning_{i}",
             affiliate_id=affiliate_user.id,
-            amount_gbp=50.0,
-            status="pending",
+            user_id=f"user_{i}",
+            amount=50.0,  # Use amount, not amount_gbp
+            commission_type="referral",
+            period="2025-10",
+            paid=False,  # Use paid flag, not status string
             created_at=datetime.utcnow() - timedelta(days=i),
         )
         db_session.add(earning)
@@ -227,10 +231,11 @@ class TestPayoutStatusPolling:
 
         # Create a pending payout
         payout = AffiliatePayout(
-            affiliate_id=affiliate_user.id,
-            amount_gbp=150.0,
-            stripe_payout_id="po_test_123",
-            status="pending",
+            referrer_id=affiliate_user.id,
+            amount=150.0,
+            reference="po_test_123",
+            status=0,  # PayoutStatus.PENDING
+            created_at=datetime.utcnow(),
         )
         db_session.add(payout)
         await db_session.commit()
@@ -251,7 +256,7 @@ class TestPayoutStatusPolling:
 
         # Verify status was updated
         await db_session.refresh(payout)
-        assert payout.status == "paid"
+        assert payout.status == 2  # PayoutStatus.COMPLETED
         assert payout.paid_at is not None
 
     async def test_poll_no_pending_payouts(
@@ -280,10 +285,11 @@ class TestPayoutStatusPolling:
 
         # Create a pending payout
         payout = AffiliatePayout(
-            affiliate_id=affiliate_user.id,
-            amount_gbp=150.0,
-            stripe_payout_id="po_test_123",
-            status="pending",
+            referrer_id=affiliate_user.id,
+            amount=150.0,
+            reference="po_test_123",
+            status=0,  # PayoutStatus.PENDING
+            created_at=datetime.utcnow(),
         )
         db_session.add(payout)
         await db_session.commit()
