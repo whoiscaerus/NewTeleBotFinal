@@ -42,29 +42,30 @@ class AffiliateService:
         """
         self.db = db
 
-    async def register_affiliate(self, user_id: str) -> str:
+    async def register_affiliate(self, user_id: str) -> Affiliate:
         """Register user for affiliate program.
 
         Args:
             user_id: User ID
 
         Returns:
-            Referral token
+            Affiliate object
 
         Raises:
-            APIError: If already registered
+            APIError: If registration fails
         """
         try:
             # Check if already registered
             existing = await self.db.execute(
                 select(Affiliate).where(Affiliate.user_id == user_id)
             )
-            if existing.scalar():
-                raise APIError(
-                    status_code=409,
-                    code="ALREADY_REGISTERED",
-                    message="User already registered as affiliate",
+            existing_affiliate = existing.scalar_one_or_none()
+            if existing_affiliate:
+                logger.info(
+                    f"Affiliate already registered: {user_id}",
+                    extra={"user_id": user_id},
                 )
+                return existing_affiliate
 
             # Generate unique token
             token = secrets.token_urlsafe(24)
@@ -86,7 +87,7 @@ class AffiliateService:
                 extra={"user_id": user_id, "token": token[:10]},
             )
 
-            return token
+            return affiliate
 
         except APIError:
             raise

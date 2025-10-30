@@ -117,6 +117,22 @@ class Affiliate(Base):
 
     __table_args__ = (Index("ix_affiliates_user_created", "user_id", "created_at"),)
 
+    @property
+    def referral_code(self) -> str:
+        """Get referral code (alias for referral_token)."""
+        return self.referral_token
+
+    @property
+    def tier(self) -> str:
+        """Get tier name."""
+        tier_map = {
+            CommissionTier.TIER0.value: "standard",
+            CommissionTier.TIER1.value: "silver",
+            CommissionTier.TIER2.value: "gold",
+            CommissionTier.TIER3.value: "platinum",
+        }
+        return tier_map.get(self.commission_tier, "standard")
+
     def is_active(self) -> bool:
         """Check if affiliate is active."""
         return self.status == AffiliateStatus.ACTIVE.value

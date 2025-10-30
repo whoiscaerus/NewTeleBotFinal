@@ -15,13 +15,13 @@ from backend.app.auth.models import User
 
 
 @pytest.fixture
-async def affiliate_service(db_session: AsyncSession) -> AffiliateService:
+def affiliate_service(db_session: AsyncSession) -> AffiliateService:
     """Create affiliate service instance."""
     return AffiliateService(db_session)
 
 
 @pytest.fixture
-async def test_affiliate(db_session: AsyncSession) -> User:
+def test_affiliate(db_session: AsyncSession) -> User:
     """Create test affiliate user."""
     user = User(
         id="affiliate_123",
@@ -31,13 +31,11 @@ async def test_affiliate(db_session: AsyncSession) -> User:
         created_at=datetime.utcnow(),
     )
     db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
     return user
 
 
 @pytest.fixture
-async def test_referred_user(db_session: AsyncSession) -> User:
+def test_referred_user(db_session: AsyncSession) -> User:
     """Create test referred user."""
     user = User(
         id="user_456",
@@ -47,8 +45,6 @@ async def test_referred_user(db_session: AsyncSession) -> User:
         created_at=datetime.utcnow(),
     )
     db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
     return user
 
 
