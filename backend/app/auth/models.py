@@ -35,6 +35,9 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(
         SQLEnum(UserRole), nullable=False, default=UserRole.USER, index=True
     )
+    telegram_user_id: Mapped[str | None] = mapped_column(
+        String(50), unique=True, nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow
     )
@@ -44,6 +47,7 @@ class User(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     def __init__(self, **kwargs):
         """Initialize User with default role."""

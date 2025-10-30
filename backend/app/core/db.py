@@ -36,6 +36,41 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+# Standalone async session factory for schedulers/background jobs
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """Create standalone async session for background jobs and schedulers.
+
+    Use this in schedulers, CLI scripts, and background workers where
+    FastAPI dependency injection is not available.
+
+    Yields:
+        AsyncSession: Database session
+
+    Example:
+        >>> async with get_async_session() as session:
+        ...     result = await session.execute(select(User))
+        ...     users = result.scalars().all()
+    """
+    settings = get_settings()
+    engine: AsyncEngine = create_async_engine(
+        settings.db.url,
+        echo=settings.app.debug,
+        pool_pre_ping=True,
+    )
+    async_session = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    async with async_session() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+            await engine.dispose()
+
+
 # For non-async contexts (imports, etc.)
 def create_sync_session():
     """Create synchronous session for setup/migration tasks.

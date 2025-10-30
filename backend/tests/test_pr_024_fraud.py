@@ -733,3 +733,274 @@ class TestEdgeCases:
         )
 
         assert is_wash is False
+
+
+@pytest.mark.asyncio
+class TestTradeAttributionAPI:
+    """Test trade attribution API endpoint with full auth integration."""
+
+    async def test_get_trade_attribution_authenticated_admin(
+        self,
+        db_session: AsyncSession,
+        referee_user: User,
+    ):
+        """Test GET /api/v1/admin/trades/{user_id}/attribution as admin."""
+        from httpx import ASGITransport, AsyncClient
+
+        from backend.app.auth.service import AuthService
+        from backend.app.core.db import get_db
+        from backend.app.main import app
+
+        # Override get_db dependency to use test db_session
+        async def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[get_db] = override_get_db
+
+        # Create admin user
+        auth_service = AuthService(db_session)
+        admin_user = await auth_service.create_user(
+            email="admin@example.com",
+            password="admin_password123",
+            role="admin",
+        )
+
+        # Mint JWT token
+        token = auth_service.mint_jwt(admin_user)
+
+        # Create bot and manual trades for referee_user
+        bot_trade = create_test_trade(
+            trade_id="bot_trade_api_1",
+            user_id=referee_user.id,
+            symbol="GOLD",
+            entry_price=1950.0,
+            exit_price=1975.0,
+            volume=1.0,
+            profit=25.0,
+            status="closed",
+            entry_time=datetime.utcnow() - timedelta(days=5),
+            exit_time=datetime.utcnow() - timedelta(days=4),
+        )
+        bot_trade.signal_id = "signal_bot_123"  # Bot trade
+
+        manual_trade = create_test_trade(
+            trade_id="manual_trade_api_1",
+            user_id=referee_user.id,
+            symbol="SILVER",
+            entry_price=25.0,
+            exit_price=24.5,
+            volume=1.0,
+            profit=-0.5,
+            status="closed",
+            entry_time=datetime.utcnow() - timedelta(days=3),
+            exit_time=datetime.utcnow() - timedelta(days=2),
+        )
+        manual_trade.signal_id = None  # Manual trade
+
+        db_session.add(bot_trade)
+        db_session.add(manual_trade)
+        await db_session.commit()
+
+        # Test API endpoint
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": f"Bearer {token}"},
+            ) as client:
+                response = await client.get(
+                    f"/api/v1/affiliates/admin/trades/{referee_user.id}/attribution",
+                    params={"days_lookback": 30},
+                )
+        finally:
+            # Clean up dependency override
+            app.dependency_overrides.clear()
+
+        assert (
+            response.status_code == 200
+        ), f"Expected 200, got {response.status_code}: {response.text}"
+        data = response.json()
+
+        # Verify response structure
+        assert "user_id" in data
+        assert data["user_id"] == referee_user.id
+        assert "total_trades" in data
+        assert data["total_trades"] == 2
+        assert "bot_trades" in data
+        assert data["bot_trades"] == 1
+        assert "manual_trades" in data
+        assert data["manual_trades"] == 1
+        assert "bot_profit" in data
+        assert "manual_profit" in data
+        assert "trades" in data
+        assert len(data["trades"]) == 2
+
+    async def test_get_trade_attribution_unauthorized(
+        self,
+        db_session: AsyncSession,
+        referee_user: User,
+    ):
+        """Test GET /api/v1/admin/trades/{user_id}/attribution without auth."""
+        from httpx import ASGITransport, AsyncClient
+
+        from backend.app.core.db import get_db
+        from backend.app.main import app
+
+        # Override get_db dependency to use test db_session
+        async def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[get_db] = override_get_db
+
+        # Test API endpoint without token
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as client:
+                response = await client.get(
+                    f"/api/v1/affiliates/admin/trades/{referee_user.id}/attribution",
+                    params={"days_lookback": 30},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        # Should return 403 (missing auth header)
+        assert response.status_code == 403
+
+    async def test_get_trade_attribution_forbidden_non_admin(
+        self,
+        db_session: AsyncSession,
+        referee_user: User,
+    ):
+        """Test GET /api/v1/admin/trades/{user_id}/attribution as regular user (should fail)."""
+        from httpx import ASGITransport, AsyncClient
+
+        from backend.app.auth.service import AuthService
+        from backend.app.core.db import get_db
+        from backend.app.main import app
+
+        # Override get_db dependency to use test db_session
+        async def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[get_db] = override_get_db
+
+        # Create regular user
+        auth_service = AuthService(db_session)
+        regular_user = await auth_service.create_user(
+            email="regular@example.com",
+            password="regular_password123",
+            role="user",  # NOT admin
+        )
+
+        # Mint JWT token
+        token = auth_service.mint_jwt(regular_user)
+
+        # Test API endpoint with regular user token
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": f"Bearer {token}"},
+            ) as client:
+                response = await client.get(
+                    f"/api/v1/affiliates/admin/trades/{referee_user.id}/attribution",
+                    params={"days_lookback": 30},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        # Should return 403 (insufficient permissions)
+        assert response.status_code == 403
+
+    async def test_get_trade_attribution_invalid_days_lookback(
+        self,
+        db_session: AsyncSession,
+        referee_user: User,
+    ):
+        """Test GET /api/v1/admin/trades/{user_id}/attribution with invalid days_lookback."""
+        from httpx import ASGITransport, AsyncClient
+
+        from backend.app.auth.service import AuthService
+        from backend.app.core.db import get_db
+        from backend.app.main import app
+
+        # Override get_db dependency to use test db_session
+        async def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[get_db] = override_get_db
+
+        # Create admin user
+        auth_service = AuthService(db_session)
+        admin_user = await auth_service.create_user(
+            email="admin2@example.com",
+            password="admin_password123",
+            role="admin",
+        )
+
+        # Mint JWT token
+        token = auth_service.mint_jwt(admin_user)
+
+        # Test API endpoint with invalid days_lookback (> 365)
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": f"Bearer {token}"},
+            ) as client:
+                response = await client.get(
+                    f"/api/v1/affiliates/admin/trades/{referee_user.id}/attribution",
+                    params={"days_lookback": 500},  # Invalid: > 365
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        # Should return 400 (bad request)
+        assert response.status_code == 400
+
+    async def test_get_trade_attribution_user_not_found(
+        self,
+        db_session: AsyncSession,
+    ):
+        """Test GET /api/v1/admin/trades/{user_id}/attribution for non-existent user."""
+        from httpx import ASGITransport, AsyncClient
+
+        from backend.app.auth.service import AuthService
+        from backend.app.core.db import get_db
+        from backend.app.main import app
+
+        # Override get_db dependency to use test db_session
+        async def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[get_db] = override_get_db
+
+        # Create admin user
+        auth_service = AuthService(db_session)
+        admin_user = await auth_service.create_user(
+            email="admin3@example.com",
+            password="admin_password123",
+            role="admin",
+        )
+
+        # Mint JWT token
+        token = auth_service.mint_jwt(admin_user)
+
+        # Test API endpoint with non-existent user_id
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+                headers={"Authorization": f"Bearer {token}"},
+            ) as client:
+                response = await client.get(
+                    "/api/v1/affiliates/admin/trades/nonexistent_user_id/attribution",
+                    params={"days_lookback": 30},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        # Should return 404 (user not found)
+        assert response.status_code == 404

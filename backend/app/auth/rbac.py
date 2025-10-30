@@ -3,6 +3,8 @@
 from collections.abc import Callable
 from functools import wraps
 
+from fastapi import HTTPException
+
 from backend.app.auth.models import UserRole
 
 
@@ -18,7 +20,7 @@ def require_roles(*roles: str | UserRole) -> Callable:
         async def wrapper(*args, **kwargs):
             current_user = kwargs.get("current_user")
             if not current_user:
-                raise PermissionError("User not authenticated")
+                raise HTTPException(status_code=403, detail="User not authenticated")
 
             # Convert all roles to lowercase strings for comparison
             allowed_roles = {
@@ -32,7 +34,10 @@ def require_roles(*roles: str | UserRole) -> Callable:
             )
 
             if user_role not in allowed_roles:
-                raise PermissionError(f"User role {current_user.role} not in {roles}")
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Insufficient permissions. Required roles: {', '.join(allowed_roles)}",
+                )
 
             return await func(*args, **kwargs)
 

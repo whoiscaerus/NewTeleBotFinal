@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.affiliates.fraud import get_trade_attribution_report
@@ -11,11 +11,10 @@ from backend.app.affiliates.service import AffiliateService
 from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.rbac import require_roles
 from backend.app.core.db import get_db
-from backend.app.core.errors import APIError
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/affiliates", tags=["affiliates"])
+router = APIRouter()
 
 
 @router.post("/register", status_code=201)
@@ -44,15 +43,13 @@ async def register_affiliate(
 
         return {"token": token, "share_url": f"https://app.example.com/invite/{token}"}
 
-    except APIError as e:
-        raise e.to_http_exception() from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Registration failed: {e}", exc_info=True)
-        raise APIError(
-            status_code=500,
-            code="REGISTER_ERROR",
-            message="Failed to register affiliate",
-        ).to_http_exception() from e
+        raise HTTPException(
+            status_code=500, detail="Failed to register affiliate"
+        ) from e
 
 
 @router.get("/link")
@@ -76,10 +73,8 @@ async def get_referral_link(
         affiliate = result.scalar()
 
         if not affiliate:
-            raise APIError(
-                status_code=404,
-                code="NOT_AFFILIATE",
-                message="User is not registered as affiliate",
+            raise HTTPException(
+                status_code=404, detail="User is not registered as affiliate"
             )
 
         return {
@@ -87,15 +82,13 @@ async def get_referral_link(
             "share_url": f"https://app.example.com/invite/{affiliate.referral_token}",
         }
 
-    except APIError as e:
-        raise e.to_http_exception() from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Link retrieval failed: {e}", exc_info=True)
-        raise APIError(
-            status_code=500,
-            code="LINK_ERROR",
-            message="Failed to get referral link",
-        ).to_http_exception() from e
+        raise HTTPException(
+            status_code=500, detail="Failed to get referral link"
+        ) from e
 
 
 @router.get("/stats", response_model=AffiliateStatsOut)
@@ -113,15 +106,11 @@ async def get_stats(
         stats = await service.get_stats(current_user.id)
         return stats
 
-    except APIError as e:
-        raise e.to_http_exception() from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Stats retrieval failed: {e}", exc_info=True)
-        raise APIError(
-            status_code=500,
-            code="STATS_ERROR",
-            message="Failed to retrieve stats",
-        ).to_http_exception() from e
+        raise HTTPException(status_code=500, detail="Failed to retrieve stats") from e
 
 
 @router.post("/payout", response_model=PayoutOut, status_code=201)
@@ -149,15 +138,11 @@ async def request_payout(
 
         return payout
 
-    except APIError as e:
-        raise e.to_http_exception() from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Payout request failed: {e}", exc_info=True)
-        raise APIError(
-            status_code=500,
-            code="PAYOUT_ERROR",
-            message="Failed to request payout",
-        ).to_http_exception() from e
+        raise HTTPException(status_code=500, detail="Failed to request payout") from e
 
 
 @router.get("/history")
@@ -188,15 +173,11 @@ async def get_commission_history(
 
         return {"items": commissions, "count": len(commissions), "offset": offset}
 
-    except APIError as e:
-        raise e.to_http_exception() from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"History retrieval failed: {e}", exc_info=True)
-        raise APIError(
-            status_code=500,
-            code="HISTORY_ERROR",
-            message="Failed to retrieve history",
-        ).to_http_exception() from e
+        raise HTTPException(status_code=500, detail="Failed to retrieve history") from e
 
 
 @router.get("/admin/trades/{user_id}/attribution")
@@ -238,23 +219,31 @@ async def get_trade_attribution(
         500: Server error
     """
     try:
+        # Check if user exists
+        from sqlalchemy import select
+
+        from backend.app.auth.models import User
+
+        user_stmt = select(User).where(User.id == user_id)
+        user_result = await db.execute(user_stmt)
+        user = user_result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User {user_id} not found",
+            )
+
+        # Validate days_lookback range
         if days_lookback < 1 or days_lookback > 365:
-            raise APIError(
+            raise HTTPException(
                 status_code=400,
-                code="INVALID_DAYS",
-                message="days_lookback must be between 1 and 365",
+                detail="days_lookback must be between 1 and 365",
             )
 
         report = await get_trade_attribution_report(
             db, user_id, days_lookback=days_lookback
         )
-
-        if not report:
-            raise APIError(
-                status_code=404,
-                code="USER_NOT_FOUND",
-                message=f"User {user_id} not found",
-            )
 
         logger.info(
             f"Trade attribution report generated: {user_id}",
@@ -269,15 +258,14 @@ async def get_trade_attribution(
 
         return report
 
-    except APIError as e:
-        raise e.to_http_exception() from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(
             f"Trade attribution report failed for {user_id}: {e}",
             exc_info=True,
         )
-        raise APIError(
+        raise HTTPException(
             status_code=500,
-            code="ATTRIBUTION_ERROR",
-            message="Failed to generate trade attribution report",
-        ).to_http_exception() from e
+            detail="Failed to generate trade attribution report",
+        ) from e

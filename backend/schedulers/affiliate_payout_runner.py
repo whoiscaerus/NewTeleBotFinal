@@ -17,9 +17,9 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.affiliates.models import AffiliateEarnings, AffiliatePayout
+from backend.app.auth.models import User
 from backend.app.core.db import get_async_session
 from backend.app.core.settings import get_settings
-from backend.app.users.models import User
 
 logger = logging.getLogger(__name__)
 
