@@ -48,7 +48,7 @@ async def test_client(db_session: AsyncSession, test_user: User) -> Client:
 @pytest_asyncio.fixture
 async def device_service(db_session: AsyncSession) -> DeviceService:
     """Create device service."""
-    return DeviceService()
+    return DeviceService(db_session)
 
 
 @pytest.mark.asyncio
@@ -114,9 +114,6 @@ class TestDeviceRegistration:
                 device_name="EA Instance",
             )
 
-    @pytest.mark.skip(
-        reason="PR-023a Device Registry is not fully implemented yet. Service needs DB integration."
-    )
     async def test_register_device_different_clients_different_names(
         self,
         db_session: AsyncSession,
@@ -127,13 +124,11 @@ class TestDeviceRegistration:
         # Create two clients
         client1 = Client(
             id="client_1",
-            user_id=test_user.id,
             email="client1@example.com",
             created_at=datetime.utcnow(),
         )
         client2 = Client(
             id="client_2",
-            user_id=test_user.id,
             email="client2@example.com",
             created_at=datetime.utcnow(),
         )
@@ -435,7 +430,7 @@ class TestDatabasePersistence:
         device_id = device.id
 
         # Delete client (should cascade to devices)
-        db_session.delete(test_client)
+        await db_session.delete(test_client)
         await db_session.commit()
 
         # Verify device is deleted

@@ -57,6 +57,10 @@ class Device(Base):
         nullable=True,
         doc="Last time device sent ACK",
     )
+    last_seen: Mapped[datetime | None] = mapped_column(
+        nullable=True,
+        doc="Last time device was active (any activity)",
+    )
     is_active: Mapped[bool] = mapped_column(
         nullable=False,
         default=True,

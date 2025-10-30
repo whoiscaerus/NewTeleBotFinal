@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.dependencies import get_current_user
 from backend.app.clients.devices.schema import DeviceOut, DeviceRegister
-from backend.app.clients.devices.service import DeviceService
+from backend.app.clients.service import DeviceService
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
 
@@ -17,33 +17,60 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/devices", tags=["devices"])
 
 
-@router.post("", status_code=201, response_model=DeviceOut)
+class DeviceCreateResponse(DeviceOut):
+    """Response from device creation - includes secret (shown once)."""
+
+    secret: str | None = None
+
+
+@router.post("", status_code=201, response_model=DeviceCreateResponse)
 async def register_device(
     request: DeviceRegister,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     current_user=Depends(get_current_user),  # noqa: B008
-) -> DeviceOut:
+) -> DeviceCreateResponse:
     """Register new device.
 
     Args:
         request: Device registration request
 
     Returns:
-        Device info with HMAC key for authentication
+        Device info with HMAC secret (shown once only)
     """
     try:
         service = DeviceService(db)
-        device = await service.register_device(current_user.id, request.device_name)
+        device, secret = await service.create_device(
+            current_user.id, request.device_name
+        )
 
         logger.info(
             f"Device registered: {current_user.id} - {request.device_name}",
             extra={"user_id": current_user.id, "device_name": request.device_name},
         )
 
-        return device
+        # Return device with secret (shown once)
+        device_dict = {
+            "id": device.id,
+            "client_id": device.client_id,
+            "device_name": device.device_name,
+            "hmac_key_hash": device.hmac_key_hash,
+            "last_poll": device.last_poll,
+            "last_ack": device.last_ack,
+            "is_active": device.is_active,
+            "created_at": device.created_at,
+            "secret": secret,
+        }
+        return DeviceCreateResponse(**device_dict)
 
     except APIError as e:
         raise e.to_http_exception() from e
+    except ValueError as e:
+        logger.warning(f"Device registration validation failed: {e}")
+        raise APIError(
+            status_code=400,
+            code="REGISTER_VALIDATION_ERROR",
+            message=str(e),
+        ).to_http_exception() from e
     except Exception as e:
         logger.error(f"Registration failed: {e}", exc_info=True)
         raise APIError(
@@ -84,7 +111,16 @@ async def get_device(
     """Get specific device."""
     try:
         service = DeviceService(db)
-        device = await service.get_device(current_user.id, device_id)
+        device = await service.get_device(device_id)
+
+        # Verify ownership
+        if device.client_id != current_user.id:
+            raise APIError(
+                status_code=403,
+                code="FORBIDDEN",
+                message="You do not have access to this device",
+            )
+
         return device
 
     except APIError as e:
@@ -98,28 +134,92 @@ async def get_device(
         ).to_http_exception() from e
 
 
-@router.delete("/{device_id}", status_code=204)
-async def unlink_device(
+@router.patch("/{device_id}", response_model=DeviceOut)
+async def rename_device(
+    device_id: str,
+    request: DeviceRegister,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user=Depends(get_current_user),  # noqa: B008
+) -> DeviceOut:
+    """Rename device."""
+    try:
+        service = DeviceService(db)
+
+        # Verify ownership first
+        device = await service.get_device(device_id)
+        if device.client_id != current_user.id:
+            raise APIError(
+                status_code=403,
+                code="FORBIDDEN",
+                message="You do not have access to this device",
+            )
+
+        updated = await service.update_device_name(device_id, request.device_name)
+
+        logger.info(
+            f"Device renamed: {current_user.id}",
+            extra={"user_id": current_user.id, "device_id": device_id},
+        )
+
+        return updated
+
+    except APIError as e:
+        raise e.to_http_exception() from e
+    except ValueError as e:
+        logger.warning(f"Device rename validation failed: {e}")
+        raise APIError(
+            status_code=400,
+            code="RENAME_VALIDATION_ERROR",
+            message=str(e),
+        ).to_http_exception() from e
+    except Exception as e:
+        logger.error(f"Renaming failed: {e}", exc_info=True)
+        raise APIError(
+            status_code=500,
+            code="RENAME_ERROR",
+            message="Failed to rename device",
+        ).to_http_exception() from e
+
+
+@router.post("/{device_id}/revoke", status_code=204)
+async def revoke_device(
     device_id: str,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     current_user=Depends(get_current_user),  # noqa: B008
 ):
-    """Unlink (deactivate) device."""
+    """Revoke (permanently disable) device."""
     try:
         service = DeviceService(db)
-        await service.unlink_device(current_user.id, device_id)
+
+        # Verify ownership first
+        device = await service.get_device(device_id)
+        if device.client_id != current_user.id:
+            raise APIError(
+                status_code=403,
+                code="FORBIDDEN",
+                message="You do not have access to this device",
+            )
+
+        await service.revoke_device(device_id)
 
         logger.info(
-            f"Device unlinked: {current_user.id}",
+            f"Device revoked: {current_user.id}",
             extra={"user_id": current_user.id, "device_id": device_id},
         )
 
     except APIError as e:
         raise e.to_http_exception() from e
+    except ValueError as e:
+        logger.warning(f"Device revoke validation failed: {e}")
+        raise APIError(
+            status_code=400,
+            code="REVOKE_VALIDATION_ERROR",
+            message=str(e),
+        ).to_http_exception() from e
     except Exception as e:
-        logger.error(f"Unlinking failed: {e}", exc_info=True)
+        logger.error(f"Revocation failed: {e}", exc_info=True)
         raise APIError(
             status_code=500,
-            code="UNLINK_ERROR",
-            message="Failed to unlink device",
+            code="REVOKE_ERROR",
+            message="Failed to revoke device",
         ).to_http_exception() from e

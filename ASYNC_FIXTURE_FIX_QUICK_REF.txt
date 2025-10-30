@@ -1,0 +1,33 @@
+ASYNC FIXTURE FIX - QUICK REFERENCE
+══════════════════════════════════════════════════════════════════════════════
+
+PROBLEM:
+  AttributeError: 'coroutine' object has no attribute 'create_device'
+  in backend/tests/test_pr_023a_devices.py::TestDeviceRegistration
+
+ROOT CAUSE:
+  Test fixtures used @pytest.fixture instead of @pytest_asyncio.fixture
+
+SOLUTION:
+  1. Changed @pytest.fixture → @pytest_asyncio.fixture (3 fixtures)
+  2. Added: import pytest_asyncio
+  3. Fixed Client model initialization (removed invalid user_id param)
+  4. Implemented DeviceService.create_device() to return (Device, secret)
+  5. Fixed DeviceService() constructor call (no params needed)
+
+RESULT:
+  ✅ test_register_device_success - PASSING
+  ✅ test_register_device_returns_secret_once - PASSING
+  ✅ No "coroutine" errors
+  ✅ All pre-commit checks passing
+  ✅ Code committed: e8f5328
+  ✅ Code pushed to origin/main
+
+FILES CHANGED:
+  • backend/tests/test_pr_023a_devices.py
+  • backend/app/clients/service.py
+
+COMMIT:
+  e8f5328: fix: resolve async fixture issue in test_pr_023a_devices.py
+
+STATUS: COMPLETE & DEPLOYED ✅

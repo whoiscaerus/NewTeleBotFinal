@@ -30,29 +30,48 @@ class DeviceService:
         """
         self.db = db
 
-    async def register_device(self, user_id: str, device_name: str) -> DeviceOut:
-        """Register new device for user.
+    async def create_device(
+        self, client_id: str, device_name: str
+    ) -> tuple[DeviceOut, str]:
+        """Create new device for client.
 
         Args:
-            user_id: User ID
+            client_id: Client ID
             device_name: Name for device (e.g., 'Trading PC')
 
         Returns:
-            Device info with HMAC key
+            Tuple of (Device info, HMAC secret key)
 
         Raises:
-            APIError: If registration fails
+            APIError: If device creation fails or name already exists
         """
         try:
+            # Check for duplicate name
+            existing = await self.db.execute(
+                select(Device).where(
+                    and_(
+                        Device.client_id == client_id,
+                        Device.device_name == device_name,
+                    )
+                )
+            )
+            if existing.scalar():
+                raise APIError(
+                    status_code=400,
+                    code="DEVICE_NAME_EXISTS",
+                    message=f"Device name '{device_name}' already exists",
+                )
+
             # Generate HMAC key
             hmac_key = Device.generate_hmac_key()
 
             # Create device
             device = Device(
-                client_id=user_id,
+                client_id=client_id,
                 device_name=device_name,
                 hmac_key_hash=hmac_key,
                 is_active=True,
+                revoked=False,
             )
 
             self.db.add(device)
@@ -60,19 +79,21 @@ class DeviceService:
             await self.db.refresh(device)
 
             logger.info(
-                f"Device registered: {user_id} - {device_name}",
-                extra={"user_id": user_id, "device_id": device.id},
+                f"Device created: {client_id} - {device_name}",
+                extra={"client_id": client_id, "device_id": device.id},
             )
 
-            return DeviceOut.model_validate(device)
+            return DeviceOut.model_validate(device), hmac_key
 
+        except APIError:
+            raise
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Device registration failed: {e}", exc_info=True)
+            logger.error(f"Device creation failed: {e}", exc_info=True)
             raise APIError(
                 status_code=500,
-                code="DEVICE_REGISTER_ERROR",
-                message="Failed to register device",
+                code="DEVICE_CREATE_ERROR",
+                message="Failed to create device",
             ) from e
 
     async def list_devices(self, user_id: str) -> list[DeviceOut]:
@@ -143,6 +164,116 @@ class DeviceService:
                 status_code=500,
                 code="DEVICE_GET_ERROR",
                 message="Failed to retrieve device",
+            ) from e
+
+    async def revoke_device(self, device_id: str) -> DeviceOut:
+        """Revoke (permanently disable) device.
+
+        Args:
+            device_id: Device ID
+
+        Returns:
+            Updated device info
+
+        Raises:
+            APIError: If device not found
+        """
+        try:
+            result = await self.db.execute(select(Device).where(Device.id == device_id))
+            device = result.scalar()
+
+            if not device:
+                raise APIError(
+                    status_code=404,
+                    code="DEVICE_NOT_FOUND",
+                    message="Device not found",
+                )
+
+            device.revoked = True
+            device.is_active = False
+            await self.db.commit()
+            await self.db.refresh(device)
+
+            logger.info(
+                f"Device revoked: {device.client_id} - {device.device_name}",
+                extra={"device_id": device_id},
+            )
+
+            return DeviceOut.model_validate(device)
+
+        except APIError:
+            raise
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Device revocation failed: {e}", exc_info=True)
+            raise APIError(
+                status_code=500,
+                code="DEVICE_REVOKE_ERROR",
+                message="Failed to revoke device",
+            ) from e
+
+    async def update_device_name(self, device_id: str, new_name: str) -> DeviceOut:
+        """Update device name.
+
+        Args:
+            device_id: Device ID
+            new_name: New device name
+
+        Returns:
+            Updated device info
+
+        Raises:
+            APIError: If device not found or name already exists
+        """
+        try:
+            # Get device
+            result = await self.db.execute(select(Device).where(Device.id == device_id))
+            device = result.scalar()
+
+            if not device:
+                raise APIError(
+                    status_code=404,
+                    code="DEVICE_NOT_FOUND",
+                    message="Device not found",
+                )
+
+            # Check for duplicate name for same client
+            existing = await self.db.execute(
+                select(Device).where(
+                    and_(
+                        Device.client_id == device.client_id,
+                        Device.device_name == new_name,
+                        Device.id != device_id,
+                    )
+                )
+            )
+            if existing.scalar():
+                raise APIError(
+                    status_code=400,
+                    code="DEVICE_NAME_EXISTS",
+                    message=f"Device name '{new_name}' already exists",
+                )
+
+            device.device_name = new_name
+            await self.db.commit()
+            await self.db.refresh(device)
+
+            logger.info(
+                f"Device renamed: {device.client_id} - {new_name}",
+                extra={"device_id": device_id},
+            )
+
+            return DeviceOut.model_validate(device)
+
+        except APIError:
+            raise
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Device renaming failed: {e}", exc_info=True)
+            raise APIError(
+                status_code=500,
+                code="DEVICE_UPDATE_ERROR",
+                message="Failed to update device",
             ) from e
 
     async def unlink_device(self, user_id: str, device_id: str) -> None:
