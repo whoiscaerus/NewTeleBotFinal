@@ -343,10 +343,9 @@ async def test_user(db_session: AsyncSession):
     user = User(
         id=str(uuid4()),
         email="testuser@example.com",
-        telegram_id=123456789,
-        hashed_password=hash_password("test_password"),
-        role=UserRole.STANDARD,
-        is_active=True,
+        telegram_user_id="123456789",
+        password_hash=hash_password("test_password"),
+        role=UserRole.USER,
     )
     db_session.add(user)
     await db_session.commit()
@@ -355,21 +354,35 @@ async def test_user(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def test_device(db_session: AsyncSession, test_user):
+async def test_client(db_session: AsyncSession):
+    """Create a test client for device registration."""
+    from uuid import uuid4
+
+    from backend.app.clients.models import Client
+
+    client = Client(
+        id=str(uuid4()),
+        email="testclient@example.com",
+        telegram_id="9876543210",
+    )
+    db_session.add(client)
+    await db_session.commit()
+    await db_session.refresh(client)
+    return client
+
+
+@pytest_asyncio.fixture
+async def test_device(db_session: AsyncSession, test_client):
     """Create a test EA device for integration tests."""
     from uuid import uuid4
 
-    from backend.app.clients.devices.models import Device, DeviceStatus
+    from backend.app.clients.devices.models import Device
 
     device = Device(
         id=str(uuid4()),
-        user_id=test_user.id,
-        name="Test EA Device",
-        device_type="mt5_ea",
-        status=DeviceStatus.ACTIVE,
-        public_key="test_public_key_12345",
-        hmac_secret=b"test_secret_key_12345",
-        is_active=True,
+        client_id=test_client.id,
+        device_name="Test EA Device",
+        hmac_key_hash="test_hmac_key_hash_12345",
     )
     db_session.add(device)
     await db_session.commit()
