@@ -323,10 +323,10 @@ async def test_poll_valid_hmac_returns_signals(
 
 
 @pytest.mark.asyncio
-async def test_poll_missing_headers_returns_401(client: AsyncClient):
-    """Test poll without required headers returns 401."""
-    response = await client.get("/api/v1/client/poll")
-    assert response.status_code == 401
+async def test_poll_missing_headers_returns_400(real_auth_client: AsyncClient):
+    """Test poll without required headers returns 400 (validation error)."""
+    response = await real_auth_client.get("/api/v1/client/poll")
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio
