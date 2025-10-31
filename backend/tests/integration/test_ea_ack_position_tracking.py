@@ -41,6 +41,7 @@ async def test_ack_successful_placement_creates_open_position(
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=test_user.id,
         instrument="XAUUSD",
         side=0,  # buy
         price=2655.50,
@@ -60,6 +61,7 @@ async def test_ack_successful_placement_creates_open_position(
         signal_id=signal.id,
         user_id=test_user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -85,6 +87,9 @@ async def test_ack_successful_placement_creates_open_position(
     )
 
     # Verify: Response is successful
+    if response.status_code != 201:
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
     assert response.status_code == 201
     data = response.json()
     assert data["approval_id"] == approval.id
@@ -124,16 +129,15 @@ async def test_ack_successful_placement_creates_open_position(
 
 @pytest.mark.asyncio
 async def test_ack_failed_execution_does_not_create_position(
-    client, db_session: AsyncSession, auth_headers
+    client, db_session: AsyncSession, test_user, test_device
 ):
     """Test: EA ack with status=failed does NOT create OpenPosition."""
 
     # Setup: Create user, device, signal, approval
     user = User(
         id=str(uuid4()),
-        telegram_id=123457,
-        username="test_user_2",
-        is_active=True,
+        email="test_user_2@example.com",
+        password_hash="hashed_password",
     )
     db_session.add(user)
 
@@ -141,16 +145,16 @@ async def test_ack_failed_execution_does_not_create_position(
         id=str(uuid4()),
         client_id=user.id,
         device_name="TestDevice2",
-        platform="MT5",
-        secret_key="test_secret_key_32_bytes_long!",
-        is_active=True,
+        hmac_key_hash="test_hmac_key_hash_67890",
     )
     db_session.add(device)
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=test_user.id,
         instrument="EURUSD",
         side=1,  # sell
+        price=1.0850,
         payload={
             "instrument": "EURUSD",
             "entry_price": 1.0850,
@@ -164,6 +168,7 @@ async def test_ack_failed_execution_does_not_create_position(
         signal_id=signal.id,
         user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -180,7 +185,12 @@ async def test_ack_failed_execution_does_not_create_position(
     response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
-        headers=auth_headers,
+        headers={
+            "X-Device-Id": test_device.id,
+            "X-Nonce": "test_nonce_" + str(uuid4()),
+            "X-Timestamp": datetime.utcnow().isoformat() + "Z",
+            "X-Signature": "mock_signature",
+        },
     )
 
     # Verify: Response is successful
@@ -205,33 +215,20 @@ async def test_ack_failed_execution_does_not_create_position(
 
 @pytest.mark.asyncio
 async def test_ack_without_owner_only_still_creates_position(
-    client, db_session: AsyncSession, auth_headers
+    client, db_session: AsyncSession, test_user, test_device
 ):
     """Test: Signal without owner_only still creates OpenPosition (fallback)."""
 
     # Setup: Create signal WITHOUT owner_only
-    user = User(
-        id=str(uuid4()),
-        telegram_id=123458,
-        username="test_user_3",
-        is_active=True,
-    )
-    db_session.add(user)
-
-    device = Device(
-        id=str(uuid4()),
-        client_id=user.id,
-        device_name="TestDevice3",
-        platform="MT5",
-        secret_key="test_secret_key_32_bytes_long!",
-        is_active=True,
-    )
-    db_session.add(device)
+    user = test_user
+    device = test_device
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=user.id,
         instrument="GBPUSD",
         side=0,  # buy
+        price=1.2650,
         payload={
             "instrument": "GBPUSD",
             "entry_price": 1.2650,
@@ -246,6 +243,7 @@ async def test_ack_without_owner_only_still_creates_position(
         signal_id=signal.id,
         user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -262,7 +260,12 @@ async def test_ack_without_owner_only_still_creates_position(
     response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
-        headers=auth_headers,
+        headers={
+            "X-Device-Id": device.id,
+            "X-Nonce": "test_nonce_" + str(uuid4()),
+            "X-Timestamp": datetime.utcnow().isoformat() + "Z",
+            "X-Signature": "mock_signature",
+        },
     )
 
     # Verify: Response is successful
@@ -289,33 +292,20 @@ async def test_ack_without_owner_only_still_creates_position(
 
 @pytest.mark.asyncio
 async def test_ack_with_corrupt_owner_only_creates_position_without_levels(
-    client, db_session: AsyncSession, auth_headers
+    client, db_session: AsyncSession, test_user, test_device
 ):
     """Test: Signal with corrupt owner_only still creates position (graceful degradation)."""
 
     # Setup: Create signal with CORRUPT owner_only
-    user = User(
-        id=str(uuid4()),
-        telegram_id=123459,
-        username="test_user_4",
-        is_active=True,
-    )
-    db_session.add(user)
-
-    device = Device(
-        id=str(uuid4()),
-        client_id=user.id,
-        device_name="TestDevice4",
-        platform="MT5",
-        secret_key="test_secret_key_32_bytes_long!",
-        is_active=True,
-    )
-    db_session.add(device)
+    user = test_user
+    device = test_device
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=user.id,
         instrument="USDJPY",
         side=1,  # sell
+        price=149.50,
         payload={
             "instrument": "USDJPY",
             "entry_price": 149.50,
@@ -330,6 +320,7 @@ async def test_ack_with_corrupt_owner_only_creates_position_without_levels(
         signal_id=signal.id,
         user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -346,7 +337,12 @@ async def test_ack_with_corrupt_owner_only_creates_position_without_levels(
     response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
-        headers=auth_headers,
+        headers={
+            "X-Device-Id": device.id,
+            "X-Nonce": "test_nonce_" + str(uuid4()),
+            "X-Timestamp": datetime.utcnow().isoformat() + "Z",
+            "X-Signature": "mock_signature",
+        },
     )
 
     # Verify: Response is STILL successful (graceful degradation)
@@ -371,33 +367,20 @@ async def test_ack_with_corrupt_owner_only_creates_position_without_levels(
 
 @pytest.mark.asyncio
 async def test_ack_all_foreign_keys_linked_correctly(
-    client, db_session: AsyncSession, auth_headers
+    client, db_session: AsyncSession, test_user, test_device
 ):
     """Test: Verify all foreign keys in OpenPosition are correctly linked."""
 
     # Setup: Create complete relationship chain
-    user = User(
-        id=str(uuid4()),
-        telegram_id=123460,
-        username="test_user_5",
-        is_active=True,
-    )
-    db_session.add(user)
-
-    device = Device(
-        id=str(uuid4()),
-        client_id=user.id,
-        device_name="TestDevice5",
-        platform="MT5",
-        secret_key="test_secret_key_32_bytes_long!",
-        is_active=True,
-    )
-    db_session.add(device)
+    user = test_user
+    device = test_device
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=user.id,
         instrument="BTCUSD",
         side=0,
+        price=45000.00,
         payload={"instrument": "BTCUSD", "entry_price": 45000.00, "volume": 0.01},
     )
     db_session.add(signal)
@@ -407,6 +390,7 @@ async def test_ack_all_foreign_keys_linked_correctly(
         signal_id=signal.id,
         user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -423,7 +407,12 @@ async def test_ack_all_foreign_keys_linked_correctly(
     response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
-        headers=auth_headers,
+        headers={
+            "X-Device-Id": device.id,
+            "X-Nonce": "test_nonce_" + str(uuid4()),
+            "X-Timestamp": datetime.utcnow().isoformat() + "Z",
+            "X-Signature": "mock_signature",
+        },
     )
 
     assert response.status_code == 201
@@ -455,33 +444,20 @@ async def test_ack_all_foreign_keys_linked_correctly(
 
 @pytest.mark.asyncio
 async def test_ack_position_opened_at_timestamp(
-    client, db_session: AsyncSession, auth_headers
+    client, db_session: AsyncSession, test_user, test_device
 ):
     """Test: Verify opened_at timestamp is set correctly."""
 
     # Setup
-    user = User(
-        id=str(uuid4()),
-        telegram_id=123461,
-        username="test_user_6",
-        is_active=True,
-    )
-    db_session.add(user)
-
-    device = Device(
-        id=str(uuid4()),
-        client_id=user.id,
-        device_name="TestDevice6",
-        platform="MT5",
-        secret_key="test_secret_key_32_bytes_long!",
-        is_active=True,
-    )
-    db_session.add(device)
+    user = test_user
+    device = test_device
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=user.id,
         instrument="AUDCAD",
         side=1,
+        price=0.9050,
         payload={"instrument": "AUDCAD", "entry_price": 0.9050, "volume": 0.5},
     )
     db_session.add(signal)
@@ -491,6 +467,7 @@ async def test_ack_position_opened_at_timestamp(
         signal_id=signal.id,
         user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -510,7 +487,12 @@ async def test_ack_position_opened_at_timestamp(
     response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
-        headers=auth_headers,
+        headers={
+            "X-Device-Id": device.id,
+            "X-Nonce": "test_nonce_" + str(uuid4()),
+            "X-Timestamp": datetime.utcnow().isoformat() + "Z",
+            "X-Signature": "mock_signature",
+        },
     )
 
     assert response.status_code == 201
@@ -531,33 +513,20 @@ async def test_ack_position_opened_at_timestamp(
 
 @pytest.mark.asyncio
 async def test_ack_position_broker_ticket_stored(
-    client, db_session: AsyncSession, auth_headers
+    client, db_session: AsyncSession, test_user, test_device
 ):
     """Test: Verify broker_ticket from ack is stored in OpenPosition."""
 
     # Setup
-    user = User(
-        id=str(uuid4()),
-        telegram_id=123462,
-        username="test_user_7",
-        is_active=True,
-    )
-    db_session.add(user)
-
-    device = Device(
-        id=str(uuid4()),
-        client_id=user.id,
-        device_name="TestDevice7",
-        platform="MT5",
-        secret_key="test_secret_key_32_bytes_long!",
-        is_active=True,
-    )
-    db_session.add(device)
+    user = test_user
+    device = test_device
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=user.id,
         instrument="NZDUSD",
         side=0,
+        price=0.6150,
         payload={"instrument": "NZDUSD", "entry_price": 0.6150, "volume": 1.0},
     )
     db_session.add(signal)
@@ -567,6 +536,7 @@ async def test_ack_position_broker_ticket_stored(
         signal_id=signal.id,
         user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -584,7 +554,12 @@ async def test_ack_position_broker_ticket_stored(
     response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
-        headers=auth_headers,
+        headers={
+            "X-Device-Id": device.id,
+            "X-Nonce": "test_nonce_" + str(uuid4()),
+            "X-Timestamp": datetime.utcnow().isoformat() + "Z",
+            "X-Signature": "mock_signature",
+        },
     )
 
     assert response.status_code == 201

@@ -410,7 +410,7 @@ async def acknowledge_execution(
                         execution_id=execution.id,
                         signal_id=approval.signal_id,
                         approval_id=approval.id,
-                        user_id=approval.client_id,
+                        user_id=approval.user_id,
                         device_id=device_auth.device_id,
                         instrument=instrument,
                         side=side,

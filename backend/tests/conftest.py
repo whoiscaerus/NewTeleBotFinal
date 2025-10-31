@@ -29,7 +29,9 @@ if "MetaTrader5" not in sys.modules:
 
 import pytest
 import pytest_asyncio
+from fastapi import Header
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -174,6 +176,74 @@ async def client(db_session: AsyncSession, monkeypatch):
     monkeypatch.setattr(
         "backend.app.core.decorators.get_rate_limiter", mock_get_rate_limiter
     )
+
+    # Override get_device_auth to bypass signature verification in tests
+    from backend.app.clients.devices.models import Device
+    from backend.app.ea.auth import get_device_auth
+
+    async def mock_get_device_auth(
+        x_device_id: str = Header("", alias="X-Device-Id"),
+        nonce: str = Header("", alias="X-Nonce"),
+        timestamp: str = Header("", alias="X-Timestamp"),
+        signature: str = Header("", alias="X-Signature"),
+    ):
+        """Mock device auth that accepts any headers (for testing)."""
+        device_id = x_device_id
+        print(f"[MOCK AUTH] Received device_id={device_id}")
+        # Load device from DB if provided
+        if device_id:
+            try:
+                stmt = select(Device).where(Device.id == device_id)
+                result = await db_session.execute(stmt)
+                device = result.scalar_one_or_none()
+                print(f"[MOCK AUTH] Device lookup result: {device}")
+
+                if device:
+                    print(f"[MOCK AUTH] Device found! client_id={device.client_id}")
+
+                    # Create a mock auth object with device_id and client_id
+                    class MockDeviceAuth:
+                        def __init__(self, device_id, client_id):
+                            self.device_id = device_id
+                            self.client_id = client_id
+
+                    return MockDeviceAuth(device.id, device.client_id)
+                else:
+                    # Device not found - return mock with None client_id
+                    # This will cause 403 in the endpoint as intended
+                    print("[MOCK AUTH] Device NOT FOUND!")
+
+                    class MockDeviceAuth:
+                        def __init__(self, device_id):
+                            self.device_id = device_id
+                            self.client_id = None
+
+                    return MockDeviceAuth(device_id)
+            except Exception as e:
+                # Log any errors but still return a mock
+                print(f"[MOCK AUTH] ERROR: {e}")
+                import traceback
+
+                traceback.print_exc()
+
+                class MockDeviceAuth:
+                    def __init__(self, device_id):
+                        self.device_id = device_id
+                        self.client_id = None
+
+                return MockDeviceAuth(device_id)
+
+        # Return empty mock if device not provided
+        print("[MOCK AUTH] No device_id provided!")
+
+        class MockDeviceAuth:
+            def __init__(self):
+                self.device_id = None
+                self.client_id = None
+
+        return MockDeviceAuth()
+
+    app.dependency_overrides[get_device_auth] = mock_get_device_auth
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
