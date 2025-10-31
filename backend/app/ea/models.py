@@ -14,7 +14,6 @@ from uuid import uuid4
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Index, String, Text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
 from backend.app.core.db import Base
@@ -43,13 +42,11 @@ class Execution(Base):
 
     __tablename__ = "executions"
 
-    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     approval_id = Column(
-        PG_UUID(as_uuid=True), ForeignKey("approvals.id"), nullable=False, index=True
+        String(36), ForeignKey("approvals.id"), nullable=False, index=True
     )
-    device_id = Column(
-        PG_UUID(as_uuid=True), ForeignKey("devices.id"), nullable=False, index=True
-    )
+    device_id = Column(String(36), ForeignKey("devices.id"), nullable=False, index=True)
     status = Column(
         SQLEnum(ExecutionStatus),
         nullable=False,

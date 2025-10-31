@@ -91,6 +91,11 @@ class Device(Base):
         "Execution", back_populates="device", cascade="all, delete-orphan"
     )
 
+    # Relationship to CloseCommands (commented to avoid circular import - can query via FK)
+    # close_commands: Mapped[list["CloseCommand"]] = relationship(
+    #     "CloseCommand", back_populates="device", cascade="all, delete-orphan"
+    # )
+
     __table_args__ = (
         Index("ix_devices_client", "client_id", "is_active"),
         Index("ix_devices_client_created", "client_id", "created_at"),

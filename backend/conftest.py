@@ -88,6 +88,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         OHLCCandle,
         SymbolPrice,
     )
+    from backend.app.trading.positions.models import OpenPosition  # noqa: F401
     from backend.app.trading.reconciliation.models import (  # noqa: F401
         DrawdownAlert,
         PositionSnapshot,

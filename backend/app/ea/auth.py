@@ -199,7 +199,17 @@ class DeviceAuthDependency:
             raise DeviceAuthError("Device is revoked")
 
         self.device = device
-        self.client = device.client
+        # Load Client explicitly (ORM relationship removed to avoid circular imports)
+        client_result = await self.db.execute(
+            select(Client).where(Client.id == device.client_id)
+        )
+        self.client = client_result.scalar_one_or_none()
+        if not self.client:
+            logger.error(
+                "Device has invalid client_id",
+                extra={"device_id": self.device_id, "client_id": device.client_id},
+            )
+            raise DeviceAuthError("Device has invalid client")
 
     async def _validate_signature(self) -> None:
         """

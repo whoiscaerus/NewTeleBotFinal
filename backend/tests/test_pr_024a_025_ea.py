@@ -252,33 +252,54 @@ class TestHMACBuilder:
 
 @pytest.mark.asyncio
 async def test_poll_valid_hmac_returns_signals(
-    db_session: AsyncSession, async_client: AsyncClient
+    db_session: AsyncSession, client: AsyncClient
 ):
     """Test poll with valid HMAC returns approved signals."""
     # Setup: Create device, client, approval, signal
-    device_id = uuid4()
-    client_id = uuid4()
-    approval_id = uuid4()
-    signal_id = uuid4()
+    device_id = str(uuid4())
+    client_id = str(uuid4())
+    approval_id = str(uuid4())
+    signal_id = str(uuid4())
+    user_id = str(uuid4())
 
-    device = Device(id=device_id, client_id=client_id, is_active=True, revoked=False)
+    # Create client first (Device has foreign key to Client)
+    from backend.app.clients.models import Client
+
+    client_obj = Client(
+        id=client_id,
+        email=f"test_{client_id}@example.com",
+        telegram_id=f"tg_{client_id}",
+    )
+    db_session.add(client_obj)
+
+    device = Device(
+        id=device_id,
+        client_id=client_id,
+        device_name="test_device",
+        hmac_key_hash="secret",  # HMAC secret key (test uses b"secret")
+        is_active=True,
+        revoked=False,
+    )
     db_session.add(device)
 
-    signal = Signal(id=signal_id, instrument="GOLD", side=0, price=1950.50)
+    signal = Signal(
+        id=signal_id, user_id=user_id, instrument="GOLD", side=0, price=1950.50
+    )
     db_session.add(signal)
 
     approval = Approval(
         id=approval_id,
         signal_id=signal_id,
         client_id=client_id,
-        decision=ApprovalDecision.APPROVED,
+        user_id=user_id,
+        decision=ApprovalDecision.APPROVED.value,
     )
     db_session.add(approval)
 
     await db_session.commit()
 
     # Build HMAC headers
-    device_id_str = str(device_id)
+    device_id_str = device_id
     nonce = "nonce_123"
     timestamp = datetime.utcnow().isoformat() + "Z"
     canonical = HMACBuilder.build_canonical_string(
@@ -294,7 +315,7 @@ async def test_poll_valid_hmac_returns_signals(
         "X-Signature": signature,
     }
 
-    response = await async_client.get("/api/v1/client/poll", headers=headers)
+    response = await client.get("/api/v1/client/poll", headers=headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -302,15 +323,15 @@ async def test_poll_valid_hmac_returns_signals(
 
 
 @pytest.mark.asyncio
-async def test_poll_missing_headers_returns_401(async_client: AsyncClient):
+async def test_poll_missing_headers_returns_401(client: AsyncClient):
     """Test poll without required headers returns 401."""
-    response = await async_client.get("/api/v1/client/poll")
+    response = await client.get("/api/v1/client/poll")
     assert response.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_poll_invalid_signature_returns_401(
-    async_client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession
 ):
     """Test poll with invalid signature returns 401."""
     device_id = str(uuid4())
@@ -321,7 +342,7 @@ async def test_poll_invalid_signature_returns_401(
         "X-Signature": "invalid_signature",
     }
 
-    response = await async_client.get("/api/v1/client/poll", headers=headers)
+    response = await client.get("/api/v1/client/poll", headers=headers)
     assert response.status_code in (401, 404)  # Device not found or auth failed
 
 
@@ -335,22 +356,39 @@ async def test_poll_invalid_signature_returns_401(
 
 @pytest.mark.asyncio
 async def test_ack_placed_creates_execution(
-    db_session: AsyncSession, async_client: AsyncClient
+    db_session: AsyncSession, client: AsyncClient
 ):
     """Test ack with placed status creates execution record."""
-    device_id = uuid4()
-    approval_id = uuid4()
+    device_id = str(uuid4())
+    approval_id = str(uuid4())
+    client_id = str(uuid4())
 
-    # Setup
-    device = Device(id=device_id, client_id=uuid4(), is_active=True, revoked=False)
+    # Setup: Create client first (Device has foreign key to Client)
+    from backend.app.clients.models import Client
+
+    client_obj = Client(
+        id=client_id,
+        email=f"test_{client_id}@example.com",
+        telegram_id=f"tg_{client_id}",
+    )
+    db_session.add(client_obj)
+
+    device = Device(
+        id=device_id,
+        client_id=client_id,
+        device_name="test_device",
+        hmac_key_hash="secret",  # HMAC secret key (test uses b"secret")
+        is_active=True,
+        revoked=False,
+    )
     db_session.add(device)
     await db_session.commit()
 
     approval = Approval(
         id=approval_id,
-        signal_id=uuid4(),
+        signal_id=str(uuid4()),
         client_id=device.client_id,
-        decision=ApprovalDecision.APPROVED,
+        decision=ApprovalDecision.APPROVED.value,
     )
     db_session.add(approval)
     await db_session.commit()
@@ -383,7 +421,7 @@ async def test_ack_placed_creates_execution(
         "X-Signature": signature,
     }
 
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/client/ack", json=request_body.model_dump(), headers=headers
     )
 
@@ -395,7 +433,7 @@ async def test_ack_placed_creates_execution(
 
 @pytest.mark.asyncio
 async def test_ack_failed_with_error_message(
-    db_session: AsyncSession, async_client: AsyncClient
+    db_session: AsyncSession, client: AsyncClient
 ):
     """Test ack with failed status and error message."""
     # Similar to above but with status="failed"
@@ -403,15 +441,13 @@ async def test_ack_failed_with_error_message(
 
 
 @pytest.mark.asyncio
-async def test_ack_duplicate_returns_409(
-    db_session: AsyncSession, async_client: AsyncSession
-):
+async def test_ack_duplicate_returns_409(db_session: AsyncSession, client: AsyncClient):
     """Test ack for same approval+device twice returns 409."""
     pass
 
 
 @pytest.mark.asyncio
-async def test_ack_nonexistent_approval_returns_404(async_client: AsyncClient):
+async def test_ack_nonexistent_approval_returns_404(client: AsyncClient):
     """Test ack for nonexistent approval returns 404."""
     pass
 
@@ -427,13 +463,13 @@ async def test_ack_nonexistent_approval_returns_404(async_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_get_approval_execution_status_counts_placed(db_session: AsyncSession):
     """Test aggregate correctly counts placed executions."""
-    approval_id = uuid4()
+    approval_id = str(uuid4())
 
     # Create 2 placed executions
     for i in range(2):
         execution = Execution(
             approval_id=approval_id,
-            device_id=uuid4(),
+            device_id=str(uuid4()),
             status=ExecutionStatus.PLACED,
             broker_ticket=f"TICKET_{i}",
         )
@@ -453,18 +489,18 @@ async def test_get_approval_execution_status_counts_placed(db_session: AsyncSess
 @pytest.mark.asyncio
 async def test_get_approval_execution_status_counts_failed(db_session: AsyncSession):
     """Test aggregate correctly counts failed executions."""
-    approval_id = uuid4()
+    approval_id = str(uuid4())
 
     # Create mixed executions
     execution1 = Execution(
         approval_id=approval_id,
-        device_id=uuid4(),
+        device_id=str(uuid4()),
         status=ExecutionStatus.PLACED,
         broker_ticket="TICKET_1",
     )
     execution2 = Execution(
         approval_id=approval_id,
-        device_id=uuid4(),
+        device_id=str(uuid4()),
         status=ExecutionStatus.FAILED,
         error="Connection timeout",
     )
@@ -482,12 +518,12 @@ async def test_get_approval_execution_status_counts_failed(db_session: AsyncSess
 @pytest.mark.asyncio
 async def test_get_execution_success_rate_100_percent(db_session: AsyncSession):
     """Test success rate calculation with 100% success."""
-    device_id = uuid4()
+    device_id = str(uuid4())
 
     # Create 5 placed executions
     for i in range(5):
         execution = Execution(
-            approval_id=uuid4(),
+            approval_id=str(uuid4()),
             device_id=device_id,
             status=ExecutionStatus.PLACED,
             broker_ticket=f"TICKET_{i}",
@@ -506,13 +542,13 @@ async def test_get_execution_success_rate_100_percent(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_get_execution_success_rate_50_percent(db_session: AsyncSession):
     """Test success rate with mixed outcomes."""
-    device_id = uuid4()
+    device_id = str(uuid4())
 
     # Create 2 placed, 2 failed
     for i in range(2):
         db_session.add(
             Execution(
-                approval_id=uuid4(),
+                approval_id=str(uuid4()),
                 device_id=device_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"TICKET_{i}",
@@ -520,7 +556,7 @@ async def test_get_execution_success_rate_50_percent(db_session: AsyncSession):
         )
         db_session.add(
             Execution(
-                approval_id=uuid4(),
+                approval_id=str(uuid4()),
                 device_id=device_id,
                 status=ExecutionStatus.FAILED,
                 error=f"Error_{i}",
@@ -546,12 +582,12 @@ async def test_get_execution_success_rate_50_percent(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_query_approval_executions_admin_only(
-    async_client: AsyncClient, admin_token: str
+    client: AsyncClient, admin_token: str
 ):
     """Test admin endpoint requires admin role."""
-    approval_id = uuid4()
+    approval_id = str(uuid4())
 
-    response = await async_client.get(
+    response = await client.get(
         f"/api/v1/executions/{approval_id}",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -561,12 +597,12 @@ async def test_query_approval_executions_admin_only(
 
 @pytest.mark.asyncio
 async def test_query_device_success_rate_returns_metrics(
-    async_client: AsyncClient, admin_token: str
+    client: AsyncClient, admin_token: str
 ):
     """Test device success rate endpoint returns correct metrics."""
-    device_id = uuid4()
+    device_id = str(uuid4())
 
-    response = await async_client.get(
+    response = await client.get(
         f"/api/v1/executions/device/{device_id}/success-rate",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -585,21 +621,21 @@ async def test_query_device_success_rate_returns_metrics(
 
 @pytest.mark.asyncio
 async def test_nonce_replay_attack_blocked(
-    db_session: AsyncSession, async_client: AsyncClient
+    db_session: AsyncSession, client: AsyncClient
 ):
     """Test that replayed nonce is blocked (Redis check)."""
     pass
 
 
 @pytest.mark.asyncio
-async def test_timestamp_skew_too_old_rejected(async_client: AsyncClient):
+async def test_timestamp_skew_too_old_rejected(client: AsyncClient):
     """Test that timestamp > 5 minutes old is rejected."""
     pass
 
 
 @pytest.mark.asyncio
 async def test_revoked_device_cannot_poll(
-    db_session: AsyncSession, async_client: AsyncClient
+    db_session: AsyncSession, client: AsyncClient
 ):
     """Test that revoked device cannot poll."""
     pass
@@ -607,7 +643,7 @@ async def test_revoked_device_cannot_poll(
 
 @pytest.mark.asyncio
 async def test_poll_returns_only_approved_signals(
-    db_session: AsyncSession, async_client: AsyncClient
+    db_session: AsyncSession, client: AsyncClient
 ):
     """Test that poll returns only APPROVED signals, not pending/rejected."""
     pass

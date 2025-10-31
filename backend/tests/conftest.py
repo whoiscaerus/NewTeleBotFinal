@@ -138,8 +138,14 @@ async def client(db_session: AsyncSession, monkeypatch):
     from backend.app.core.db import get_db
     from backend.app.orchestrator.main import app
 
+    # Create a simple callable that returns an async generator yielding the session
+    # This ensures the endpoint uses the EXACT same session object as the test
     async def override_get_db():
-        yield db_session
+        try:
+            yield db_session
+        finally:
+            # Don't close or commit - let the test manage the session lifecycle
+            pass
 
     # Mock the rate limiter to always allow requests in tests
     class NoOpRateLimiter:
@@ -197,6 +203,48 @@ def producer_id() -> str:
 def hmac_secret() -> str:
     """Return test HMAC secret."""
     return "test-hmac-secret-key-12345678"
+
+
+@pytest_asyncio.fixture
+async def admin_token(db_session: AsyncSession) -> str:
+    """
+    Create admin user and return JWT token.
+
+    Creates a test admin user with UserRole.ADMIN and generates
+    a valid JWT access token for authentication in tests.
+
+    Returns:
+        str: JWT access token for admin user
+
+    Example:
+        >>> response = await client.get(
+        ...     "/api/v1/admin/users",
+        ...     headers={"Authorization": f"Bearer {admin_token}"}
+        ... )
+    """
+    from uuid import uuid4
+
+    from backend.app.auth.models import User, UserRole
+    from backend.app.auth.utils import create_access_token, hash_password
+
+    # Create admin user
+    admin_user = User(
+        id=uuid4(),
+        email="admin@test.com",
+        telegram_id=999999999,
+        hashed_password=hash_password("admin_password"),
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+
+    db_session.add(admin_user)
+    await db_session.commit()
+    await db_session.refresh(admin_user)
+
+    # Generate JWT token
+    token = create_access_token(data={"sub": str(admin_user.id), "role": "admin"})
+
+    return token
 
 
 @pytest.fixture

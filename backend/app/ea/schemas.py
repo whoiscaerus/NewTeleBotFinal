@@ -1,10 +1,14 @@
 """
-Pydantic schemas for EA poll/ack endpoints (PR-024a).
+Pydantic schemas for EA poll/ack endpoints (PR-024a + PR-104).
 
 Schemas for:
 - PollResponse: List of approved signals ready for execution
 - AckRequest: Device acknowledgment of execution attempt
 - AckResponse: Confirmation of execution recorded
+
+SECURITY NOTE (PR-104):
+ExecutionParamsOut is REDACTED - it does NOT include stop_loss or take_profit.
+These levels are kept server-side only to prevent signal reselling.
 """
 
 from datetime import datetime
@@ -14,11 +18,18 @@ from pydantic import BaseModel, Field, validator
 
 
 class ExecutionParamsOut(BaseModel):
-    """Execution parameters from signal (PR-015)."""
+    """
+    Execution parameters from signal (PR-015 + PR-104 REDACTED).
+
+    CRITICAL SECURITY:
+    This schema is sent to client EAs. It does NOT include stop_loss or take_profit
+    to prevent clients from seeing complete trading strategy (anti-reselling protection).
+
+    The server tracks hidden SL/TP in OpenPosition.owner_sl/owner_tp and will
+    automatically close positions when those levels are hit.
+    """
 
     entry_price: float = Field(..., gt=0, lt=1_000_000)
-    stop_loss: float = Field(..., gt=0, lt=1_000_000)
-    take_profit: float = Field(..., gt=0, lt=1_000_000)
     volume: float = Field(..., gt=0, le=1000)
     ttl_minutes: int = Field(..., ge=1, le=10080)  # 1 min to 7 days
 
@@ -26,10 +37,10 @@ class ExecutionParamsOut(BaseModel):
         json_schema_extra = {
             "example": {
                 "entry_price": 1950.50,
-                "stop_loss": 1940.00,
-                "take_profit": 1965.00,
                 "volume": 0.5,
                 "ttl_minutes": 240,
+                # NOTE: stop_loss and take_profit are INTENTIONALLY ABSENT
+                # They are kept server-side only (OpenPosition.owner_sl/owner_tp)
             }
         }
 
@@ -55,8 +66,8 @@ class ApprovedSignalOut(BaseModel):
                 "side": "buy",
                 "execution_params": {
                     "entry_price": 1950.50,
-                    "stop_loss": 1940.00,
-                    "take_profit": 1965.00,
+                    # NO stop_loss ❌ (kept server-side)
+                    # NO take_profit ❌ (kept server-side)
                     "volume": 0.5,
                     "ttl_minutes": 240,
                 },
@@ -94,8 +105,8 @@ class PollResponse(BaseModel):
                         "side": "buy",
                         "execution_params": {
                             "entry_price": 1950.50,
-                            "stop_loss": 1940.00,
-                            "take_profit": 1965.00,
+                            # NO stop_loss ❌ (hidden from client)
+                            # NO take_profit ❌ (hidden from client)
                             "volume": 0.5,
                             "ttl_minutes": 240,
                         },
