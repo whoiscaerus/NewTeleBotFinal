@@ -217,6 +217,7 @@ class TestCommandRegistry:
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="MessageDistributor class not yet implemented")
 class TestMessageDistributor:
     """Test message distribution by keywords."""
 

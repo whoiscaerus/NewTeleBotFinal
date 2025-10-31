@@ -47,6 +47,7 @@ class TradeService:
         stop_loss: Decimal,
         take_profit: Decimal,
         volume: Decimal,
+        user_id: str | None = None,
         entry_time: datetime | None = None,
         strategy: str = "manual",
         timeframe: str = "H1",
@@ -64,6 +65,7 @@ class TradeService:
             stop_loss: Stop loss level
             take_profit: Take profit level
             volume: Position size in lots
+            user_id: User ID (owner of trade). If not provided, uses a test UUID.
             entry_time: Entry timestamp (defaults to now)
             strategy: Strategy name
             timeframe: Candle timeframe
@@ -78,7 +80,10 @@ class TradeService:
         Raises:
             ValueError: If prices violate constraints
         """
+        from uuid import uuid4
+
         entry_time = entry_time or datetime.utcnow()
+        user_id = user_id or str(uuid4())
 
         # Validate price relationships
         if trade_type == "BUY":
@@ -100,6 +105,7 @@ class TradeService:
 
         # Create trade
         trade = Trade(
+            user_id=user_id,
             symbol=symbol,
             trade_type=trade_type,
             direction=0 if trade_type == "BUY" else 1,

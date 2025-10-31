@@ -21,7 +21,7 @@ class TestDeviceRegistration:
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)

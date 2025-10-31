@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.billing.entitlements.service import EntitlementService
 from backend.app.billing.stripe.models import StripeEvent
+from backend.app.observability.metrics import get_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,9 @@ class TelegramPaymentHandler:
             self.db.add(payment_event)
             await self.db.commit()
 
+            # Record metrics (PR-034)
+            get_metrics().record_telegram_payment("success", total_amount, currency)
+
             self.logger.info(
                 "Telegram payment processed: entitlement granted",
                 extra={
@@ -146,6 +150,9 @@ class TelegramPaymentHandler:
             )
             self.db.add(payment_event)
             await self.db.commit()
+
+            # Record failure metric (PR-034)
+            get_metrics().record_telegram_payment("failed", total_amount, currency)
 
             raise
 

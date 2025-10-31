@@ -133,10 +133,31 @@ class MetricsCollector:
         )
 
         # Marketing metrics
+        self.marketing_posts_total = Counter(
+            "marketing_posts_total",
+            "Total marketing promos posted to Telegram groups",
+            registry=self.registry,
+        )
+
         self.marketing_clicks_total = Counter(
             "marketing_clicks_total",
             "Total marketing CTA clicks",
             ["promo_id"],
+            registry=self.registry,
+        )
+
+        # Billing metrics (PR-033)
+        self.billing_checkout_started_total = Counter(
+            "billing_checkout_started_total",
+            "Total Stripe checkout sessions initiated",
+            ["plan"],
+            registry=self.registry,
+        )
+
+        self.billing_payments_total = Counter(
+            "billing_payments_total",
+            "Total payments processed (webhook events)",
+            ["status"],
             registry=self.registry,
         )
 
@@ -210,6 +231,50 @@ class MetricsCollector:
             "ea_ack_duration_seconds",
             "EA ack request duration in seconds",
             buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 5.0),
+            registry=self.registry,
+        )
+
+        # PR-030: Content distribution metrics
+        self.distribution_messages_total = Counter(
+            "distribution_messages_total",
+            "Total messages distributed to Telegram groups",
+            ["channel"],
+            registry=self.registry,
+        )
+
+        # PR-031: GuideBot metrics
+        self.guides_posts_total = Counter(
+            "guides_posts_total",
+            "Total guide/tutorial posts sent to Telegram groups",
+            registry=self.registry,
+        )
+
+        # PR-034: Telegram Native Payments metrics
+        self.telegram_payments_total = Counter(
+            "telegram_payments_total",
+            "Total Telegram Stars payments processed",
+            ["result"],  # success, failed, cancelled
+            registry=self.registry,
+        )
+
+        self.telegram_payment_value_total = Counter(
+            "telegram_payment_value_total",
+            "Total Telegram Stars payment values (sum in smallest unit)",
+            ["currency"],  # XTR (Telegram Stars), USD, etc.
+            registry=self.registry,
+        )
+
+        # PR-035: Telegram Mini App metrics
+        self.miniapp_sessions_total = Counter(
+            "miniapp_sessions_total",
+            "Total Telegram Mini App sessions created via initData exchange",
+            registry=self.registry,
+        )
+
+        self.miniapp_exchange_latency_seconds = Histogram(
+            "miniapp_exchange_latency_seconds",
+            "Telegram Mini App initData exchange latency in seconds",
+            buckets=(0.01, 0.05, 0.1, 0.5, 1.0),
             registry=self.registry,
         )
 
@@ -360,6 +425,60 @@ class MetricsCollector:
             duration_seconds: Request duration in seconds
         """
         self.ea_ack_duration_seconds.observe(duration_seconds)
+
+    def record_distribution_message(self, channel: str):
+        """Record message distribution to Telegram channel/keyword (PR-030).
+
+        Args:
+            channel: Distribution channel/keyword (e.g., "gold", "crypto")
+        """
+        self.distribution_messages_total.labels(channel=channel).inc()
+
+    def record_marketing_post(self):
+        """Record marketing promo posted (PR-032)."""
+        self.marketing_posts_total.inc()
+
+    def record_billing_checkout_started(self, plan: str):
+        """Record Stripe checkout session initiated (PR-033).
+
+        Args:
+            plan: Plan code (free, basic, premium, pro)
+        """
+        self.billing_checkout_started_total.labels(plan=plan).inc()
+
+    def record_billing_payment(self, status: str):
+        """Record payment processed via webhook (PR-033).
+
+        Args:
+            status: Payment status (success, failed, refunded)
+        """
+        self.billing_payments_total.labels(status=status).inc()
+
+    def record_telegram_payment(
+        self, result: str, amount: int = 0, currency: str = "XTR"
+    ):
+        """Record Telegram Stars payment processed (PR-034).
+
+        Args:
+            result: Payment result (success, failed, cancelled)
+            amount: Payment amount (in smallest unit, e.g., kopeks for XTR)
+            currency: Payment currency (XTR for Telegram Stars, etc.)
+        """
+        self.telegram_payments_total.labels(result=result).inc()
+        if amount > 0:
+            self.telegram_payment_value_total.labels(currency=currency).inc(amount)
+
+    def record_miniapp_session_created(self):
+        """Record Mini App session created via initData exchange (PR-035)."""
+        self.miniapp_sessions_total.inc()
+
+    def record_miniapp_exchange_latency(self, latency_seconds: float):
+        """Record Mini App initData exchange latency (PR-035).
+
+        Args:
+            latency_seconds: Exchange duration in seconds
+        """
+        self.miniapp_exchange_latency_seconds.observe(latency_seconds)
 
     def set_redis_connected(self, connected: bool):
         """Set Redis connection status.

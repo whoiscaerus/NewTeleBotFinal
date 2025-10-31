@@ -208,7 +208,7 @@ class MarketingScheduler:
                     )
 
                     # Record telemetry
-                    get_metrics().marketing_posts_total.inc()
+                    get_metrics().record_marketing_post()
 
                 except TelegramError as e:
                     failed_chats.append(chat_id)

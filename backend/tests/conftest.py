@@ -371,12 +371,11 @@ async def admin_token(db_session: AsyncSession) -> str:
 
     # Create admin user
     admin_user = User(
-        id=uuid4(),
+        id=str(uuid4()),
         email="admin@test.com",
-        telegram_id=999999999,
-        hashed_password=hash_password("admin_password"),
+        telegram_user_id="999999999",
+        password_hash=hash_password("admin_password"),
         role=UserRole.ADMIN,
-        is_active=True,
     )
 
     db_session.add(admin_user)
@@ -384,7 +383,7 @@ async def admin_token(db_session: AsyncSession) -> str:
     await db_session.refresh(admin_user)
 
     # Generate JWT token
-    token = create_access_token(data={"sub": str(admin_user.id), "role": "admin"})
+    token = create_access_token(subject=str(admin_user.id), role="admin")
 
     return token
 

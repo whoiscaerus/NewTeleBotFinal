@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 from urllib.parse import parse_qs
 
@@ -18,6 +19,7 @@ from backend.app.auth.jwt_handler import JWTHandler
 from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.core.settings import get_settings
+from backend.app.observability.metrics import get_metrics
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/miniapp", tags=["miniapp"])
@@ -177,6 +179,7 @@ async def exchange_initdata(
         }
     """
     settings = get_settings()
+    start_time = time.time()
 
     try:
         # Verify initData signature
@@ -223,6 +226,11 @@ async def exchange_initdata(
                 "telegram_user_id": str(telegram_user_id),
             },
         )
+
+        # Record metrics (PR-035)
+        duration_seconds = time.time() - start_time
+        get_metrics().record_miniapp_session_created()
+        get_metrics().record_miniapp_exchange_latency(duration_seconds)
 
         return InitDataExchangeResponse(
             access_token=token,

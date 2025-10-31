@@ -33,7 +33,7 @@ from backend.app.audit.models import AuditLog
 from backend.app.billing.entitlements.models import EntitlementType, UserEntitlement
 from backend.app.billing.security import WebhookSecurityValidator
 from backend.app.billing.stripe.models import StripeEvent
-from backend.app.observability.metrics import metrics
+from backend.app.observability.metrics import get_metrics, metrics
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +258,9 @@ class StripeWebhookHandler:
                     },
                 )
 
+                # Record payment success metric
+                get_metrics().record_billing_payment("success")
+
             return cast(dict[str, Any], result)
 
         except Exception as e:
@@ -304,6 +307,9 @@ class StripeWebhookHandler:
                         "customer_id": customer_id,
                     },
                 )
+
+                # Record payment failure metric
+                get_metrics().record_billing_payment("failed")
 
             return cast(dict[str, Any], result)
 

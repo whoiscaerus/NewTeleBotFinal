@@ -18,13 +18,14 @@ from backend.app.billing.gates import EntitlementGate
 class TestEntitlementGate:
     """Test entitlement gate enforcement."""
 
+    @pytest.mark.asyncio
     async def test_gate_requires_entitlement(self, db_session: AsyncSession):
         """Test gate blocks users without required entitlement."""
         # Create test user (no entitlements)
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)
@@ -39,13 +40,14 @@ class TestEntitlementGate:
 
         assert "403" in str(exc_info.value) or "Forbidden" in str(exc_info.value)
 
+    @pytest.mark.asyncio
     async def test_gate_allows_with_entitlement(self, db_session: AsyncSession):
         """Test gate allows users with required entitlement."""
         # Create test user
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)
@@ -77,13 +79,14 @@ class TestEntitlementGate:
         result = await gate.check(user, db_session)
         assert result is True
 
+    @pytest.mark.asyncio
     async def test_gate_tier_minimum_enforcement(self, db_session: AsyncSession):
         """Test gate enforces tier minimums."""
         # Create user with tier 1
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)
@@ -121,12 +124,13 @@ class TestEntitlementGate:
 
         assert "403" in str(exc_info.value) or "Forbidden" in str(exc_info.value)
 
+    @pytest.mark.asyncio
     async def test_gate_rfc7807_response_format(self, db_session: AsyncSession):
         """Test gate returns RFC7807 compliant error response."""
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)
@@ -164,7 +168,7 @@ class TestEntitlementGateAPI:
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)
@@ -205,12 +209,13 @@ class TestGatedComponent:
 class TestGateTelemetry:
     """Test telemetry emissions."""
 
+    @pytest.mark.asyncio
     async def test_gate_denied_emits_metric(self, db_session: AsyncSession):
         """Test denied gate access emits telemetry metric."""
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)
@@ -231,6 +236,7 @@ class TestGateTelemetry:
 class TestEntitlementExpiry:
     """Test entitlement expiration handling."""
 
+    @pytest.mark.asyncio
     async def test_expired_entitlement_denied(self, db_session: AsyncSession):
         """Test expired entitlements are denied."""
         from datetime import datetime, timedelta
@@ -238,7 +244,7 @@ class TestEntitlementExpiry:
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)
@@ -272,6 +278,7 @@ class TestEntitlementExpiry:
         # Verify exception was raised
         assert exc_info.value is not None
 
+    @pytest.mark.asyncio
     async def test_valid_entitlement_not_expired(self, db_session: AsyncSession):
         """Test valid non-expired entitlements are granted."""
         from datetime import datetime, timedelta
@@ -279,7 +286,7 @@ class TestEntitlementExpiry:
         user = User(
             id=str(uuid4()),
             email="test@example.com",
-            telegram_id=123456,
+            telegram_user_id="123456",
             password_hash="hash",
         )
         db_session.add(user)

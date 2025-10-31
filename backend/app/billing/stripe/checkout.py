@@ -146,6 +146,11 @@ class StripeCheckoutService:
                 },
             )
 
+            # Record metrics
+            from backend.app.observability.metrics import get_metrics
+
+            get_metrics().record_billing_checkout_started(request.plan_id)
+
             return CheckoutSessionResponse(
                 session_id=session.id,
                 url=session.url,
