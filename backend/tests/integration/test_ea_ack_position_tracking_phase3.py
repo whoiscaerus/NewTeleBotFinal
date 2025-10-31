@@ -106,7 +106,7 @@ async def test_ack_successful_placement_creates_open_position(
         "error": None,
     }
 
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
         headers={

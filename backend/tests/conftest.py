@@ -224,7 +224,7 @@ async def admin_token(db_session: AsyncSession) -> str:
     """
     from uuid import uuid4
 
-    from backend.app.auth.models import User, UserRole
+    from backend.app.auth.models import UserRole
     from backend.app.auth.utils import create_access_token, hash_password
 
     # Create admin user

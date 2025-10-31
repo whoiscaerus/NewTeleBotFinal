@@ -7,7 +7,7 @@ to prevent clients from seeing stop-loss and take-profit levels.
 
 import json
 import os
-from typing import Any, Optional
+from typing import Any
 
 from cryptography.fernet import Fernet
 
@@ -19,13 +19,12 @@ class OwnerOnlyEncryption:
         """Initialize with encryption key from settings."""
         # Key should be generated with: Fernet.generate_key()
         # and stored in secrets manager (PR-007) or environment variable
-        key = os.getenv("OWNER_ONLY_ENCRYPTION_KEY")
-        if not key:
+        key_str = os.getenv("OWNER_ONLY_ENCRYPTION_KEY")
+        if not key_str:
             raise ValueError("OWNER_ONLY_ENCRYPTION_KEY environment variable not set")
 
         # Ensure key is bytes
-        if isinstance(key, str):
-            key = key.encode("utf-8")
+        key: bytes = key_str.encode("utf-8") if isinstance(key_str, str) else key_str
 
         self.fernet = Fernet(key)
 
@@ -85,16 +84,16 @@ class OwnerOnlyEncryption:
 
             # Deserialize from JSON
             json_str = decrypted_bytes.decode("utf-8")
-            data = json.loads(json_str)
+            data: dict[str, Any] = json.loads(json_str)
 
             return data
 
         except Exception as e:
-            raise ValueError(f"Failed to decrypt owner_only data: {e}")
+            raise ValueError(f"Failed to decrypt owner_only data: {e}") from e
 
 
 # Singleton instance
-_encryptor: Optional[OwnerOnlyEncryption] = None
+_encryptor: OwnerOnlyEncryption | None = None
 
 
 def get_encryptor() -> OwnerOnlyEncryption:

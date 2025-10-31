@@ -27,7 +27,7 @@ from backend.app.trading.positions.models import OpenPosition, PositionStatus
 
 @pytest.mark.asyncio
 async def test_ack_successful_placement_creates_open_position(
-    async_client, db_session: AsyncSession, test_user: User, test_device: Device
+    client, db_session: AsyncSession, test_user: User, test_device: Device
 ):
     """Test: EA ack with status=placed creates OpenPosition with hidden levels."""
 
@@ -74,7 +74,7 @@ async def test_ack_successful_placement_creates_open_position(
         "error": None,
     }
 
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
         headers={
