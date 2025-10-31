@@ -330,3 +330,48 @@ def drawdown_guard():
         max_drawdown_percent=20.0,
     )
     return guard
+
+
+@pytest.fixture
+async def test_user(db_session: AsyncSession):
+    """Create a test user for integration tests."""
+    from uuid import uuid4
+
+    from backend.app.auth.models import User, UserRole
+    from backend.app.auth.utils import hash_password
+
+    user = User(
+        id=str(uuid4()),
+        email="testuser@example.com",
+        telegram_id=123456789,
+        hashed_password=hash_password("test_password"),
+        role=UserRole.STANDARD,
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+async def test_device(db_session: AsyncSession, test_user):
+    """Create a test EA device for integration tests."""
+    from uuid import uuid4
+
+    from backend.app.clients.devices.models import Device, DeviceStatus
+
+    device = Device(
+        id=str(uuid4()),
+        user_id=test_user.id,
+        name="Test EA Device",
+        device_type="mt5_ea",
+        status=DeviceStatus.ACTIVE,
+        public_key="test_public_key_12345",
+        hmac_secret=b"test_secret_key_12345",
+        is_active=True,
+    )
+    db_session.add(device)
+    await db_session.commit()
+    await db_session.refresh(device)
+    return device
