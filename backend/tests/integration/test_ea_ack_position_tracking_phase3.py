@@ -16,45 +16,14 @@ import pytest
 from sqlalchemy import select
 
 from backend.app.approvals.models import Approval, ApprovalDecision
-from backend.app.auth.models import User
-from backend.app.clients.devices.models import Device
 from backend.app.ea.models import Execution, ExecutionStatus
 from backend.app.signals.encryption import encrypt_owner_only
 from backend.app.signals.models import Signal
 from backend.app.trading.positions.models import OpenPosition, PositionStatus
 
 
-@pytest.fixture
-async def test_user(db_session):
-    """Create test user for EA ack tests."""
-    user = User(
-        id=str(uuid4()),
-        telegram_id=123456789,
-        email="test@example.com",
-        username="test_user",
-        is_active=True,
-    )
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-    return user
-
-
-@pytest.fixture
-async def test_device(db_session, test_user):
-    """Create test device for EA ack tests."""
-    device = Device(
-        id=str(uuid4()),
-        client_id=test_user.id,
-        device_name="TestDevice",
-        platform="MT5",
-        secret_key="test_secret_key_32_bytes_long!",
-        is_active=True,
-    )
-    db_session.add(device)
-    await db_session.commit()
-    await db_session.refresh(device)
-    return device
+# NOTE: test_user and test_device fixtures are defined in conftest.py
+# They are imported automatically by pytest
 
 
 @pytest.mark.asyncio
@@ -73,6 +42,7 @@ async def test_ack_successful_placement_creates_open_position(
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=test_user.id,
         instrument="XAUUSD",
         side=0,  # buy
         price=2655.50,
@@ -92,6 +62,7 @@ async def test_ack_successful_placement_creates_open_position(
         signal_id=signal.id,
         user_id=test_user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -156,12 +127,13 @@ async def test_ack_successful_placement_creates_open_position(
 
 @pytest.mark.asyncio
 async def test_ack_failed_execution_does_not_create_position(
-    async_client, db_session, test_user, test_device
+    client, db_session, test_user, test_device
 ):
     """Test: EA ack with status=failed does NOT create OpenPosition."""
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=test_user.id,
         instrument="EURUSD",
         side=1,  # sell
         price=1.0850,
@@ -179,6 +151,7 @@ async def test_ack_failed_execution_does_not_create_position(
         signal_id=signal.id,
         user_id=test_user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -192,7 +165,7 @@ async def test_ack_failed_execution_does_not_create_position(
         "error": "Insufficient margin",
     }
 
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
         headers={
@@ -225,12 +198,13 @@ async def test_ack_failed_execution_does_not_create_position(
 
 @pytest.mark.asyncio
 async def test_ack_without_owner_only_creates_position_with_null_levels(
-    async_client, db_session, test_user, test_device
+    client, db_session, test_user, test_device
 ):
     """Test: Signal without owner_only still creates OpenPosition (fallback with NULL levels)."""
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=test_user.id,
         instrument="GBPUSD",
         side=0,  # buy
         price=1.2650,
@@ -249,6 +223,7 @@ async def test_ack_without_owner_only_creates_position_with_null_levels(
         signal_id=signal.id,
         user_id=test_user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -262,7 +237,7 @@ async def test_ack_without_owner_only_creates_position_with_null_levels(
         "error": None,
     }
 
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
         headers={
@@ -297,12 +272,13 @@ async def test_ack_without_owner_only_creates_position_with_null_levels(
 
 @pytest.mark.asyncio
 async def test_ack_all_foreign_keys_linked_correctly(
-    async_client, db_session, test_user, test_device
+    client, db_session, test_user, test_device
 ):
     """Test: Verify all foreign keys in OpenPosition are correctly linked."""
 
     signal = Signal(
         id=str(uuid4()),
+        user_id=test_user.id,
         instrument="BTCUSD",
         side=0,
         price=45000.00,
@@ -316,6 +292,7 @@ async def test_ack_all_foreign_keys_linked_correctly(
         signal_id=signal.id,
         user_id=test_user.id,
         decision=ApprovalDecision.APPROVED.value,
+        client_id=test_device.client_id,
     )
     db_session.add(approval)
 
@@ -329,7 +306,7 @@ async def test_ack_all_foreign_keys_linked_correctly(
         "error": None,
     }
 
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/client/ack",
         json=ack_payload,
         headers={
