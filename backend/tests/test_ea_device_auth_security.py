@@ -128,7 +128,9 @@ class TestNonceReplayDetection:
     """Test nonce replay prevention (Redis tracking)."""
 
     @pytest.mark.asyncio
-    async def test_poll_accepts_unique_nonce(self, client: AsyncClient, device: Device):
+    async def test_poll_accepts_unique_nonce(
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
+    ):
         """Unique nonce should be accepted."""
         now = datetime.utcnow().isoformat() + "Z"
         unique_nonce = f"nonce_unique_{uuid4().hex[:8]}"
@@ -137,7 +139,7 @@ class TestNonceReplayDetection:
         )
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -151,7 +153,7 @@ class TestNonceReplayDetection:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_replayed_nonce(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Reused nonce should be rejected (401)."""
         now = datetime.utcnow().isoformat() + "Z"
@@ -169,21 +171,23 @@ class TestNonceReplayDetection:
         }
 
         # First request succeeds
-        response1 = await client.get("/api/v1/client/poll", headers=headers)
+        response1 = await real_auth_client.get("/api/v1/client/poll", headers=headers)
         assert response1.status_code == 200
 
         # Second request with same nonce fails
-        response2 = await client.get("/api/v1/client/poll", headers=headers)
+        response2 = await real_auth_client.get("/api/v1/client/poll", headers=headers)
         assert response2.status_code == 401
         assert "replay" in response2.json()["detail"].lower()
 
     @pytest.mark.asyncio
-    async def test_poll_rejects_empty_nonce(self, client: AsyncClient, device: Device):
+    async def test_poll_rejects_empty_nonce(
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
+    ):
         """Empty nonce should be rejected (400)."""
         now = datetime.utcnow().isoformat() + "Z"
         signature = "fake_signature"
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -201,7 +205,7 @@ class TestSignatureValidation:
 
     @pytest.mark.asyncio
     async def test_poll_accepts_valid_signature(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Valid HMAC signature should be accepted."""
         now = datetime.utcnow().isoformat() + "Z"
@@ -211,7 +215,7 @@ class TestSignatureValidation:
         )
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -225,13 +229,13 @@ class TestSignatureValidation:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_invalid_signature(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Invalid signature should be rejected (401)."""
         now = datetime.utcnow().isoformat() + "Z"
         nonce = f"nonce_invalid_{uuid4().hex[:8]}"
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -246,7 +250,7 @@ class TestSignatureValidation:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_tampered_signature(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Tampered signature (modified by 1 char) should be rejected (401)."""
         now = datetime.utcnow().isoformat() + "Z"
@@ -263,7 +267,7 @@ class TestSignatureValidation:
             else "tampered"
         )
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -277,7 +281,7 @@ class TestSignatureValidation:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_signature_for_wrong_method(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Signature generated for POST should fail for GET (401)."""
         now = datetime.utcnow().isoformat() + "Z"
@@ -290,7 +294,7 @@ class TestSignatureValidation:
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
         # Use for GET (wrong method)
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -355,14 +359,16 @@ class TestDeviceNotFound:
     """Test handling of non-existent devices."""
 
     @pytest.mark.asyncio
-    async def test_poll_rejects_unknown_device(self, client: AsyncClient):
+    async def test_poll_rejects_unknown_device(
+        self, real_auth_client: AsyncClient, db_session: AsyncSession
+    ):
         """Unknown device ID should be rejected (404)."""
         unknown_id = uuid4().hex
         now = datetime.utcnow().isoformat() + "Z"
         nonce = f"nonce_unknown_{uuid4().hex[:8]}"
         signature = "fake_signature"
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": unknown_id,
@@ -376,7 +382,7 @@ class TestDeviceNotFound:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_revoked_device(
-        self, client: AsyncClient, device: Device, db_session: AsyncSession
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Revoked device should be rejected (401)."""
         # Revoke the device
@@ -390,7 +396,7 @@ class TestDeviceNotFound:
         )
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -407,11 +413,13 @@ class TestMissingHeaders:
     """Test missing required headers."""
 
     @pytest.mark.asyncio
-    async def test_poll_rejects_missing_device_id(self, client: AsyncClient):
+    async def test_poll_rejects_missing_device_id(
+        self, real_auth_client: AsyncClient, db_session: AsyncSession
+    ):
         """Missing X-Device-Id should be rejected (400)."""
         now = datetime.utcnow().isoformat() + "Z"
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 # X-Device-Id: MISSING
@@ -425,12 +433,12 @@ class TestMissingHeaders:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_missing_signature(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Missing X-Signature should be rejected (400)."""
         now = datetime.utcnow().isoformat() + "Z"
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -443,9 +451,11 @@ class TestMissingHeaders:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_ack_rejects_missing_headers(self, client: AsyncClient):
+    async def test_ack_rejects_missing_headers(
+        self, real_auth_client: AsyncClient, db_session: AsyncSession
+    ):
         """POST /ack also requires all headers."""
-        response = await client.post(
+        response = await real_auth_client.post(
             "/api/v1/client/ack",
             json={"approval_id": str(uuid4()), "status": "placed"},
             # No headers
@@ -459,7 +469,7 @@ class TestAckSpecificSecurity:
 
     @pytest.mark.asyncio
     async def test_ack_signature_includes_body(
-        self, client: AsyncClient, device: Device, approval, db_session
+        self, real_auth_client: AsyncClient, device: Device, approval, db_session
     ):
         """ACK signature should include request body in canonical string."""
         now = datetime.utcnow().isoformat() + "Z"
@@ -471,7 +481,7 @@ class TestAckSpecificSecurity:
         )
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
-        response = await client.post(
+        response = await real_auth_client.post(
             "/api/v1/client/ack",
             json={"approval_id": str(approval.id), "status": "placed"},
             headers={
@@ -486,7 +496,7 @@ class TestAckSpecificSecurity:
 
     @pytest.mark.asyncio
     async def test_ack_rejects_body_tampering(
-        self, client: AsyncClient, device: Device, approval
+        self, real_auth_client: AsyncClient, device: Device, approval
     ):
         """Modifying body after signature should fail (401)."""
         now = datetime.utcnow().isoformat() + "Z"
@@ -500,7 +510,7 @@ class TestAckSpecificSecurity:
 
         # Use different body than what was signed
 
-        response = await client.post(
+        response = await real_auth_client.post(
             "/api/v1/client/ack",
             json={"approval_id": str(approval.id), "status": "failed"},
             headers={
