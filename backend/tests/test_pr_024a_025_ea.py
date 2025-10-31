@@ -331,19 +331,18 @@ async def test_poll_missing_headers_returns_400(real_auth_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_poll_invalid_signature_returns_401(
-    client: AsyncClient, db_session: AsyncSession
+    real_auth_client: AsyncClient, test_device: Device, db_session: AsyncSession
 ):
     """Test poll with invalid signature returns 401."""
-    device_id = str(uuid4())
     headers = {
-        "X-Device-Id": device_id,
+        "X-Device-Id": test_device.id,
         "X-Nonce": "nonce",
         "X-Timestamp": datetime.utcnow().isoformat() + "Z",
         "X-Signature": "invalid_signature",
     }
 
-    response = await client.get("/api/v1/client/poll", headers=headers)
-    assert response.status_code in (401, 404)  # Device not found or auth failed
+    response = await real_auth_client.get("/api/v1/client/poll", headers=headers)
+    assert response.status_code == 401  # Invalid signature
 
 
 # ... More poll tests ...
