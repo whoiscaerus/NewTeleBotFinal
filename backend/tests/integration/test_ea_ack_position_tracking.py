@@ -58,9 +58,8 @@ async def test_ack_successful_placement_creates_open_position(
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=test_user.id,
+        user_id=test_user.id,
         decision=ApprovalDecision.APPROVED.value,
-        decided_at=datetime.utcnow(),
     )
     db_session.add(approval)
 
@@ -163,9 +162,8 @@ async def test_ack_failed_execution_does_not_create_position(
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=user.id,
+        user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
-        approved_at=datetime.utcnow(),
     )
     db_session.add(approval)
 
@@ -246,9 +244,8 @@ async def test_ack_without_owner_only_still_creates_position(
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=user.id,
+        user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
-        approved_at=datetime.utcnow(),
     )
     db_session.add(approval)
 
@@ -331,9 +328,8 @@ async def test_ack_with_corrupt_owner_only_creates_position_without_levels(
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=user.id,
+        user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
-        approved_at=datetime.utcnow(),
     )
     db_session.add(approval)
 
@@ -409,9 +405,8 @@ async def test_ack_all_foreign_keys_linked_correctly(
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=user.id,
+        user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
-        approved_at=datetime.utcnow(),
     )
     db_session.add(approval)
 
@@ -494,9 +489,8 @@ async def test_ack_position_opened_at_timestamp(
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=user.id,
+        user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
-        approved_at=datetime.utcnow(),
     )
     db_session.add(approval)
 
@@ -571,9 +565,8 @@ async def test_ack_position_broker_ticket_stored(
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=user.id,
+        user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
-        approved_at=datetime.utcnow(),
     )
     db_session.add(approval)
 
