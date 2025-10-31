@@ -332,7 +332,7 @@ def drawdown_guard():
     return guard
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession):
     """Create a test user for integration tests."""
     from uuid import uuid4
@@ -354,7 +354,7 @@ async def test_user(db_session: AsyncSession):
     return user
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_device(db_session: AsyncSession, test_user):
     """Create a test EA device for integration tests."""
     from uuid import uuid4
