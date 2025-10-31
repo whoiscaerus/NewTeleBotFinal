@@ -29,7 +29,7 @@ class TestTimestampFreshness:
 
     @pytest.mark.asyncio
     async def test_poll_accepts_fresh_timestamp(
-        self, client: AsyncClient, device: Device, db_session: AsyncSession
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Fresh timestamp (now) should be accepted."""
         now = datetime.utcnow().isoformat() + "Z"
@@ -39,7 +39,7 @@ class TestTimestampFreshness:
         )
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -53,7 +53,7 @@ class TestTimestampFreshness:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_stale_timestamp(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Timestamp older than 5 minutes should be rejected (400)."""
         stale_time = (datetime.utcnow() - timedelta(minutes=6)).isoformat() + "Z"
@@ -63,7 +63,7 @@ class TestTimestampFreshness:
         )
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -78,7 +78,7 @@ class TestTimestampFreshness:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_future_timestamp(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Timestamp in future (>5 min ahead) should be rejected (400)."""
         future_time = (datetime.utcnow() + timedelta(minutes=6)).isoformat() + "Z"
@@ -88,7 +88,7 @@ class TestTimestampFreshness:
         )
         signature = HMACBuilder.sign(canonical, device.hmac_key_hash.encode())
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,
@@ -103,14 +103,14 @@ class TestTimestampFreshness:
 
     @pytest.mark.asyncio
     async def test_poll_rejects_malformed_timestamp(
-        self, client: AsyncClient, device: Device
+        self, real_auth_client: AsyncClient, device: Device, db_session: AsyncSession
     ):
         """Malformed timestamp should be rejected (400)."""
         bad_timestamp = "not-a-timestamp"
         nonce = "nonce_malformed_001"
         signature = "fake_signature"
 
-        response = await client.get(
+        response = await real_auth_client.get(
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": device.id,

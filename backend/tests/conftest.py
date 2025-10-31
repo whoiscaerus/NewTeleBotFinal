@@ -252,6 +252,78 @@ async def client(db_session: AsyncSession, monkeypatch):
     app.dependency_overrides.clear()
 
 
+@pytest_asyncio.fixture
+async def real_auth_client(db_session: AsyncSession, monkeypatch):
+    """FastAPI test client with REAL device auth (no mocking).
+
+    Use this fixture for security tests that need to validate:
+    - Timestamp freshness
+    - Nonce replay detection
+    - HMAC signature validation
+    - Error handling for invalid auth
+
+    Example:
+        @pytest.mark.asyncio
+        async def test_timestamp_validation(real_auth_client, device):
+            response = await real_auth_client.get(
+                "/api/v1/client/poll",
+                headers={
+                    "X-Device-Id": device.id,
+                    "X-Nonce": "nonce_123",
+                    "X-Timestamp": old_timestamp,  # 6 minutes old
+                    "X-Signature": signature,
+                }
+            )
+            assert response.status_code == 400
+    """
+    from httpx import ASGITransport
+
+    from backend.app.core.db import get_db
+    from backend.app.orchestrator.main import app
+
+    # Override database
+    async def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    # Mock rate limiter
+    class NoOpRateLimiter:
+        """Rate limiter that allows all requests in tests."""
+
+        def __init__(self):
+            """Initialize with no Redis client (signals Redis unavailable)."""
+            self._initialized = False
+            self.redis_client = None
+
+        async def is_allowed(self, key: str, **kwargs) -> bool:
+            """Always allow requests in tests."""
+            return True
+
+        async def get_remaining(self, key: str, max_tokens: int, **kwargs) -> int:
+            """Return max tokens as always available in tests."""
+            return max_tokens
+
+    async def mock_get_rate_limiter():
+        """Return no-op rate limiter for tests."""
+        return NoOpRateLimiter()
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr(
+        "backend.app.core.decorators.get_rate_limiter", mock_get_rate_limiter
+    )
+
+    # DO NOT override get_device_auth - use real implementation!
+    # This allows timestamp validation and other security checks to work
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
 @pytest.fixture
 def valid_signal_data() -> dict:
     """Create valid signal data for testing."""

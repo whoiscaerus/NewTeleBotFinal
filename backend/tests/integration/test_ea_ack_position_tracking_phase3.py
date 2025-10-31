@@ -21,7 +21,6 @@ from backend.app.signals.encryption import encrypt_owner_only
 from backend.app.signals.models import Signal
 from backend.app.trading.positions.models import OpenPosition, PositionStatus
 
-
 # NOTE: test_user and test_device fixtures are defined in conftest.py
 # They are imported automatically by pytest
 
