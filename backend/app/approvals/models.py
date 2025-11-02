@@ -5,7 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import ForeignKey, Index, String
+from sqlalchemy import ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.db import Base
@@ -98,6 +98,7 @@ class Approval(Base):
     )
 
     __table_args__ = (
+        UniqueConstraint("signal_id", "user_id", name="uq_approval_signal_user"),
         Index("ix_approval_client_created", "client_id", "created_at"),
         Index("ix_approval_client_decision", "client_id", "decision"),
         Index("ix_approval_user_created", "user_id", "created_at"),

@@ -14,6 +14,7 @@ Including authorization, error cases, and validation.
 """
 
 from datetime import datetime
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -33,7 +34,7 @@ async def test_link_account_success(
 ):
     """Test successfully linking a new account."""
     # Mock MT5 account info
-    mock_mt5_manager.get_account_info = pytest.AsyncMock(
+    mock_mt5_manager.get_account_info = AsyncMock(
         return_value={
             "account": "12345678",
             "balance": 10000.00,
@@ -72,7 +73,7 @@ async def test_link_account_duplicate(
 ):
     """Test linking duplicate account fails."""
     # Create first account
-    account_service.mt5.get_account_info = pytest.AsyncMock(
+    account_service.mt5.get_account_info = AsyncMock(
         return_value={
             "account": "12345678",
             "balance": 10000.00,
@@ -113,7 +114,7 @@ async def test_link_account_invalid_mt5(
 ):
     """Test linking with invalid MT5 credentials fails."""
     # Mock MT5 verification failure
-    mock_mt5_manager.get_account_info = pytest.AsyncMock(
+    mock_mt5_manager.get_account_info = AsyncMock(
         side_effect=Exception("Invalid credentials")
     )
 
@@ -198,7 +199,7 @@ async def test_list_accounts_multiple(
 ):
     """Test listing multiple linked accounts."""
     # Mock MT5
-    account_service.mt5.get_account_info = pytest.AsyncMock(
+    account_service.mt5.get_account_info = AsyncMock(
         return_value={
             "account": "0",
             "balance": 0,
@@ -298,7 +299,7 @@ async def test_get_account_details_other_user(
 ):
     """Test accessing other user's account fails (authorization)."""
     # Create account for other user
-    account_service.mt5.get_account_info = pytest.AsyncMock(
+    account_service.mt5.get_account_info = AsyncMock(
         return_value={
             "account": "9999",
             "balance": 0,
@@ -348,7 +349,7 @@ async def test_set_primary_account_success(
 ):
     """Test setting primary account."""
     # Setup: Create two accounts
-    account_service.mt5.get_account_info = pytest.AsyncMock(
+    account_service.mt5.get_account_info = AsyncMock(
         return_value={
             "account": "0",
             "balance": 0,
@@ -400,7 +401,7 @@ async def test_set_primary_account_other_user(
 ):
     """Test setting other user's account as primary fails."""
     # Create account for other user
-    account_service.mt5.get_account_info = pytest.AsyncMock(
+    account_service.mt5.get_account_info = AsyncMock(
         return_value={
             "account": "0",
             "balance": 0,
@@ -453,7 +454,7 @@ async def test_unlink_account_success(
 ):
     """Test unlinking an account."""
     # Create two accounts
-    account_service.mt5.get_account_info = pytest.AsyncMock(
+    account_service.mt5.get_account_info = AsyncMock(
         return_value={
             "account": "0",
             "balance": 0,
@@ -519,7 +520,7 @@ async def test_unlink_account_other_user(
 ):
     """Test unlinking other user's account fails."""
     # Create two accounts for other user
-    account_service.mt5.get_account_info = pytest.AsyncMock(
+    account_service.mt5.get_account_info = AsyncMock(
         return_value={
             "account": "0",
             "balance": 0,
@@ -573,7 +574,7 @@ async def test_get_positions_success(
 ):
     """Test getting positions for primary account."""
     # Mock positions
-    mock_mt5_manager.get_positions = pytest.AsyncMock(
+    mock_mt5_manager.get_positions = AsyncMock(
         return_value=[
             {
                 "ticket": "1001",
@@ -640,7 +641,7 @@ async def test_get_account_positions_success(
 ):
     """Test getting positions for specific account."""
     # Mock positions
-    mock_mt5_manager.get_positions = pytest.AsyncMock(
+    mock_mt5_manager.get_positions = AsyncMock(
         return_value=[
             {
                 "ticket": "1001",
@@ -695,7 +696,7 @@ async def test_get_account_positions_other_user(
 ):
     """Test accessing other user's account positions fails."""
     # Create account for other user
-    account_service.mt5.get_account_info = pytest.AsyncMock(
+    account_service.mt5.get_account_info = AsyncMock(
         return_value={
             "account": "0",
             "balance": 0,
@@ -776,7 +777,7 @@ async def test_link_account_response_schema(
     mock_mt5_manager,
 ):
     """Test link account response has correct schema."""
-    mock_mt5_manager.get_account_info = pytest.AsyncMock(
+    mock_mt5_manager.get_account_info = AsyncMock(
         return_value={
             "account": "0",
             "balance": 0,
@@ -817,7 +818,7 @@ async def test_get_positions_response_schema(
     mock_mt5_manager,
 ):
     """Test get positions response has correct schema."""
-    mock_mt5_manager.get_positions = pytest.AsyncMock(return_value=[])
+    mock_mt5_manager.get_positions = AsyncMock(return_value=[])
 
     response = await client.get(
         "/api/v1/positions",

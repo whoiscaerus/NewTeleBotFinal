@@ -10,6 +10,7 @@ import hmac
 from datetime import datetime
 
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.models import User
@@ -35,8 +36,8 @@ def decode_secret(secret: str) -> bytes:
     return base64.urlsafe_b64decode(secret_padded)
 
 
-@pytest.fixture
-def test_user(db_session: AsyncSession) -> User:
+@pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession) -> User:
     """Create test user."""
     user = User(
         id="user_hmac_test",
@@ -46,11 +47,12 @@ def test_user(db_session: AsyncSession) -> User:
         created_at=datetime.utcnow(),
     )
     db_session.add(user)
+    await db_session.flush()
     return user
 
 
-@pytest.fixture
-def test_client(db_session: AsyncSession, test_user: User):
+@pytest_asyncio.fixture
+async def test_client(db_session: AsyncSession, test_user: User):
     """Create test client."""
     from backend.app.clients.models import Client
 
@@ -60,11 +62,12 @@ def test_client(db_session: AsyncSession, test_user: User):
         created_at=datetime.utcnow(),
     )
     db_session.add(client)
+    await db_session.flush()
     return client
 
 
-@pytest.fixture
-def device_service(db_session: AsyncSession) -> DeviceService:
+@pytest_asyncio.fixture
+async def device_service(db_session: AsyncSession) -> DeviceService:
     """Create device service."""
     return DeviceService(db_session)
 
@@ -80,13 +83,14 @@ class TestHMACKeyGeneration:
         device_service: DeviceService,
     ):
         """Test that HMAC key is generated on device creation."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device with HMAC",
         )
 
         assert secret is not None
         assert len(secret) >= 32  # At least 32 bytes
+        assert encryption_key is not None
 
     async def test_hmac_key_is_base64_url_safe(
         self,
@@ -95,7 +99,7 @@ class TestHMACKeyGeneration:
         device_service: DeviceService,
     ):
         """Test that HMAC key is URL-safe base64 encoded."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -114,7 +118,7 @@ class TestHMACKeyGeneration:
         device_service: DeviceService,
     ):
         """Test that plaintext secret is never stored/logged."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -131,7 +135,7 @@ class TestHMACKeyGeneration:
         device_service: DeviceService,
     ):
         """Test that HMAC secret is shown only once at creation."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -160,11 +164,11 @@ class TestHMACKeyUniqueness:
         device_service: DeviceService,
     ):
         """Test that each device gets unique HMAC key."""
-        device1, secret1 = await device_service.create_device(
+        device1, secret1, encryption_key = await device_service.create_device(
             test_client.id,
             "Device 1",
         )
-        device2, secret2 = await device_service.create_device(
+        device2, secret2, encryption_key = await device_service.create_device(
             test_client.id,
             "Device 2",
         )
@@ -199,11 +203,11 @@ class TestHMACKeyUniqueness:
         db_session.add(client2)
         await db_session.commit()
 
-        device1, secret1 = await device_service.create_device(
+        device1, secret1, encryption_key = await device_service.create_device(
             client1.id,
             "Device",
         )
-        device2, secret2 = await device_service.create_device(
+        device2, secret2, encryption_key = await device_service.create_device(
             client2.id,
             "Device",
         )
@@ -221,7 +225,7 @@ class TestHMACKeyUniqueness:
         """Test that duplicate HMAC keys are prevented."""
         # This test depends on DB constraints
         # Create device with unique HMAC
-        device1, secret1 = await device_service.create_device(
+        device1, secret1, encryption_key = await device_service.create_device(
             test_client.id,
             "Device 1",
         )
@@ -241,7 +245,7 @@ class TestHMACValidation:
         device_service: DeviceService,
     ):
         """Test computing HMAC signature."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -269,7 +273,7 @@ class TestHMACValidation:
         device_service: DeviceService,
     ):
         """Test successful HMAC signature verification."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -300,7 +304,7 @@ class TestHMACValidation:
         device_service: DeviceService,
     ):
         """Test HMAC verification fails with wrong message."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -332,7 +336,7 @@ class TestHMACValidation:
         device_service: DeviceService,
     ):
         """Test HMAC verification fails with wrong key."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -407,7 +411,7 @@ class TestHMACEdgeCases:
         """Test that HMAC keys have sufficient entropy."""
         secrets = []
         for i in range(5):
-            device, secret = await device_service.create_device(
+            device, secret, encryption_key = await device_service.create_device(
                 test_client.id,
                 f"Device {i}",
             )
@@ -423,7 +427,7 @@ class TestHMACEdgeCases:
         device_service: DeviceService,
     ):
         """Test that HMAC uses SHA256."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -446,7 +450,7 @@ class TestHMACEdgeCases:
         device_service: DeviceService,
     ):
         """Test HMAC key meets minimum length requirement."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )
@@ -465,7 +469,7 @@ class TestHMACEdgeCases:
         """Test that HMAC secrets are not sequential or predictable."""
         secrets = []
         for i in range(10):
-            device, secret = await device_service.create_device(
+            device, secret, encryption_key = await device_service.create_device(
                 test_client.id,
                 f"Device {i}",
             )
@@ -484,7 +488,7 @@ class TestHMACEdgeCases:
         device_service: DeviceService,
     ):
         """Test that revoked device's HMAC cannot authenticate."""
-        device, secret = await device_service.create_device(
+        device, secret, encryption_key = await device_service.create_device(
             test_client.id,
             "Device",
         )

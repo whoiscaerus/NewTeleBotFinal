@@ -7,6 +7,9 @@ API endpoints for revenue reporting:
 - GET /revenue/snapshots: Historical revenue data
 """
 
+from __future__ import annotations
+
+import logging
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -14,11 +17,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.models import User, UserRole
 from backend.app.core.db import get_db
-from backend.app.core.observability import logger
 from backend.app.revenue.models import RevenueSnapshot
 from backend.app.revenue.service import RevenueService
-from backend.app.users.models import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/revenue", tags=["revenue"])
 
@@ -90,7 +94,7 @@ async def get_revenue_summary(
     """
     try:
         # Verify owner/admin
-        if not (current_user.is_admin or current_user.is_owner):
+        if current_user.role not in (UserRole.ADMIN, UserRole.OWNER):
             logger.warning(f"Unauthorized revenue access by {current_user.id}")
             raise HTTPException(status_code=403, detail="Insufficient permissions")
 
@@ -170,7 +174,7 @@ async def get_cohort_analysis(
     """
     try:
         # Verify owner/admin
-        if not (current_user.is_admin or current_user.is_owner):
+        if current_user.role not in (UserRole.ADMIN, UserRole.OWNER):
             logger.warning(f"Unauthorized cohort analysis by {current_user.id}")
             raise HTTPException(status_code=403, detail="Insufficient permissions")
 
@@ -232,7 +236,7 @@ async def get_revenue_snapshots(
     """
     try:
         # Verify owner/admin
-        if not (current_user.is_admin or current_user.is_owner):
+        if current_user.role not in (UserRole.ADMIN, UserRole.OWNER):
             logger.warning(f"Unauthorized snapshots access by {current_user.id}")
             raise HTTPException(status_code=403, detail="Insufficient permissions")
 

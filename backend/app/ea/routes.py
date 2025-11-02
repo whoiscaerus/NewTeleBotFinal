@@ -39,7 +39,6 @@ from backend.app.ea.schemas import (
     EncryptedPollResponse,
     EncryptedSignalEnvelope,
     ExecutionParamsOut,
-    PollResponse,
 )
 from backend.app.observability.metrics import metrics
 from backend.app.signals.encryption import decrypt_owner_only  # PR-104
@@ -58,14 +57,14 @@ router = APIRouter(prefix="/api/v1/client", tags=["client"])
 logger = logging.getLogger(__name__)
 
 
-@router.get("/poll", response_model=PollResponse)
+@router.get("/poll", response_model=EncryptedPollResponse)
 async def poll_approved_signals(
     db: AsyncSession = Depends(get_db),
     device_auth: DeviceAuthDependency = Depends(get_device_auth),
     since: datetime | None = Query(
         None, description="Only return signals approved after this time"
     ),
-) -> PollResponse:
+) -> EncryptedPollResponse:
     """
     Poll for approved signals ready for execution.
 

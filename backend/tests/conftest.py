@@ -633,3 +633,22 @@ async def auth_headers(test_user) -> dict:
         subject=test_user.id, role=test_user.role, expires_delta=None
     )
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def admin_headers(admin_token: str) -> dict:
+    """Create JWT authentication headers for admin user.
+
+    Returns headers dict with Authorization bearer token containing
+    admin JWT. Used in tests that require admin access.
+
+    Returns:
+        dict: Headers with Authorization bearer token
+
+    Example:
+        >>> response = await client.get(
+        ...     "/api/v1/revenue/summary",
+        ...     headers=admin_headers
+        ... )
+    """
+    return {"Authorization": f"Bearer {admin_token}"}

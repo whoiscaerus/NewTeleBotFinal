@@ -9,6 +9,9 @@ Implements business logic for:
 - Cohort retention analysis
 """
 
+from __future__ import annotations
+
+import logging
 from datetime import date, datetime, timedelta
 from typing import Optional
 
@@ -16,8 +19,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.billing.models import Plan, Subscription
-from backend.app.core.observability import logger
 from backend.app.revenue.models import RevenueSnapshot, SubscriptionCohort
+
+logger = logging.getLogger(__name__)
 
 
 class RevenueService:
@@ -271,7 +275,7 @@ class RevenueService:
                 .select_from(Subscription)
                 .where(
                     Subscription.plan_id.in_(
-                        select(Plan.id).where(Plan.billing_period_days == 365)
+                        select(Plan.id).where(Plan.billing_period == "annual")
                     ),
                     Subscription.started_at
                     <= datetime.combine(as_of, datetime.min.time()),
@@ -290,7 +294,7 @@ class RevenueService:
                 .select_from(Subscription)
                 .where(
                     Subscription.plan_id.in_(
-                        select(Plan.id).where(Plan.billing_period_days == 30)
+                        select(Plan.id).where(Plan.billing_period == "monthly")
                     ),
                     Subscription.started_at
                     <= datetime.combine(as_of, datetime.min.time()),

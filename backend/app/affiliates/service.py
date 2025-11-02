@@ -122,8 +122,9 @@ class AffiliateService:
             if not affiliate:
                 raise APIException(
                     status_code=404,
-                    code="INVALID_TOKEN",
-                    message="Referral token not found",
+                    error_type="INVALID_TOKEN",
+                    title="Error",
+                    detail="Referral token not found",
                 )
 
             # Check if already referred
@@ -133,8 +134,9 @@ class AffiliateService:
             if existing.scalar():
                 raise APIException(
                     status_code=409,
-                    code="ALREADY_REFERRED",
-                    message="User already has a referrer",
+                    error_type="referral_conflict",
+                    title="User Already Referred",
+                    detail="User already has a referrer",
                 )
 
             # Create referral record
@@ -163,8 +165,9 @@ class AffiliateService:
             logger.error(f"Referral recording failed: {e}", exc_info=True)
             raise APIException(
                 status_code=500,
-                code="REFERRAL_ERROR",
-                message="Failed to record referral",
+                error_type="REFERRAL_ERROR",
+                title="Error",
+                detail="Failed to record referral",
             ) from e
 
     async def activate_referral(self, referred_user_id: str) -> None:
@@ -199,8 +202,9 @@ class AffiliateService:
             logger.error(f"Referral activation failed: {e}", exc_info=True)
             raise APIException(
                 status_code=500,
-                code="ACTIVATION_ERROR",
-                message="Failed to activate referral",
+                error_type="ACTIVATION_ERROR",
+                title="Error",
+                detail="Failed to activate referral",
             ) from e
 
     async def record_commission(
@@ -536,8 +540,9 @@ class AffiliateService:
             logger.error(f"History retrieval failed: {e}", exc_info=True)
             raise APIException(
                 status_code=500,
-                code="HISTORY_ERROR",
-                message="Failed to retrieve commission history",
+                error_type="HISTORY_ERROR",
+                title="Error",
+                detail="Failed to retrieve commission history",
             ) from e
 
     async def generate_referral_link(self, affiliate_id: str) -> str:
@@ -561,8 +566,9 @@ class AffiliateService:
             if not affiliate:
                 raise APIException(
                     status_code=404,
-                    code="AFFILIATE_NOT_FOUND",
-                    message="Affiliate not found",
+                    error_type="AFFILIATE_NOT_FOUND",
+                    title="Error",
+                    detail="Affiliate not found",
                 )
 
             # Generate link with referral code
@@ -582,8 +588,9 @@ class AffiliateService:
             logger.error(f"Link generation failed: {e}", exc_info=True)
             raise APIException(
                 status_code=500,
-                code="LINK_ERROR",
-                message="Failed to generate referral link",
+                error_type="LINK_ERROR",
+                title="Error",
+                detail="Failed to generate referral link",
             ) from e
 
     async def track_signup(
@@ -692,8 +699,9 @@ class AffiliateService:
             logger.error(f"Subscription tracking failed: {e}", exc_info=True)
             raise APIException(
                 status_code=500,
-                code="SUBSCRIPTION_TRACK_ERROR",
-                message="Failed to track subscription",
+                error_type="SUBSCRIPTION_TRACK_ERROR",
+                title="Error",
+                detail="Failed to track subscription",
             ) from e
 
     async def track_first_trade(
@@ -733,8 +741,9 @@ class AffiliateService:
             logger.error(f"First trade tracking failed: {e}", exc_info=True)
             raise APIException(
                 status_code=500,
-                code="TRADE_TRACK_ERROR",
-                message="Failed to track trade",
+                error_type="TRADE_TRACK_ERROR",
+                title="Error",
+                detail="Failed to track trade",
             ) from e
 
     async def calculate_commission(

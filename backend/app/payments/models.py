@@ -1,0 +1,32 @@
+"""Payment models."""
+
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, String
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+
+class PaymentRecord(Base):
+    """Payment record model."""
+
+    __tablename__ = "payment_records"
+
+    id = Column(String, primary_key=True)
+    user_id = Column(String, nullable=False)
+    stripe_payment_id = Column(String)
+    status = Column(String, default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EntitlementRecord(Base):
+    """Entitlement record model."""
+
+    __tablename__ = "entitlement_records"
+
+    id = Column(String, primary_key=True)
+    user_id = Column(String, nullable=False)
+    feature = Column(String, nullable=False)
+    status = Column(String, default="active")
+    created_at = Column(DateTime, default=datetime.utcnow)

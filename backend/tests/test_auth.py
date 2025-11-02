@@ -302,7 +302,8 @@ class TestMeEndpoint:
         """Test /me fails without Authorization header."""
         response = await client.get("/api/v1/auth/me")
 
-        assert response.status_code == 403
+        # 401 Unauthorized is correct when no credentials provided
+        assert response.status_code == 401
         assert "Missing Authorization header" in response.json()["detail"]
 
     @pytest.mark.asyncio

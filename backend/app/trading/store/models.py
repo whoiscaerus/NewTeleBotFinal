@@ -24,6 +24,7 @@ class Trade(Base):
         strategy: Strategy name (fib_rsi, channel, etc.)
         timeframe: Candle timeframe (H1, H15, M15, etc.)
         setup_id: Original setup identifier
+        mt5_ticket: MT5 platform ticket number for reconciliation (unique)
         trade_type: BUY or SELL
         direction: 0=BUY, 1=SELL (legacy compatibility)
         entry_price: Entry level
@@ -70,6 +71,12 @@ class Trade(Base):
     strategy: Mapped[str] = mapped_column(String(50), nullable=False)
     timeframe: Mapped[str] = mapped_column(String(10), nullable=False)
     setup_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    mt5_ticket: Mapped[int | None] = mapped_column(
+        nullable=True,
+        unique=True,
+        index=True,
+        doc="MT5 ticket number for reconciliation",
+    )
 
     # Trade Direction & Type
     trade_type: Mapped[str] = mapped_column(String(10), nullable=False)  # BUY, SELL

@@ -865,8 +865,8 @@ class TestTradeAttributionAPI:
         finally:
             app.dependency_overrides.clear()
 
-        # Should return 403 (missing auth header)
-        assert response.status_code == 403
+        # Should return 401 (missing auth header)
+        assert response.status_code == 401
 
     async def test_get_trade_attribution_forbidden_non_admin(
         self,

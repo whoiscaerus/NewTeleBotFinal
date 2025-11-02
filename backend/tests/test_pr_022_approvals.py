@@ -115,7 +115,7 @@ class TestApprovalCreation:
             },
         )
 
-        assert response.status_code == 403  # No JWT token
+        assert response.status_code == 401  # 401 Unauthorized when no JWT token
 
 
 class TestApprovalRetrieval:

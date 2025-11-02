@@ -88,11 +88,11 @@ class RateLimiter:
 
             -- Get current bucket state
             local state = redis.call('HGETALL', key)
-            local tokens = 0
+            local tokens = max_tokens  -- Start full for new buckets (good UX)
             local last_refill = now
 
             if #state > 0 then
-                tokens = tonumber(state[2]) or 0
+                tokens = tonumber(state[2]) or max_tokens
                 last_refill = tonumber(state[4]) or now
             end
 
@@ -166,11 +166,11 @@ class RateLimiter:
             local now = tonumber(ARGV[4])
 
             local state = redis.call('HGETALL', key)
-            local tokens = 0
+            local tokens = max_tokens  -- Start full for new buckets
             local last_refill = now
 
             if #state > 0 then
-                tokens = tonumber(state[2]) or 0
+                tokens = tonumber(state[2]) or max_tokens
                 last_refill = tonumber(state[4]) or now
             end
 

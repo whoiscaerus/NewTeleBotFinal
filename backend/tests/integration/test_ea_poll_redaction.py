@@ -176,16 +176,32 @@ async def test_poll_response_has_no_stop_loss_field(
     assert response.status_code == 200
     data = response.json()
 
-    exec_params = data["approvals"][0]["execution_params"]
+    # PR-042: Verify response is encrypted envelope (not plaintext)
+    # Each approval should have: approval_id, ciphertext, nonce, aad
+    # NO plaintext fields like execution_params, instrument, side, etc.
+    approval = data["approvals"][0]
 
-    # Verify ONLY allowed fields are present
-    allowed_fields = {"entry_price", "volume", "ttl_minutes"}
-    actual_fields = set(exec_params.keys())
+    # Verify encrypted envelope structure
+    assert "approval_id" in approval
+    assert "ciphertext" in approval
+    assert "nonce" in approval
+    assert "aad" in approval
 
-    assert actual_fields == allowed_fields, (
-        f"Execution params contain unexpected fields. "
-        f"Expected: {allowed_fields}, Got: {actual_fields}"
-    )
+    # CRITICAL: Verify that sensitive fields are NOT present in plaintext
+    # These would be fields if the response was unencrypted
+    assert (
+        "execution_params" not in approval
+    ), "execution_params should NOT be in plaintext encrypted response"
+    assert (
+        "instrument" not in approval
+    ), "instrument should NOT be in plaintext encrypted response"
+    assert "side" not in approval, "side should NOT be in plaintext encrypted response"
+    assert (
+        "stop_loss" not in approval
+    ), "stop_loss should NOT be in plaintext encrypted response"
+    assert (
+        "take_profit" not in approval
+    ), "take_profit should NOT be in plaintext encrypted response"
 
 
 @pytest.mark.asyncio
@@ -249,24 +265,28 @@ async def test_poll_with_owner_only_encrypted_data_not_exposed(
 
     approval_data = data["approvals"][0]
 
-    # Verify owner_only is NOT in response
+    # PR-042: Verify encrypted envelope structure (not plaintext)
+    assert "approval_id" in approval_data
+    assert "ciphertext" in approval_data
+    assert "nonce" in approval_data
+    assert "aad" in approval_data
+
+    # SECURITY: Verify hidden levels are NOT exposed in plaintext
     assert (
         "owner_only" not in approval_data
     ), "SECURITY BREACH: owner_only field exposed in response!"
 
-    exec_params = approval_data["execution_params"]
+    # Verify no execution_params (signals are encrypted)
+    assert (
+        "execution_params" not in approval_data
+    ), "execution_params should NOT be in plaintext encrypted response"
 
-    # Verify hidden levels are NOT in execution params
-    assert "stop_loss" not in exec_params
-    assert "take_profit" not in exec_params
-    assert "sl" not in exec_params
-    assert "tp" not in exec_params
-    assert "strategy" not in exec_params
-
-    # Verify only entry + volume + ttl
-    assert exec_params["entry_price"] == 2655.00
-    assert exec_params["volume"] == 0.1
-    assert exec_params["ttl_minutes"] == 240
+    # Verify hidden fields NOT in plaintext
+    assert "stop_loss" not in approval_data
+    assert "take_profit" not in approval_data
+    assert "sl" not in approval_data
+    assert "tp" not in approval_data
+    assert "strategy" not in approval_data
 
 
 @pytest.mark.asyncio
@@ -329,16 +349,19 @@ async def test_poll_without_owner_only_still_redacted(
     assert response.status_code == 200
     data = response.json()
 
-    exec_params = data["approvals"][0]["execution_params"]
+    approval_data = data["approvals"][0]
 
-    # Even though payload has stop_loss/take_profit, they should NOT be sent
-    assert "stop_loss" not in exec_params
-    assert "take_profit" not in exec_params
+    # PR-042: Verify encrypted envelope structure
+    assert "approval_id" in approval_data
+    assert "ciphertext" in approval_data
+    assert "nonce" in approval_data
+    assert "aad" in approval_data
 
-    # Only redacted params present
-    assert exec_params["entry_price"] == 2655.00
-    assert exec_params["volume"] == 0.1
-    assert exec_params["ttl_minutes"] == 240
+    # Verify that plaintext sensitive fields are NOT present
+    # (they're encrypted instead)
+    assert "execution_params" not in approval_data
+    assert "stop_loss" not in approval_data
+    assert "take_profit" not in approval_data
 
 
 @pytest.mark.asyncio
@@ -389,30 +412,30 @@ async def test_poll_json_schema_validation(
     assert "polled_at" in data
     assert "next_poll_seconds" in data
 
-    # Validate approval structure
+    # Validate encrypted approval structure (PR-042)
+    # All signals are now encrypted, so the structure is different
     approval_data = data["approvals"][0]
-    assert "approval_id" in approval_data
-    assert "instrument" in approval_data
-    assert "side" in approval_data
-    assert "execution_params" in approval_data
-    assert "approved_at" in approval_data
-    assert "created_at" in approval_data
+    assert "approval_id" in approval_data, "Missing approval_id"
+    assert "ciphertext" in approval_data, "Missing ciphertext"
+    assert "nonce" in approval_data, "Missing nonce"
+    assert "aad" in approval_data, "Missing aad"
 
-    # Validate execution_params structure (REDACTED)
-    exec_params = approval_data["execution_params"]
-    required_fields = ["entry_price", "volume", "ttl_minutes"]
-    for field in required_fields:
-        assert field in exec_params, f"Missing required field: {field}"
-
-    # Validate types
-    assert isinstance(exec_params["entry_price"], (int, float))
-    assert isinstance(exec_params["volume"], (int, float))
-    assert isinstance(exec_params["ttl_minutes"], int)
-
-    # Validate no extra fields
+    # Verify plaintext fields are NOT present (they're encrypted)
     assert (
-        len(exec_params) == 3
-    ), f"Expected exactly 3 fields in execution_params, got {len(exec_params)}"
+        "instrument" not in approval_data
+    ), "instrument should NOT be in plaintext (encrypted response)"
+    assert (
+        "side" not in approval_data
+    ), "side should NOT be in plaintext (encrypted response)"
+    assert (
+        "execution_params" not in approval_data
+    ), "execution_params should NOT be in plaintext (encrypted response)"
+    assert (
+        "approved_at" not in approval_data
+    ), "approved_at should NOT be in plaintext (encrypted response)"
+    assert (
+        "created_at" not in approval_data
+    ), "created_at should NOT be in plaintext (encrypted response)"
 
 
 @pytest.mark.asyncio
@@ -477,14 +500,20 @@ async def test_multiple_signals_all_redacted(
 
     assert len(data["approvals"]) == 3
 
-    # Verify ALL signals are redacted
+    # Verify ALL signals are encrypted (not plaintext)
     for approval_data in data["approvals"]:
-        exec_params = approval_data["execution_params"]
+        # Each approval should be an encrypted envelope
+        assert "approval_id" in approval_data
+        assert "ciphertext" in approval_data
+        assert "nonce" in approval_data
+        assert "aad" in approval_data
 
-        # No hidden fields
-        assert "stop_loss" not in exec_params
-        assert "take_profit" not in exec_params
+        # No plaintext sensitive fields
+        assert (
+            "execution_params" not in approval_data
+        ), "execution_params should NOT be plaintext in encrypted response"
+        assert "stop_loss" not in approval_data
+        assert "take_profit" not in approval_data
         assert "owner_only" not in approval_data
-
-        # Only redacted fields
-        assert set(exec_params.keys()) == {"entry_price", "volume", "ttl_minutes"}
+        assert "instrument" not in approval_data
+        assert "side" not in approval_data

@@ -327,6 +327,7 @@ class TestErrorResponses:
         """Test missing auth header returns error."""
         response = await client.get("/api/v1/auth/me")
 
-        assert response.status_code == 403
+        # 401 Unauthorized is correct when no credentials provided
+        assert response.status_code == 401
         data = response.json()
         assert "Missing Authorization" in data["detail"]

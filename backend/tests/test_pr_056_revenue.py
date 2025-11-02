@@ -214,6 +214,9 @@ class TestCohortAnalysis:
                     "cohort_month": "2025-01",
                     "initial_subscribers": 100,
                     "retention_data": {"0": 100, "1": 95, "2": 90},
+                    "churn_rates": {"1": 5.0, "2": 10.0},
+                    "total_revenue_gbp": 5000.0,
+                    "average_lifetime_value_gbp": 50.0,
                 }
             ]
 

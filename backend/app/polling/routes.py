@@ -28,6 +28,7 @@ from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.core.logging import get_logger
+from backend.app.ea.schemas import EncryptedSignalEnvelope
 from backend.app.polling.adaptive_backoff import AdaptiveBackoffManager
 from backend.app.polling.protocol_v2 import (
     calculate_compression_ratio,
@@ -35,7 +36,6 @@ from backend.app.polling.protocol_v2 import (
     compress_response,
     generate_etag,
 )
-from backend.app.signals.models import EncryptedSignalEnvelope
 
 router = APIRouter(prefix="/api/v2", tags=["polling-v2"])
 

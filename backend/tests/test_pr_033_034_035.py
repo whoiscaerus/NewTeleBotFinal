@@ -276,7 +276,7 @@ class TestCheckoutRoutes:
             },
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 # ============================================================================
