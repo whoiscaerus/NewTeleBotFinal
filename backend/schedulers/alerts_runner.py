@@ -13,7 +13,6 @@ import logging
 from datetime import datetime
 from typing import Optional, Protocol
 
-
 from backend.app.alerts.service import PriceAlertService
 from backend.app.core.db import SessionLocal
 

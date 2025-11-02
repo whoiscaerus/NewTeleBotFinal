@@ -27,8 +27,8 @@ from backend.app.analytics.models import (
     DailyRollups,
     DimDay,
     DimSymbol,
-    TradesFact,
     EquityCurve,
+    TradesFact,
 )
 from backend.app.auth.models import User
 from backend.app.trading.store.models import Trade
@@ -780,6 +780,321 @@ class TestPerformanceMetrics:
         expected = Decimal("50") / Decimal("20")
         assert abs(rf - expected) < Decimal("0.01")
 
+    # ========================================================================
+    # EDGE CASE TESTS - Sharpe Ratio
+    # ========================================================================
+
+    def test_sharpe_ratio_empty_list(self):
+        """Test Sharpe Ratio with empty returns."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        sharpe = metrics.calculate_sharpe_ratio([])
+        assert sharpe == Decimal(0)
+
+    def test_sharpe_ratio_single_return(self):
+        """Test Sharpe Ratio with single return (insufficient data)."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        sharpe = metrics.calculate_sharpe_ratio([Decimal("0.01")])
+        assert sharpe == Decimal(0)
+
+    def test_sharpe_ratio_constant_returns(self):
+        """Test Sharpe Ratio with constant returns (zero volatility)."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        daily_returns = [Decimal("0.01")] * 5
+        sharpe = metrics.calculate_sharpe_ratio(daily_returns)
+        assert sharpe == Decimal(0)
+
+    def test_sharpe_ratio_negative_returns(self):
+        """Test Sharpe Ratio with all negative returns."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        daily_returns = [
+            Decimal("-0.01"),
+            Decimal("-0.02"),
+            Decimal("-0.015"),
+        ]
+        sharpe = metrics.calculate_sharpe_ratio(daily_returns)
+        # Should be negative since returns < risk-free rate
+        assert sharpe < 0
+        assert isinstance(sharpe, Decimal)
+
+    def test_sharpe_ratio_high_volatility(self):
+        """Test Sharpe Ratio with high volatility."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        daily_returns = [
+            Decimal("0.05"),
+            Decimal("-0.04"),
+            Decimal("0.06"),
+            Decimal("-0.05"),
+        ]
+        sharpe = metrics.calculate_sharpe_ratio(daily_returns)
+        assert isinstance(sharpe, Decimal)
+        assert sharpe.as_tuple().exponent <= -4  # 4 decimal places
+
+    # ========================================================================
+    # EDGE CASE TESTS - Sortino Ratio
+    # ========================================================================
+
+    def test_sortino_ratio_empty_list(self):
+        """Test Sortino Ratio with empty returns."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        sortino = metrics.calculate_sortino_ratio([])
+        assert sortino == Decimal(0)
+
+    def test_sortino_ratio_single_return(self):
+        """Test Sortino Ratio with single return."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        sortino = metrics.calculate_sortino_ratio([Decimal("0.01")])
+        assert sortino == Decimal(0)
+
+    def test_sortino_ratio_all_positive(self):
+        """Test Sortino Ratio with all positive returns (no downside)."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        daily_returns = [Decimal("0.01"), Decimal("0.02"), Decimal("0.015")]
+        sortino = metrics.calculate_sortino_ratio(daily_returns)
+        # Perfect Sortino (no downside) should be very high
+        assert sortino == Decimal(999)
+
+    def test_sortino_ratio_mixed_returns(self):
+        """Test Sortino Ratio with mixed returns."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        daily_returns = [
+            Decimal("0.01"),
+            Decimal("-0.005"),
+            Decimal("0.02"),
+            Decimal("-0.003"),
+        ]
+        sortino = metrics.calculate_sortino_ratio(daily_returns)
+        assert isinstance(sortino, Decimal)
+        assert sortino >= 0  # Sortino can't be negative
+
+    def test_sortino_ratio_equal_downside_std(self):
+        """Test Sortino Ratio with downside variance calculation."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        # Returns where downside is significant
+        daily_returns = [
+            Decimal("0.02"),
+            Decimal("-0.02"),
+            Decimal("0.02"),
+            Decimal("-0.02"),
+        ]
+        sortino = metrics.calculate_sortino_ratio(daily_returns)
+        assert isinstance(sortino, Decimal)
+
+    # ========================================================================
+    # EDGE CASE TESTS - Calmar Ratio
+    # ========================================================================
+
+    def test_calmar_ratio_zero_drawdown(self):
+        """Test Calmar Ratio with zero drawdown (perfect strategy)."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        calmar = metrics.calculate_calmar_ratio(
+            total_return=Decimal("30"),
+            max_drawdown=Decimal("0"),
+            days=90
+        )
+        assert calmar == Decimal(0)
+
+    def test_calmar_ratio_negative_drawdown(self):
+        """Test Calmar Ratio with negative drawdown."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        calmar = metrics.calculate_calmar_ratio(
+            total_return=Decimal("30"),
+            max_drawdown=Decimal("-5"),
+            days=90
+        )
+        assert calmar == Decimal(0)
+
+    def test_calmar_ratio_one_year_window(self):
+        """Test Calmar Ratio with one-year window (no annualization needed)."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        total_return = Decimal("20")  # 20% over 365 days
+        max_dd = Decimal("10")  # 10% max drawdown
+        days = 365
+
+        calmar = metrics.calculate_calmar_ratio(total_return, max_dd, days)
+        # Calmar = (20 * 365/365) / 10 = 20/10 = 2.0
+        expected = total_return / max_dd
+        assert abs(calmar - expected) < Decimal("0.01")
+
+    def test_calmar_ratio_short_window(self):
+        """Test Calmar Ratio with short window (aggressive annualization)."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        total_return = Decimal("5")  # 5% over 30 days
+        max_dd = Decimal("2")  # 2% max drawdown
+        days = 30
+
+        calmar = metrics.calculate_calmar_ratio(total_return, max_dd, days)
+        # Calmar = (5 * 365/30) / 2 = (60.833) / 2 ≈ 30.41
+        expected = (total_return * Decimal("365") / Decimal(days)) / max_dd
+        assert abs(calmar - expected) < Decimal("0.1")
+
+    # ========================================================================
+    # EDGE CASE TESTS - Profit Factor
+    # ========================================================================
+
+    def test_profit_factor_empty_trades(self):
+        """Test Profit Factor with empty trades."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        pf = metrics.calculate_profit_factor([])
+        assert pf == Decimal(0)
+
+    def test_profit_factor_only_losses(self):
+        """Test Profit Factor with only losses."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        trades = [
+            (Decimal("-50"), False),
+            (Decimal("-30"), False),
+        ]
+
+        pf = metrics.calculate_profit_factor(trades)
+        assert pf == Decimal(0)
+
+    def test_profit_factor_break_even(self):
+        """Test Profit Factor with zero losses (break even)."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        trades = [
+            (Decimal("100"), True),
+            (Decimal("50"), True),
+            (Decimal("0"), False),  # Loss is zero
+        ]
+
+        pf = metrics.calculate_profit_factor(trades)
+        assert pf == Decimal(999)
+
+    def test_profit_factor_exact_calculation(self):
+        """Test Profit Factor exact calculation."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        trades = [
+            (Decimal("100"), True),
+            (Decimal("200"), True),
+            (Decimal("50"), True),
+            (Decimal("-60"), False),
+            (Decimal("-40"), False),
+        ]
+
+        pf = metrics.calculate_profit_factor(trades)
+        # PF = 350 / 100 = 3.5
+        expected = Decimal("350") / Decimal("100")
+        assert abs(pf - expected) < Decimal("0.01")
+
+    def test_profit_factor_rounding(self):
+        """Test Profit Factor rounding to 2 decimals."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        trades = [
+            (Decimal("100.333"), True),
+            (Decimal("-50.777"), False),
+        ]
+
+        pf = metrics.calculate_profit_factor(trades)
+        # Should be rounded to 2 decimals: 100.333 / 50.777 ≈ 1.97
+        assert pf.as_tuple().exponent == -2  # 2 decimal places
+
+    # ========================================================================
+    # EDGE CASE TESTS - Recovery Factor
+    # ========================================================================
+
+    def test_recovery_factor_zero_drawdown(self):
+        """Test Recovery Factor with zero drawdown."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        rf = metrics.calculate_recovery_factor(
+            total_return=Decimal("50"),
+            max_drawdown=Decimal("0")
+        )
+        assert rf == Decimal(0)
+
+    def test_recovery_factor_negative_drawdown(self):
+        """Test Recovery Factor with negative drawdown."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        rf = metrics.calculate_recovery_factor(
+            total_return=Decimal("50"),
+            max_drawdown=Decimal("-10")
+        )
+        assert rf == Decimal(0)
+
+    def test_recovery_factor_poor_recovery(self):
+        """Test Recovery Factor with poor recovery (return < drawdown)."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        total_return = Decimal("5")  # Only 5% return
+        max_dd = Decimal("20")  # But 20% drawdown
+
+        rf = metrics.calculate_recovery_factor(total_return, max_dd)
+        # RF = 5 / 20 = 0.25
+        expected = total_return / max_dd
+        assert abs(rf - expected) < Decimal("0.01")
+
+    def test_recovery_factor_excellent_recovery(self):
+        """Test Recovery Factor with excellent recovery."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+
+        total_return = Decimal("100")  # 100% return
+        max_dd = Decimal("10")  # Only 10% drawdown
+
+        rf = metrics.calculate_recovery_factor(total_return, max_dd)
+        # RF = 100 / 10 = 10.0
+        expected = total_return / max_dd
+        assert abs(rf - expected) < Decimal("0.01")
+
+    # ========================================================================
+    # INITIALIZATION & CONFIGURATION TESTS
+    # ========================================================================
+
+    def test_performance_metrics_default_risk_free_rate(self, db_session: AsyncSession):
+        """Test PerformanceMetrics uses default risk-free rate."""
+        metrics = PerformanceMetrics(db_session)
+
+        assert metrics.risk_free_rate == Decimal("0.02")  # 2% default
+        assert metrics.risk_free_daily == Decimal("0.02") / Decimal(252)
+
+    def test_performance_metrics_custom_risk_free_rate(self, db_session: AsyncSession):
+        """Test PerformanceMetrics with custom risk-free rate."""
+        custom_rate = Decimal("0.03")  # 3%
+        metrics = PerformanceMetrics(db_session, risk_free_rate=custom_rate)
+
+        assert metrics.risk_free_rate == custom_rate
+        assert metrics.risk_free_daily == custom_rate / Decimal(252)
+
+    def test_performance_metrics_decimal_precision(self):
+        """Test PerformanceMetrics maintains Decimal precision."""
+        metrics = PerformanceMetrics.__new__(PerformanceMetrics)
+        metrics.risk_free_daily = Decimal("0.0001")
+
+        daily_returns = [Decimal(str(x / 1000)) for x in range(1, 11)]
+
+        sharpe = metrics.calculate_sharpe_ratio(daily_returns)
+        # Result should have 4 decimal places
+        assert sharpe.as_tuple().exponent <= -4
+
 
 # ============================================================================
 # END-TO-END INTEGRATION TESTS
@@ -869,7 +1184,7 @@ class TestDrawdownAnalyzerCoverage:
         equity_values = [
             Decimal("100"),  # peak (idx 0)
             Decimal("90"),
-            Decimal("80"),   # trough (idx 2)
+            Decimal("80"),  # trough (idx 2)
             Decimal("95"),
             Decimal("100"),  # recovered (idx 4)
             Decimal("105"),
@@ -890,7 +1205,7 @@ class TestDrawdownAnalyzerCoverage:
         equity_values = [
             Decimal("100"),  # peak (idx 0)
             Decimal("90"),
-            Decimal("80"),   # trough (idx 2)
+            Decimal("80"),  # trough (idx 2)
             Decimal("85"),
             Decimal("88"),
         ]
@@ -909,9 +1224,9 @@ class TestDrawdownAnalyzerCoverage:
         analyzer = DrawdownAnalyzer(db_session)
 
         equity_values = [
-            Decimal("100"),   # peak (idx 0)
-            Decimal("95"),    # trough (idx 1)
-            Decimal("100"),   # recovered (idx 2)
+            Decimal("100"),  # peak (idx 0)
+            Decimal("95"),  # trough (idx 1)
+            Decimal("100"),  # recovered (idx 2)
             Decimal("105"),
         ]
 
@@ -1087,9 +1402,7 @@ class TestDrawdownAnalyzerCoverage:
 
         assert stats["max_drawdown_percent"] == Decimal("0")
 
-    async def test_calculate_drawdown_stats_all_gains(
-        self, db_session: AsyncSession
-    ):
+    async def test_calculate_drawdown_stats_all_gains(self, db_session: AsyncSession):
         """Test drawdown stats with only gaining period (no drawdown)."""
         analyzer = DrawdownAnalyzer(db_session)
 

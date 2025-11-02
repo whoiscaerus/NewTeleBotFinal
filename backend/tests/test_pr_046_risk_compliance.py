@@ -20,12 +20,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 
-from backend.app.copytrading.disclosures import (
-    DisclosureService,
-)
-from backend.app.copytrading.risk import (
-    RiskEvaluator,
-)
+from backend.app.copytrading.disclosures import DisclosureService
+from backend.app.copytrading.risk import RiskEvaluator
 from backend.app.copytrading.service import CopyTradeSettings
 
 # ============================================================================

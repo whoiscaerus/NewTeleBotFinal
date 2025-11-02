@@ -1,7 +1,7 @@
 # PR-052: Coverage Gap Remediation Plan
 
-**Status**: Ready to implement  
-**Effort**: 3-5 hours  
+**Status**: Ready to implement
+**Effort**: 3-5 hours
 **Priority**: HIGH (reach 90%+ coverage)
 
 ---
@@ -24,14 +24,14 @@ class TestDrawdownAnalyzerSpecialized:
         """Test standard drawdown duration scenario."""
         # Equity: 100 → 85 (peak to trough), then recovery to 100
         equity = [Decimal(100), Decimal(95), Decimal(85), Decimal(90), Decimal(100)]
-        
+
         analyzer = DrawdownAnalyzer(db_session=None)
         max_dd, peak_idx, trough_idx = analyzer.calculate_max_drawdown(equity)
-        
+
         # Peak at index 0 (100), trough at index 2 (85)
         assert peak_idx == 0
         assert trough_idx == 2
-        
+
         # Duration: from index 0 to index 2 (recovery) = 2 periods
         duration = analyzer.calculate_drawdown_duration(equity, peak_idx, trough_idx)
         assert duration == 2
@@ -41,10 +41,10 @@ class TestDrawdownAnalyzerSpecialized:
         """Test long drawdown with slow recovery."""
         # DD lasts 5 periods before recovery
         equity = [Decimal(100), Decimal(90), Decimal(80), Decimal(75), Decimal(80), Decimal(100)]
-        
+
         analyzer = DrawdownAnalyzer(db_session=None)
         max_dd, peak_idx, trough_idx = analyzer.calculate_max_drawdown(equity)
-        
+
         duration = analyzer.calculate_drawdown_duration(equity, peak_idx, trough_idx)
         assert duration == 5  # From peak (idx 0) through recovery (idx 5)
 
@@ -52,10 +52,10 @@ class TestDrawdownAnalyzerSpecialized:
     def test_calculate_consecutive_losses_two_days(self):
         """Test identifying 2-day losing streak."""
         daily_pnls = [Decimal(+100), Decimal(-10), Decimal(-15), Decimal(+50)]
-        
+
         analyzer = DrawdownAnalyzer(db_session=None)
         max_consecutive_days, total_loss = analyzer.calculate_consecutive_losses(daily_pnls)
-        
+
         assert max_consecutive_days == 2  # Days 2-3 are consecutive losses
         assert total_loss == Decimal(-25)  # -10 + -15
 
@@ -67,10 +67,10 @@ class TestDrawdownAnalyzerSpecialized:
             Decimal(+100),
             Decimal(-20), Decimal(-15),  # 2-day streak
         ]
-        
+
         analyzer = DrawdownAnalyzer(db_session=None)
         max_consecutive_days, total_loss = analyzer.calculate_consecutive_losses(daily_pnls)
-        
+
         assert max_consecutive_days == 3  # Longest streak
         # Total loss of longest streak: -5 + -10 + -8 = -23
         assert total_loss == Decimal(-23)
@@ -79,10 +79,10 @@ class TestDrawdownAnalyzerSpecialized:
     def test_calculate_consecutive_losses_no_losses(self):
         """Test with all profitable days."""
         daily_pnls = [Decimal(+10), Decimal(+20), Decimal(+5), Decimal(+50)]
-        
+
         analyzer = DrawdownAnalyzer(db_session=None)
         max_consecutive_days, total_loss = analyzer.calculate_consecutive_losses(daily_pnls)
-        
+
         assert max_consecutive_days == 0  # No consecutive losses
         assert total_loss == Decimal(0)
 
@@ -128,16 +128,16 @@ class TestDrawdownAnalyzerSpecialized:
                 Decimal(180),
             ],
         )
-        
+
         analyzer = DrawdownAnalyzer(db_session=None)
         stats = analyzer.calculate_drawdown_stats(equity_series)
-        
+
         # Verify structure and values
         assert "max_drawdown_percent" in stats
         assert "drawdown_duration" in stats
         assert "consecutive_losses_days" in stats
         assert "consecutive_losses_amount" in stats
-        
+
         # Max DD: from 1100 to 950 = 150/1100 ≈ 13.6%
         assert stats["max_drawdown_percent"] > Decimal(13) and stats["max_drawdown_percent"] < Decimal(14)
 
@@ -150,10 +150,10 @@ class TestDrawdownAnalyzerSpecialized:
             peak_equity=[Decimal(1000 + i*100) for i in range(5)],
             cumulative_pnl=[Decimal(i*100) for i in range(5)],
         )
-        
+
         analyzer = DrawdownAnalyzer(db_session=None)
         stats = analyzer.calculate_drawdown_stats(equity_series)
-        
+
         # No drawdown in perfect curve
         assert stats["max_drawdown_percent"] == Decimal(0)
         assert stats["consecutive_losses_days"] == 0
@@ -185,10 +185,10 @@ class TestDrawdownAnalyzerSpecialized:
                 Decimal(-600),
             ],
         )
-        
+
         analyzer = DrawdownAnalyzer(db_session=None)
         stats = analyzer.calculate_drawdown_stats(equity_series)
-        
+
         # Max DD: 700/1000 = 70%
         assert stats["max_drawdown_percent"] == Decimal(70)
         assert stats["consecutive_losses_days"] >= 2  # First 2-3 days are losses
@@ -206,10 +206,10 @@ class TestEquityEngineAdvanced:
             peak_equity=[Decimal(1000 + i*50) for i in range(10)],
             cumulative_pnl=[Decimal(i*50) for i in range(10)],
         )
-        
+
         engine = EquityEngine(db_session=None)
         rf = engine.get_recovery_factor(equity_series)
-        
+
         # Strong gains, no DD → very high RF
         assert rf > 10 or rf == Decimal(0)  # Very high or special case
 
@@ -237,10 +237,10 @@ class TestEquityEngineAdvanced:
                 Decimal(150), Decimal(150), Decimal(100),
             ],
         )
-        
+
         engine = EquityEngine(db_session=None)
         rf = engine.get_recovery_factor(equity_series)
-        
+
         # 100 total return / 300 max DD = 0.33
         assert rf > 0 and rf < 1  # Low RF due to significant DD
 
@@ -255,7 +255,7 @@ class TestDrawdownMonthlyAggregation:
         user_id = "test-user-pr052"
         start_date = date(2025, 1, 1)
         end_date = date(2025, 1, 31)
-        
+
         # Add sample equity points to DB
         for i in range(1, 32):
             eq_point = EquityCurve(
@@ -266,10 +266,10 @@ class TestDrawdownMonthlyAggregation:
             )
             db_session.add(eq_point)
         await db_session.commit()
-        
+
         analyzer = DrawdownAnalyzer(db_session)
         result = await analyzer.get_drawdown_by_date_range(user_id, start_date, end_date)
-        
+
         assert result is not None
         assert "start_date" in result
         assert "end_date" in result
@@ -282,10 +282,10 @@ class TestDrawdownMonthlyAggregation:
         user_id = "non-existent-user"
         start_date = date(2025, 1, 1)
         end_date = date(2025, 1, 31)
-        
+
         analyzer = DrawdownAnalyzer(db_session)
         result = await analyzer.get_drawdown_by_date_range(user_id, start_date, end_date)
-        
+
         # Should return None or empty dict, not error
         assert result is None or result == {}
 
@@ -293,7 +293,7 @@ class TestDrawdownMonthlyAggregation:
     async def test_get_monthly_drawdown_stats(self, db_session):
         """Test monthly stats aggregation."""
         user_id = "test-user-pr052"
-        
+
         # Add equity curve data
         for i in range(1, 31):
             eq_point = EquityCurve(
@@ -304,10 +304,10 @@ class TestDrawdownMonthlyAggregation:
             )
             db_session.add(eq_point)
         await db_session.commit()
-        
+
         analyzer = DrawdownAnalyzer(db_session)
         stats = await analyzer.get_monthly_drawdown_stats(user_id, 2025, 1)
-        
+
         assert stats is not None
         if stats != {}:
             assert "max_drawdown_percent" in stats or "avg_daily_drawdown" in stats
@@ -368,4 +368,3 @@ TOTAL                    36% → 65% (new total with expanded drawdown)
 - [ ] Ready for merge to main
 
 ---
-

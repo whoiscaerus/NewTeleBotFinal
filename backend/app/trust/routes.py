@@ -1,6 +1,5 @@
 """Trust scoring API routes: trust scores and leaderboard endpoints."""
 
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from prometheus_client import Counter
 from pydantic import BaseModel
