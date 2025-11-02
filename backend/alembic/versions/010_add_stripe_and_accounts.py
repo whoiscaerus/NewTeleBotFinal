@@ -8,6 +8,7 @@ Tables:
 - stripe_events: Track webhook events for idempotent processing
 - account_links: Map users to MT5 accounts (multi-account support)
 - account_info: Cache account balance/equity/drawdown
+- position_snapshots: Live position snapshots from MT5 (30s TTL cache)
 """
 
 import sqlalchemy as sa
@@ -91,9 +92,45 @@ def upgrade() -> None:
     )
     op.create_index("ix_account_link_id", "account_info", ["account_link_id"])
 
+    # Create live_positions table for individual open position tracking
+    op.create_table(
+        "live_positions",
+        sa.Column("id", sa.String(36), nullable=False),
+        sa.Column("account_link_id", sa.String(36), nullable=False),
+        sa.Column("ticket", sa.String(255), nullable=False),  # MT5 ticket
+        sa.Column("instrument", sa.String(20), nullable=False, index=True),
+        sa.Column("side", sa.Integer, nullable=False),  # 0=buy, 1=sell
+        sa.Column("volume", sa.Numeric(12, 2), nullable=False),
+        sa.Column("entry_price", sa.Numeric(20, 6), nullable=False),
+        sa.Column("current_price", sa.Numeric(20, 6), nullable=False),
+        sa.Column("stop_loss", sa.Numeric(20, 6)),
+        sa.Column("take_profit", sa.Numeric(20, 6)),
+        sa.Column("pnl_points", sa.Numeric(10, 2), nullable=False),
+        sa.Column("pnl_usd", sa.Numeric(12, 2), nullable=False),
+        sa.Column("pnl_percent", sa.Numeric(8, 4), nullable=False),
+        sa.Column("opened_at", sa.DateTime),
+        sa.Column(
+            "created_at", sa.DateTime, nullable=False, server_default=sa.func.now()
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime, nullable=False, server_default=sa.func.now()
+        ),
+        sa.ForeignKeyConstraint(
+            ["account_link_id"], ["account_links.id"], ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        "ix_live_positions_account_time",
+        "live_positions",
+        ["account_link_id", "created_at"],
+    )
+    op.create_index("ix_live_positions_instrument", "live_positions", ["instrument"])
+
 
 def downgrade() -> None:
     """Drop Stripe and account tables."""
+    op.drop_table("live_positions")
     op.drop_table("account_info")
     op.drop_table("account_links")
     op.drop_table("stripe_events")

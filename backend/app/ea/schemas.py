@@ -77,6 +77,29 @@ class ApprovedSignalOut(BaseModel):
         }
 
 
+class EncryptedSignalEnvelope(BaseModel):
+    """PR-042: Encrypted signal envelope with AEAD protection.
+
+    Signal payloads are encrypted with AES-256-GCM using per-device keys.
+    Clients decrypt using caerus_crypto.mqh SDK.
+    """
+
+    approval_id: UUID = Field(..., description="Approval ID (used in ack)")
+    ciphertext: str = Field(..., description="Base64-encoded AES-256-GCM ciphertext")
+    nonce: str = Field(..., description="Base64-encoded 12-byte nonce")
+    aad: str = Field(..., description="Authenticated Associated Data (device_id)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "approval_id": "550e8400-e29b-41d4-a716-446655440000",
+                "ciphertext": "k2hSU0FhbWJlcjMyICsgQUI4YjdjTHJmMDhpWEorUWVDMmhWVnc9PQ==",
+                "nonce": "L4FqCw0xR5L8M3xJ",
+                "aad": "dev_123abc",
+            }
+        }
+
+
 class PollResponse(BaseModel):
     """Response from poll endpoint."""
 
@@ -112,6 +135,46 @@ class PollResponse(BaseModel):
                         },
                         "approved_at": "2025-10-26T10:30:45Z",
                         "created_at": "2025-10-26T10:30:00Z",
+                    }
+                ],
+                "count": 1,
+                "polled_at": "2025-10-26T10:31:00Z",
+                "next_poll_seconds": 10,
+            }
+        }
+
+
+class EncryptedPollResponse(BaseModel):
+    """PR-042: Poll response with encrypted signal envelopes.
+
+    All signal payloads are wrapped in AES-256-GCM AEAD envelopes.
+    Clients decrypt using device encryption key and caerus_crypto.mqh SDK.
+    """
+
+    approvals: list[EncryptedSignalEnvelope] = Field(
+        default_factory=list, description="Encrypted approved signals"
+    )
+    count: int = Field(..., ge=0, description="Number of signals returned")
+    polled_at: datetime
+    next_poll_seconds: int = Field(
+        default=10, description="Recommended delay before next poll"
+    )
+
+    @validator("count")
+    def count_matches_approvals(cls, v, values):
+        if v != len(values.get("approvals", [])):
+            raise ValueError("count must match length of approvals")
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "approvals": [
+                    {
+                        "approval_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "ciphertext": "k2hSU0FhbWJlcjMyICsgQUI4YjdjTHJmMDhpWEorUWVDMmhWVnc9PQ==",
+                        "nonce": "L4FqCw0xR5L8M3xJ",
+                        "aad": "dev_123abc",
                     }
                 ],
                 "count": 1,

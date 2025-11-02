@@ -29,7 +29,7 @@ from sqlalchemy.orm import relationship
 from backend.app.accounts.service import AccountLinkingService
 from backend.app.core.db import Base
 from backend.app.core.errors import NotFoundError, ValidationError
-from backend.app.trading.mt5.manager import MT5SessionManager
+from backend.app.trading.mt5.session import MT5SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -39,21 +39,21 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-class Position(Base):
+class LivePosition(Base):
     """
-    Open position snapshot for portfolio tracking.
+    Live position snapshot for portfolio tracking.
 
-    Cached on each refresh to support historical analysis.
+    Represents open MT5 positions cached from EA polls.
+    Linked to accounts (not users) for multi-account tracking.
+    Different from reconciliation.PositionSnapshot which tracks account-level metrics.
     """
 
-    __tablename__ = "positions"
+    __tablename__ = "live_positions"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    account_link_id = Column(
-        String(36), ForeignKey("account_links.id"), nullable=False, index=True
-    )
+    account_link_id = Column(String(36), ForeignKey("account_links.id"), nullable=False)
     ticket = Column(String(255), nullable=False)  # MT5 ticket number
-    instrument = Column(String(20), nullable=False, index=True)
+    instrument = Column(String(20), nullable=False)
     side = Column(Integer, nullable=False)  # 0=buy, 1=sell
     volume = Column(Numeric(12, 2), nullable=False)
     entry_price = Column(Numeric(20, 6), nullable=False)
@@ -74,16 +74,16 @@ class Position(Base):
 
     # Indexes
     __table_args__ = (
-        Index("ix_positions_account_time", "account_link_id", "created_at"),
-        Index("ix_positions_instrument", "instrument"),
+        Index("ix_live_positions_account_time", "account_link_id", "created_at"),
+        Index("ix_live_positions_instrument", "instrument"),
     )
 
     def __repr__(self):
-        return f"<Position {self.id}: {self.instrument} {self.side} PnL={self.pnl_usd}>"
+        return f"<LivePosition {self.id}: {self.instrument} {self.side} PnL={self.pnl_usd}>"
 
 
 # ============================================================================
-# PYDANTIC SCHEMAS
+# PYDANTIC SCHEMAS (No DB Models - Using shared PositionSnapshot from reconciliation)
 # ============================================================================
 
 
@@ -262,7 +262,7 @@ class PositionsService:
         self,
         account_link_id: str,
         force_refresh: bool = False,
-    ) -> list[Position]:
+    ) -> list[LivePosition]:
         """
         Fetch positions from MT5 or cache.
 
@@ -271,7 +271,7 @@ class PositionsService:
             force_refresh: Skip cache
 
         Returns:
-            List of Position objects
+            List of LivePosition objects
 
         Raises:
             ValidationError: If MT5 fetch fails
@@ -283,9 +283,9 @@ class PositionsService:
             # Check cache
             if not force_refresh:
                 result = await self.db.execute(
-                    select(Position)
-                    .where(Position.account_link_id == account_link_id)
-                    .order_by(Position.updated_at.desc())
+                    select(LivePosition)
+                    .where(LivePosition.account_link_id == account_link_id)
+                    .order_by(LivePosition.updated_at.desc())
                     .limit(1)
                 )
                 latest = result.scalar()
@@ -294,9 +294,9 @@ class PositionsService:
                     if age < self.cache_ttl:
                         # Fetch all recent positions
                         result = await self.db.execute(
-                            select(Position)
-                            .where(Position.account_link_id == account_link_id)
-                            .order_by(Position.instrument)
+                            select(LivePosition)
+                            .where(LivePosition.account_link_id == account_link_id)
+                            .order_by(LivePosition.instrument)
                         )
                         logger.info(
                             f"Positions from cache (age: {age.total_seconds():.1f}s)",
@@ -317,14 +317,16 @@ class PositionsService:
                 )
                 # Clear old positions and return empty
                 await self.db.execute(
-                    select(Position).where(Position.account_link_id == account_link_id)
+                    select(LivePosition).where(
+                        LivePosition.account_link_id == account_link_id
+                    )
                 )
                 return []
 
             # Store positions
             stored = []
             for mt5_pos in mt5_positions:
-                pos = Position(
+                pos = LivePosition(
                     id=str(uuid4()),
                     account_link_id=account_link_id,
                     ticket=str(mt5_pos.get("ticket", "")),

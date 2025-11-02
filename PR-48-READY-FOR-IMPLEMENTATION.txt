@@ -1,0 +1,168 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   PR-48 DEPENDENCY CLARIFICATION COMPLETE                     ║
+║                                                                               ║
+║  DECISION: PR-46 IS NOT BLOCKING - PROCEED WITH PR-48 IMMEDIATELY            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+
+FINDINGS:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. PR-48 DOES NOT NEED PR-46
+
+   ❌ FALSE: PR-48 requires strategy version tracking
+   ✅ TRUE:  PR-48 requires position exposure tracking
+
+   PR-48 is about RISK MANAGEMENT (limits, exposure, drawdown)
+   PR-46 is about STRATEGY GOVERNANCE (versioning, lineage, signing)
+
+   These are ORTHOGONAL concerns.
+
+2. ALL HARD DEPENDENCIES SATISFIED
+
+   ✅ Trade model exists     (backend/app/trading/store/models.py)
+   ✅ Approval model exists  (backend/app/approvals/models.py)
+   ✅ Signal model exists    (backend/app/signals/models.py)
+   ✅ Account model exists   (backend/app/accounts/)
+   ✅ Client model exists    (backend/app/clients/)
+   ✅ Guards logic exists    (backend/app/trading/runtime/guards.py)
+
+3. DATA AVAILABLE FOR PR-48
+
+   To calculate exposure:
+   ✅ SELECT SUM(volume) FROM trades WHERE user_id=? AND status='OPEN'
+   ✅ SELECT symbol, SUM(volume) FROM trades WHERE user_id=? AND status='OPEN' GROUP BY symbol
+   ✅ SELECT COUNT(*) FROM trades WHERE user_id=? AND status='OPEN'
+
+   To calculate drawdown:
+   ✅ Get account balance from accounts table
+   ✅ Get historical P&L from trades (profit column)
+
+   To enforce limits:
+   ✅ Check against Signal.price, Signal.side
+   ✅ Check against Approval.decision (execution tracking)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+RECOMMENDATION:
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PROCEED WITH FULL PR-48 IMPLEMENTATION IMMEDIATELY
+
+Rationale:
+  1. Zero blocking issues
+  2. All data available in existing models
+  3. PR-46 is independent (can be added later if needed)
+  4. Risk management is too critical to delay
+  5. Can implement complete feature in 8-12 hours
+
+═══════════════════════════════════════════════════════════════════════════════
+
+WHAT PR-48 WILL IMPLEMENT:
+═══════════════════════════════════════════════════════════════════════════════
+
+Core Models:
+  ✅ RiskProfile (per-client risk settings)
+  ✅ ExposureSnapshot (current position tracking)
+
+Core Service Functions:
+  ✅ get_or_create_risk_profile(client_id) → RiskProfile
+  ✅ calculate_current_exposure(client_id) → ExposureSnapshot
+  ✅ check_risk_limits(client_id, signal) → violation list
+  ✅ calculate_position_size(client_id, signal) → safe lot size
+  ✅ calculate_current_drawdown(client_id) → DD %
+  ✅ check_global_limits(instrument, lot_size) → bool
+
+API Endpoints:
+  ✅ GET /api/v1/risk/profile - Get client's risk settings
+  ✅ PATCH /api/v1/risk/profile - Update risk settings
+  ✅ GET /api/v1/risk/exposure - Get current exposure
+  ✅ GET /api/v1/admin/risk/global-exposure - Admin view
+
+Integration Points:
+  ✅ Signal creation: Check risk limits before approval
+  ✅ Approval execution: Update exposure snapshot
+  ✅ Drawdown monitoring: Background task every 5 minutes
+
+Background Tasks:
+  ✅ calculate_exposure_snapshots() - Update every 5 min
+  ✅ check_drawdown_breakers() - Check violations, notify
+
+Tests:
+  ✅ 30+ test cases covering all scenarios
+  ✅ 90%+ code coverage
+  ✅ Edge cases and integration tests
+
+Documentation:
+  ✅ Implementation plan
+  ✅ Acceptance criteria
+  ✅ Implementation complete summary
+  ✅ Business impact analysis
+
+═══════════════════════════════════════════════════════════════════════════════
+
+IMPLEMENTATION TIMELINE:
+═══════════════════════════════════════════════════════════════════════════════
+
+Phase 1: Database & Models (1-2 hours)
+  • Create RiskProfile model
+  • Create ExposureSnapshot model
+  • Create Alembic migration
+  • Run migration
+
+Phase 2: Service Layer (2-3 hours)
+  • Implement 6 core service functions
+  • Position sizing algorithm
+  • Exposure calculation
+  • Risk limit checking
+  • Global limit enforcement
+
+Phase 3: API Routes (1-2 hours)
+  • 4 REST endpoints
+  • Input validation
+  • Error handling
+  • Response schemas
+
+Phase 4: Integration (1-2 hours)
+  • Signal creation risk check
+  • Approval execution exposure update
+  • Celery task setup
+
+Phase 5: Testing (2-3 hours)
+  • 30+ test cases
+  • 90%+ coverage
+  • Integration tests
+
+Phase 6: Documentation (1-2 hours)
+  • Implementation plan
+  • Acceptance criteria
+  • Business impact
+
+TOTAL: 8-12 hours
+
+═══════════════════════════════════════════════════════════════════════════════
+
+NEXT STEPS:
+═══════════════════════════════════════════════════════════════════════════════
+
+Ready to proceed?
+
+Confirm and agent will immediately implement:
+  1. Full backend with all 9 files
+  2. Database migration
+  3. 30+ test cases with 90%+ coverage
+  4. Complete documentation
+  5. All 4 required docs
+  6. Verification script
+
+Type "yes" to start full PR-48 implementation now.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Reference Documents:
+  • PR-48-DEPENDENCY-CLARIFICATION.md (detailed analysis)
+  • PR-48-VERIFICATION-REPORT.md (current status)
+  • PR-48-VERIFICATION-BANNER.txt (status summary)
+
+═══════════════════════════════════════════════════════════════════════════════

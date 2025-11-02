@@ -62,7 +62,7 @@ class TestDeviceRegistration:
         device_service: DeviceService,
     ):
         """Test successful device registration."""
-        device, secret = await device_service.create_device(
+        device, hmac_secret, encryption_key = await device_service.create_device(
             client_id=test_client.id,
             device_name="My EA Instance",
         )
@@ -72,10 +72,12 @@ class TestDeviceRegistration:
         assert device.device_name == "My EA Instance"
         assert device.is_active is True
         assert device.revoked is False
+        assert hmac_secret is not None
+        assert encryption_key is not None
 
-        # Secret should be returned once
-        assert secret is not None
-        assert len(secret) > 0
+        # Secrets should be returned once
+        assert len(hmac_secret) > 0
+        assert len(encryption_key) > 0
 
     async def test_register_device_returns_secret_once(
         self,
@@ -84,15 +86,16 @@ class TestDeviceRegistration:
         device_service: DeviceService,
     ):
         """Test that secret is returned once during registration."""
-        device, secret = await device_service.create_device(
+        device, hmac_secret, encryption_key = await device_service.create_device(
             client_id=test_client.id,
             device_name="My EA",
         )
 
         # Secret should not be in DB (only hash)
         assert device.hmac_key_hash is not None
-        # Secret should be returned to user
-        assert secret is not None
+        # Secrets should be returned to user
+        assert hmac_secret is not None
+        assert encryption_key is not None
 
     async def test_register_duplicate_device_name_fails(
         self,
@@ -137,11 +140,11 @@ class TestDeviceRegistration:
         await db_session.commit()
 
         # Create devices with same name for different clients
-        device1, _ = await device_service.create_device(
+        device1, _, _ = await device_service.create_device(
             client_id=client1.id,
             device_name="EA Instance",
         )
-        device2, _ = await device_service.create_device(
+        device2, _, _ = await device_service.create_device(
             client_id=client2.id,
             device_name="EA Instance",
         )
@@ -174,11 +177,11 @@ class TestDeviceListing:
     ):
         """Test listing client devices."""
         # Create multiple devices
-        device1, _ = await device_service.create_device(
+        device1, _, _ = await device_service.create_device(
             test_client.id,
             "Device 1",
         )
-        device2, _ = await device_service.create_device(
+        device2, _, _ = await device_service.create_device(
             test_client.id,
             "Device 2",
         )
@@ -229,11 +232,11 @@ class TestDeviceListing:
         device_service: DeviceService,
     ):
         """Test listing includes both active and inactive devices."""
-        device1, _ = await device_service.create_device(
+        device1, _, _ = await device_service.create_device(
             test_client.id,
             "Device 1",
         )
-        device2, _ = await device_service.create_device(
+        device2, _, _ = await device_service.create_device(
             test_client.id,
             "Device 2",
         )
@@ -257,7 +260,7 @@ class TestDeviceRenaming:
         device_service: DeviceService,
     ):
         """Test successful device renaming."""
-        device, _ = await device_service.create_device(
+        device, _, _ = await device_service.create_device(
             test_client.id,
             "Old Name",
         )
@@ -276,11 +279,11 @@ class TestDeviceRenaming:
         device_service: DeviceService,
     ):
         """Test renaming to duplicate name fails."""
-        device1, _ = await device_service.create_device(
+        device1, _, _ = await device_service.create_device(
             test_client.id,
             "Device 1",
         )
-        device2, _ = await device_service.create_device(
+        device2, _, _ = await device_service.create_device(
             test_client.id,
             "Device 2",
         )
@@ -316,7 +319,7 @@ class TestDeviceRevocation:
         device_service: DeviceService,
     ):
         """Test successful device revocation."""
-        device, _ = await device_service.create_device(
+        device, _, _ = await device_service.create_device(
             test_client.id,
             "My Device",
         )
@@ -344,7 +347,7 @@ class TestDeviceRevocation:
         device_service: DeviceService,
     ):
         """Test that revoked device cannot be used for auth."""
-        device, secret = await device_service.create_device(
+        device, hmac_secret, encryption_key = await device_service.create_device(
             test_client.id,
             "My Device",
         )
@@ -367,7 +370,7 @@ class TestDatabasePersistence:
         device_service: DeviceService,
     ):
         """Test that device is persisted in database."""
-        device, _ = await device_service.create_device(
+        device, _, _ = await device_service.create_device(
             test_client.id,
             "My Device",
         )
@@ -390,13 +393,13 @@ class TestDatabasePersistence:
         device_service: DeviceService,
     ):
         """Test that HMAC key hash (not plaintext) is stored."""
-        device, secret = await device_service.create_device(
+        device, hmac_secret, _ = await device_service.create_device(
             test_client.id,
             "My Device",
         )
 
         # Verify hash is different from plaintext secret
-        assert device.hmac_key_hash != secret
+        assert device.hmac_key_hash != hmac_secret
         # Hash should be a reasonable length (typically 64 chars for SHA256)
         assert len(device.hmac_key_hash) > 32
 
@@ -407,7 +410,7 @@ class TestDatabasePersistence:
         device_service: DeviceService,
     ):
         """Test device timestamp fields."""
-        device, _ = await device_service.create_device(
+        device, _, _ = await device_service.create_device(
             test_client.id,
             "My Device",
         )
@@ -422,7 +425,7 @@ class TestDatabasePersistence:
         device_service: DeviceService,
     ):
         """Test that deleting client cascades to devices."""
-        device, _ = await device_service.create_device(
+        device, _, _ = await device_service.create_device(
             test_client.id,
             "My Device",
         )
@@ -454,7 +457,7 @@ class TestEdgeCases:
         device_service: DeviceService,
     ):
         """Test device with unicode characters in name."""
-        device, _ = await device_service.create_device(
+        device, _, _ = await device_service.create_device(
             test_client.id,
             "My Device 🤖 EA",
         )
@@ -469,7 +472,7 @@ class TestEdgeCases:
     ):
         """Test device name length validation."""
         long_name = "A" * 100
-        device, _ = await device_service.create_device(
+        device, _, _ = await device_service.create_device(
             test_client.id,
             long_name,
         )
@@ -488,7 +491,7 @@ class TestEdgeCases:
         # May or may not fail depending on validation
         # Document behavior here
         try:
-            device, _ = await device_service.create_device(
+            device, _, _ = await device_service.create_device(
                 test_client.id,
                 too_long_name,
             )

@@ -20,6 +20,8 @@ from backend.app.core.errors import (
 from backend.app.core.middleware import RequestIDMiddleware
 from backend.app.ea.routes import router as ea_router
 from backend.app.miniapp.auth_bridge import router as miniapp_router
+from backend.app.public.performance_routes import router as performance_router
+from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.signals.routes import router as signals_router
 from backend.app.telegram.webhook import router as telegram_router
 from backend.app.trading.routes import router as trading_router
@@ -73,6 +75,8 @@ def create_app() -> FastAPI:
     app.include_router(devices_router)
     app.include_router(ea_router)
     app.include_router(exec_router)
+    app.include_router(performance_router)
+    app.include_router(trust_index_router)
     app.include_router(signals_router)
     app.include_router(telegram_router)
     app.include_router(trading_router)

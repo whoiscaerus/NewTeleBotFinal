@@ -1,6 +1,6 @@
 """Main FastAPI application entry point."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.affiliates.routes import router as affiliates_router
@@ -9,7 +9,19 @@ from backend.app.auth.routes import router as auth_router
 from backend.app.clients.devices.routes import router as devices_router
 from backend.app.clients.exec.routes import router as exec_router
 from backend.app.core.settings import get_settings
+from backend.app.polling.routes import router as polling_v2_router
+from backend.app.public.performance_routes import router as performance_router
+from backend.app.public.trust_index_routes import router as trust_index_router
+from backend.app.risk.routes import router as risk_router
 from backend.app.signals.routes import router as signals_router
+from backend.app.trust.routes import router as trust_router
+
+try:
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
 
 settings = get_settings()
 
@@ -35,9 +47,14 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(affiliates_router, prefix="/api/v1/affiliates", tags=["affiliates"])
 app.include_router(approvals_router, prefix="/api/v1", tags=["approvals"])
+app.include_router(performance_router, tags=["public"])
+app.include_router(trust_index_router, tags=["public"])
+app.include_router(polling_v2_router, tags=["polling-v2"])
+app.include_router(risk_router, tags=["risk"])
 app.include_router(signals_router, prefix="/api/v1", tags=["signals"])
 app.include_router(devices_router, prefix="/api/v1", tags=["devices"])
 app.include_router(exec_router, prefix="/api/v1", tags=["execution"])
+app.include_router(trust_router, tags=["trust"])
 
 
 @app.get("/")
@@ -54,6 +71,15 @@ async def root():
 async def health():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    if PROMETHEUS_AVAILABLE:
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    else:
+        return {"error": "Prometheus metrics not available"}
 
 
 if __name__ == "__main__":

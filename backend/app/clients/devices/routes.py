@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.dependencies import get_current_user
-from backend.app.clients.devices.schema import DeviceOut, DeviceRegister
+from backend.app.clients.devices.schema import (
+    DeviceCreateResponse,
+    DeviceOut,
+    DeviceRegister,
+)
 from backend.app.clients.service import DeviceService
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
@@ -17,29 +21,25 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/devices", tags=["devices"])
 
 
-class DeviceCreateResponse(DeviceOut):
-    """Response from device creation - includes secret (shown once)."""
-
-    secret: str | None = None
-
-
 @router.post("", status_code=201, response_model=DeviceCreateResponse)
 async def register_device(
     request: DeviceRegister,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     current_user=Depends(get_current_user),  # noqa: B008
 ) -> DeviceCreateResponse:
-    """Register new device.
+    """Register new device with HMAC authentication and encryption key.
 
     Args:
         request: Device registration request
 
     Returns:
-        Device info with HMAC secret (shown once only)
+        Device info with HMAC secret and encryption key (shown once only)
+
+    PR-042: Device receives encryption_key for decrypting signal payloads.
     """
     try:
         service = DeviceService(db)
-        device, secret = await service.create_device(
+        device, hmac_secret, encryption_key = await service.create_device(
             current_user.id, request.device_name
         )
 
@@ -48,7 +48,7 @@ async def register_device(
             extra={"user_id": current_user.id, "device_name": request.device_name},
         )
 
-        # Return device with secret (shown once)
+        # Return device with secrets (shown once)
         device_dict = {
             "id": device.id,
             "client_id": device.client_id,
@@ -58,7 +58,8 @@ async def register_device(
             "last_ack": device.last_ack,
             "is_active": device.is_active,
             "created_at": device.created_at,
-            "secret": secret,
+            "secret": hmac_secret,
+            "encryption_key": encryption_key,
         }
         return DeviceCreateResponse(**device_dict)
 

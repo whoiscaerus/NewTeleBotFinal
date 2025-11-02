@@ -45,6 +45,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     # Force import ALL models before table creation
     # Import all models to register them with Base.metadata
     # This ensures all tables and indexes are registered
+    from backend.app.accounts.service import AccountLink  # noqa: F401
     from backend.app.affiliates.models import (  # noqa: F401
         Affiliate,
         AffiliateEarnings,
@@ -53,6 +54,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         Referral,
         ReferralEvent,
     )
+    from backend.app.alerts.service import AlertNotification, PriceAlert  # noqa: F401
     from backend.app.approvals.models import Approval  # noqa: F401
     from backend.app.audit.models import AuditLog  # noqa: F401
     from backend.app.auth.models import User  # noqa: F401
@@ -99,6 +101,11 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         Position,
         Trade,
         ValidationLog,
+    )
+    from backend.app.trust.models import (  # noqa: F401
+        Endorsement,
+        TrustCalculationLog,
+        UserTrustScore,
     )
 
     # Create fresh in-memory engine

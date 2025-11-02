@@ -1,5 +1,6 @@
 """Device registry service."""
 
+import base64
 import hashlib
 import secrets
 
@@ -7,6 +8,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.devices.models import Device
+from backend.app.ea.crypto import get_key_manager
 
 
 class DeviceService:
@@ -22,15 +24,15 @@ class DeviceService:
 
     async def create_device(
         self, client_id: str, device_name: str
-    ) -> tuple[Device, str]:
-        """Create a new device with HMAC authentication.
+    ) -> tuple[Device, str, str]:
+        """Create a new device with HMAC authentication and encryption key.
 
         Args:
             client_id: Client ID
             device_name: Device name (must be unique per client)
 
         Returns:
-            Tuple of (device, secret) where secret is returned once to user
+            Tuple of (device, hmac_secret, encryption_key) where secrets are returned once to user
 
         Raises:
             ValueError: If device name already exists for this client
@@ -69,10 +71,10 @@ class DeviceService:
             raise ValueError(f"Device '{device_name}' already exists for this client")
 
         # Generate HMAC secret (returned once to user)
-        secret = secrets.token_urlsafe(32)
+        hmac_secret = secrets.token_urlsafe(32)
 
         # Hash secret for storage in database
-        secret_hash = hashlib.sha256(secret.encode()).hexdigest()
+        secret_hash = hashlib.sha256(hmac_secret.encode()).hexdigest()
 
         # Create device in database
         device = Device(
@@ -87,7 +89,16 @@ class DeviceService:
         await self.db.commit()
         await self.db.refresh(device)
 
-        return device, secret
+        # PR-042: Issue per-device encryption key
+        key_manager = get_key_manager()
+        encryption_key_obj = key_manager.create_device_key(device.id)
+
+        # Return encryption key material (base64 encoded for transport)
+        encryption_key_material = base64.b64encode(
+            encryption_key_obj.encryption_key
+        ).decode("ascii")
+
+        return device, hmac_secret, encryption_key_material
 
     async def list_devices(self, client_id: str) -> list[Device]:
         """List all devices for a client.

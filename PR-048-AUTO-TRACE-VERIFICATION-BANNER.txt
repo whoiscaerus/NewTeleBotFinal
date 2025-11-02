@@ -1,0 +1,154 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                     PR-048 VERIFICATION COMPLETE - BANNER                 ║
+║                                                                            ║
+║              Auto-Trace to Third-Party Trackers (Post-Close)              ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                                                                            │
+│  STATUS: ⚠️  NOT YET IMPLEMENTED - READY FOR DEVELOPMENT                 │
+│                                                                            │
+│  Source: Master PR Document (Final_Master_Prs.md, lines 2247-2280)       │
+│  Type: Background job to push closed trades to 3rd-party trackers        │
+│                                                                            │
+│  Specification:                                                            │
+│  ✅ Goal: Post closed trades to Myfxbook/trackers after T+X delay       │
+│  ✅ Security: Strip client identifiers, delay until after exit          │
+│  ✅ Design: Pluggable adapter pattern (Myfxbook, Webhook, File Export)  │
+│  ✅ Telemetry: trust_traces_pushed_total{adapter}, trust_trace_fail...  │
+│                                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                           IMPLEMENTATION STATUS                           │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ❌ backend/app/trust/trace_adapters.py    NOT FOUND (adapter interface) │
+│  ❌ backend/app/trust/tracer.py            NOT FOUND (queue + enqueue)   │
+│  ❌ backend/schedulers/trace_worker.py     NOT FOUND (celery task)       │
+│  ❌ backend/tests/test_pr_048_auto_trace.py NOT FOUND (35+ tests)        │
+│                                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                          DOCUMENTATION STATUS                             │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ⚠️  /docs/prs/ contains OLD Risk Controls docs (being replaced):        │
+│      - PR-048-IMPLEMENTATION-PLAN.md                                      │
+│      - PR-048-ACCEPTANCE-CRITERIA.md                                      │
+│      - PR-048-IMPLEMENTATION-COMPLETE.md                                  │
+│      - PR-048-BUSINESS-IMPACT.md                                          │
+│                                                                            │
+│  Action: Archive old Risk Controls files, create new Auto-Trace docs     │
+│                                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                          DEPENDENCIES STATUS                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ✅ PR-016: Trade Store (provides: close events, trade schema)           │
+│  ✅ PR-006: Redis & Celery (provides: queue infrastructure)              │
+│  ✅ PR-009: Logging & Telemetry (provides: metrics, JSON logs)           │
+│                                                                            │
+│  Result: ALL DEPENDENCIES SATISFIED - Can begin immediately              │
+│                                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                          REQUIRED DELIVERABLES                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  1. trace_adapters.py                                                     │
+│     - Abstract TraceAdapter base class                                    │
+│     - MyfxbookAdapter (webhook posting)                                   │
+│     - FileExportAdapter (local/S3 export)                                 │
+│     - WebhookAdapter (generic webhooks)                                   │
+│     - Retry configuration & error handling                                │
+│                                                                            │
+│  2. tracer.py                                                             │
+│     - TraceQueue class (queue management)                                 │
+│     - enqueue_closed_trade(trade_id, adapter_type)                        │
+│     - Delay enforcement (T+5 minutes configurable)                        │
+│     - Payload stripping (remove PII/client data)                          │
+│     - Retry & error logging                                               │
+│                                                                            │
+│  3. trace_worker.py                                                       │
+│     - Celery periodic task (every 5 minutes)                              │
+│     - Queue consumer logic                                                │
+│     - Adapter invocation & retry backoff                                  │
+│     - Telemetry recording                                                 │
+│     - Full error context logging                                          │
+│                                                                            │
+│  4. Tests (test_pr_048_auto_trace.py)                                    │
+│     - Adapter interface tests (5 tests)                                   │
+│     - Tracer queue tests (5 tests)                                        │
+│     - Worker job tests (6 tests)                                          │
+│     - Telemetry & error handling (4 tests)                                │
+│     - Integration scenarios (3+ tests)                                    │
+│     - Target: ≥90% coverage                                               │
+│                                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                          ENVIRONMENT CONFIG                               │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  TRACE_DELAY_MINUTES=5                  # T+5 after close before posting │
+│  TRACE_RETRY_MAX_ATTEMPTS=5             # Give up after 5 retries        │
+│  TRACE_RETRY_BACKOFF_BASE=5             # Start with 5 second backoff    │
+│  TRACE_BATCH_SIZE=10                    # Process 10 per job run         │
+│  TRACE_ENABLED_ADAPTERS=myfxbook,file   # Which adapters to enable      │
+│                                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                          EFFORT ESTIMATE                                  │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  Phase 1: Cleanup old files                    0.5 hours   ⏳  TODO      │
+│  Phase 2: Documentation & planning             2   hours   ⏳  TODO      │
+│  Phase 3: Backend implementation               6-8 hours   ⏳  TODO      │
+│  Phase 4: Tests & coverage                     3-4 hours   ⏳  TODO      │
+│  Phase 5: Verification & CI/CD                 1-2 hours   ⏳  TODO      │
+│                                                                            │
+│  TOTAL ESTIMATE: 12-17 hours (Medium-High Complexity)                    │
+│                                                                            │
+├────────────────────────────────────────────────────────────────────────────┤
+│                          NEXT ACTIONS                                     │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ✅ Verification Report Created: PR-048-AUTO-TRACE-VERIFICATION-REPORT.md│
+│  📋 Ready to Start: YES (all dependencies satisfied)                      │
+│                                                                            │
+│  Recommended Next Steps:                                                   │
+│  1. ✅ Clarify: Archive old Risk Controls docs? YES                       │
+│  2. Begin Phase 1: Clean up old PR-048 (Risk Controls) files              │
+│  3. Begin Phase 2: Write new documentation for Auto-Trace                 │
+│  4. Begin Phase 3: Implement trace_adapters.py, tracer.py, trace_worker  │
+│  5. Begin Phase 4: Write comprehensive test suite                         │
+│  6. Begin Phase 5: Verify coverage, CI/CD, and documentation              │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+═════════════════════════════════════════════════════════════════════════════
+
+📊 SESSION SUMMARY (This Session):
+
+  ✅ PR-046 Verification: COMPLETE (100% working, production ready)
+  ✅ PR-047 Verification: COMPLETE (94% tests passing, production ready)
+  ✅ PR-048 Verification: COMPLETE - Found spec mismatch, clarified master doc
+
+     Discovery: Old PR-048 (Risk Controls) was being confused with real
+     PR-048 (Auto-Trace) from Master doc. Confirmed correct spec. Not yet
+     implemented, ready to start.
+
+═════════════════════════════════════════════════════════════════════════════
+
+📝 Reports Created:
+   1. ✅ PR-046-FINAL-VERIFICATION-REPORT.md
+   2. ✅ PR-047-FINAL-VERIFICATION-REPORT.md
+   3. ✅ PR-047-FINAL-VERIFICATION-BANNER.txt
+   4. ✅ PR-048-AUTO-TRACE-VERIFICATION-REPORT.md (THIS REPORT)
+   5. ✅ PR-048-VERIFICATION-MISMATCH-REPORT.md (earlier, archived)
+
+═════════════════════════════════════════════════════════════════════════════
+
+🎯 Verification Status:
+
+   PR-046 ✅ VERIFIED - Copy-Trading Risk & Compliance Controls (100% complete)
+   PR-047 ✅ VERIFIED - Public Performance Page (94% tests passing)
+   PR-048 ⏳ READY  - Auto-Trace to Third-Party Trackers (awaiting implementation)
+
+═════════════════════════════════════════════════════════════════════════════

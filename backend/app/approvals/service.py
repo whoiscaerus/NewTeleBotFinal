@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.approvals.models import Approval
 from backend.app.core.errors import APIError
+from backend.app.risk.service import RiskService
 from backend.app.signals.models import Signal, SignalStatus
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,22 @@ class ApprovalService:
             self.db.add(signal)
             await self.db.commit()
             await self.db.refresh(approval)
+
+            # ===== NEW: Update exposure snapshot (PR-048 Integration) =====
+            # After approval, recalculate exposure for risk monitoring
+            if decision == "approved":
+                try:
+                    await RiskService.calculate_current_exposure(user_id, self.db)
+                    logger.debug(
+                        "Exposure snapshot updated after approval",
+                        extra={"signal_id": signal_id, "user_id": user_id},
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to update exposure snapshot: {e}",
+                        extra={"signal_id": signal_id, "user_id": user_id},
+                    )
+            # ===== END: Update exposure snapshot =====
 
             logger.info(
                 f"Signal {decision}: {signal_id}",

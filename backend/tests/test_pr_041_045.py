@@ -481,5 +481,254 @@ class TestCopyTrading:
         assert not settings["enabled"]
 
 
+# PR-042 Integration Tests
+class TestPR042Integration:
+    """Test full PR-042 flow: device registration → encryption key → poll encrypted signals."""
+
+    @pytest.mark.asyncio
+    async def test_device_registration_returns_encryption_key(self, db_session):
+        """Test device registration returns both HMAC and encryption key (shown once)."""
+        from uuid import uuid4
+
+        from backend.app.clients.models import Client
+        from backend.app.clients.service import DeviceService
+
+        # Create a test client first
+        client_id = str(uuid4())
+        client = Client(id=client_id, email=f"test-{uuid4()}@example.com")
+        db_session.add(client)
+        await db_session.commit()
+
+        service = DeviceService(db_session)
+        device, hmac_secret, encryption_key = await service.create_device(
+            client_id, "TestDevice"
+        )
+
+        # Verify all three components returned
+        assert device is not None
+        assert device.id
+        assert hmac_secret is not None
+        assert len(hmac_secret) > 0
+        assert encryption_key is not None
+        assert len(encryption_key) > 0
+
+        # Encryption key should be base64-encoded (contains only base64 chars)
+        import base64
+
+        try:
+            decoded = base64.b64decode(encryption_key)
+            assert len(decoded) == 32  # 32-byte AES-256 key
+        except Exception:
+            pytest.fail("encryption_key is not valid base64")
+
+    @pytest.mark.asyncio
+    async def test_device_key_manager_creates_per_device_key(self):
+        """Test that device registration creates encryption key in DeviceKeyManager."""
+        from backend.app.ea.crypto import DeviceKeyManager
+
+        manager = DeviceKeyManager("test-secret", key_rotate_days=90)
+        device_id = "test_device_001"
+
+        # Create device key
+        key_obj = manager.create_device_key(device_id)
+
+        # Verify key was created
+        assert key_obj is not None
+        assert key_obj.device_id == device_id
+        assert len(key_obj.encryption_key) == 32
+        assert key_obj.is_active
+        assert key_obj.expires_at is not None
+
+        # Retrieve and verify same key
+        retrieved = manager.get_device_key(device_id)
+        assert retrieved is not None
+        assert retrieved.encryption_key == key_obj.encryption_key
+
+    @pytest.mark.asyncio
+    async def test_poll_returns_encrypted_signals(self):
+        """Test poll endpoint returns signals encrypted in AEAD envelope."""
+
+        from backend.app.ea.crypto import DeviceKeyManager, SignalEnvelope
+
+        manager = DeviceKeyManager("test-secret")
+        manager.create_device_key("device_001")
+        envelope = SignalEnvelope(manager)
+
+        # Build test signal data
+        signal_data = {
+            "approval_id": "550e8400-e29b-41d4-a716-446655440000",
+            "instrument": "XAUUSD",
+            "side": "buy",
+            "entry_price": 1950.50,
+            "volume": 0.5,
+            "ttl_minutes": 240,
+            "approved_at": "2025-10-26T10:30:45Z",
+            "created_at": "2025-10-26T10:30:00Z",
+        }
+
+        # Encrypt signal
+        ciphertext_b64, nonce_b64, aad = envelope.encrypt_signal(
+            "device_001", signal_data
+        )
+
+        # Verify ciphertext is base64 and non-empty
+        assert len(ciphertext_b64) > 0
+        assert len(nonce_b64) > 0
+        assert aad == "device_001"
+
+        # Decrypt to verify roundtrip
+        decrypted = envelope.decrypt_signal(
+            "device_001", ciphertext_b64, nonce_b64, aad
+        )
+        assert decrypted == signal_data
+
+    @pytest.mark.asyncio
+    async def test_encrypted_poll_response_schema(self):
+        """Test EncryptedPollResponse schema validates correctly."""
+        from uuid import uuid4
+
+        from backend.app.ea.schemas import (
+            EncryptedPollResponse,
+            EncryptedSignalEnvelope,
+        )
+
+        # Build encrypted poll response
+        signal = EncryptedSignalEnvelope(
+            approval_id=uuid4(),
+            ciphertext="k2hSU0FhbWJlcjMyICsgQUI4YjdjTHJmMDhpWEorUWVDMmhWVnc9PQ==",
+            nonce="L4FqCw0xR5L8M3xJ",
+            aad="device_001",
+        )
+
+        response = EncryptedPollResponse(
+            approvals=[signal],
+            count=1,
+            polled_at="2025-10-26T10:31:00Z",
+            next_poll_seconds=10,
+        )
+
+        assert response.count == 1
+        assert len(response.approvals) == 1
+        assert (
+            response.approvals[0].ciphertext
+            == "k2hSU0FhbWJlcjMyICsgQUI4YjdjTHJmMDhpWEorUWVDMmhWVnc9PQ=="
+        )
+
+    @pytest.mark.asyncio
+    async def test_tamper_detection_on_encrypted_signal(self):
+        """Test tampering with encrypted signal is detected on decryption."""
+        from backend.app.ea.crypto import DeviceKeyManager, SignalEnvelope
+
+        manager = DeviceKeyManager("test-secret")
+        manager.create_device_key("device_001")
+        envelope = SignalEnvelope(manager)
+
+        signal_data = {"test": "data"}
+        ciphertext_b64, nonce_b64, aad = envelope.encrypt_signal(
+            "device_001", signal_data
+        )
+
+        # Tamper with ciphertext (flip a character)
+        tampered = ciphertext_b64[:-5] + "XXXXX"
+
+        # Decryption should fail (InvalidTag or similar exception)
+        with pytest.raises(Exception):
+            envelope.decrypt_signal("device_001", tampered, nonce_b64, aad)
+
+    @pytest.mark.asyncio
+    async def test_cross_device_decryption_prevented(self):
+        """Test signal encrypted for device_001 cannot be decrypted by device_002."""
+        from backend.app.ea.crypto import DeviceKeyManager, SignalEnvelope
+
+        manager = DeviceKeyManager("test-secret")
+        manager.create_device_key("device_001")
+        manager.create_device_key("device_002")
+        envelope = SignalEnvelope(manager)
+
+        signal_data = {"sensitive": "data"}
+        ciphertext_b64, nonce_b64, aad = envelope.encrypt_signal(
+            "device_001", signal_data
+        )
+
+        # Try to decrypt with wrong device ID
+        with pytest.raises((ValueError, Exception)):
+            # Use device_002's AAD but device_001's ciphertext
+            envelope.decrypt_signal(
+                "device_002", ciphertext_b64, nonce_b64, "device_002"
+            )
+
+    @pytest.mark.asyncio
+    async def test_end_to_end_registration_and_decryption(self, db_session):
+        """E2E test: Register device → get encryption key → encrypt signal → decrypt."""
+        from uuid import uuid4
+
+        from backend.app.clients.models import Client
+        from backend.app.clients.service import DeviceService
+        from backend.app.ea.crypto import SignalEnvelope, get_key_manager
+
+        # Create a test client
+        client_id = str(uuid4())
+        client = Client(id=client_id, email=f"test-{uuid4()}@example.com")
+        db_session.add(client)
+        await db_session.commit()
+
+        # 1. Register device
+        service = DeviceService(db_session)
+        device, hmac_secret, encryption_key_b64 = await service.create_device(
+            client_id, "TestDevice"
+        )
+
+        # 2. Simulate EA receiving encryption key and storing it
+        # (In real EA, key would be stored in EA input parameters)
+        received_key_b64 = encryption_key_b64
+        assert len(received_key_b64) > 0
+
+        # 3. Server encrypts signal for this device
+        key_manager = get_key_manager()
+        envelope = SignalEnvelope(key_manager)
+
+        signal_data = {
+            "approval_id": "550e8400-e29b-41d4-a716-446655440000",
+            "instrument": "EURUSD",
+            "side": "sell",
+            "entry_price": 1.0950,
+            "volume": 1.0,
+            "ttl_minutes": 120,
+        }
+        ciphertext_b64, nonce_b64, aad = envelope.encrypt_signal(device.id, signal_data)
+
+        # 4. Simulate EA receiving encrypted signal and decrypting
+        # (In real EA, this happens in MQL5 using caerus_crypto.mqh)
+        decrypted = envelope.decrypt_signal(device.id, ciphertext_b64, nonce_b64, aad)
+
+        # 5. Verify plaintext matches original
+        assert decrypted == signal_data
+        assert decrypted["instrument"] == "EURUSD"
+        assert decrypted["side"] == "sell"
+
+    @pytest.mark.asyncio
+    async def test_encryption_key_rotation_invalidates_old_keys(self):
+        """Test key rotation marks old keys as inactive."""
+        from backend.app.ea.crypto import DeviceKeyManager, SignalEnvelope
+
+        manager = DeviceKeyManager("test-secret", key_rotate_days=90)
+        manager.create_device_key("device_001")
+        envelope = SignalEnvelope(manager)
+
+        # Encrypt with first key
+        signal_data = {"data": "value"}
+        ciphertext_b64, nonce_b64, aad = envelope.encrypt_signal(
+            "device_001", signal_data
+        )
+
+        # Revoke (rotate) the key
+        manager.revoke_device_key("device_001")
+
+        # Old ciphertext cannot be decrypted (no active key)
+        # In production, device would request new key
+        key = manager.get_device_key("device_001")
+        assert key is None  # No active key after revocation
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

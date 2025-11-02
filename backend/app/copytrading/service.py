@@ -1,8 +1,10 @@
 """
 PR-045: Copy-Trading Integration & Pricing Uplift - Auto-execution with +30% markup
+PR-046: Copy-Trading Risk & Compliance Controls - Guard rails, disclosures, pause mechanism
 
 Copy-trading enables users to automatically execute trades without approval.
 Pricing is marked up +30% on base plan price for copy-trading tier.
+PR-046 adds risk parameters, disclosure versioning, forced pause on breach, and Telegram alerts.
 """
 
 import uuid
@@ -18,6 +20,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
 )
 from sqlalchemy.orm import Session
 
@@ -25,7 +28,7 @@ from backend.app.core.db import Base
 
 
 class CopyTradeSettings(Base):
-    """User copy-trading configuration."""
+    """User copy-trading configuration with PR-046 risk parameters."""
 
     __tablename__ = "copy_trade_settings"
 
@@ -33,6 +36,7 @@ class CopyTradeSettings(Base):
     user_id = Column(
         String(36), ForeignKey("users.id"), unique=True, nullable=False, index=True
     )
+    # PR-045 fields
     enabled = Column(Boolean, default=False)
     risk_multiplier = Column(Float, default=1.0)  # Scale trade sizes by factor
     max_drawdown_percent = Column(Float, default=20.0)  # Stop trading if DD > threshold
@@ -41,14 +45,81 @@ class CopyTradeSettings(Base):
     trades_today = Column(Integer, default=0)  # Counter for current day
     started_at = Column(DateTime)
     ended_at = Column(DateTime)
+    consent_version = Column(String(50), default="1.0")  # Versioned consent text
+    consent_accepted_at = Column(DateTime)
+
+    # PR-046 Risk Control Fields
+    max_leverage = Column(Float, default=5.0)  # Max leverage per trade (1x-10x)
+    max_per_trade_risk_percent = Column(
+        Float, default=2.0
+    )  # Max risk per trade as % of account
+    total_exposure_percent = Column(
+        Float, default=50.0
+    )  # Max total exposure % across all positions
+    daily_stop_percent = Column(Float, default=10.0)  # Max daily loss % before pause
+    is_paused = Column(Boolean, default=False)  # Paused due to breach
+    pause_reason = Column(String(500))  # Reason for pause (breach type)
+    paused_at = Column(DateTime)  # When pause triggered
+    last_breach_at = Column(DateTime)  # Last time risk breach detected
+    last_breach_reason = Column(
+        String(500)
+    )  # Type of breach (max_leverage, max_risk, exposure, daily_stop)
+
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
-    consent_version = Column(String(50), default="1.0")  # Versioned consent text
-    consent_accepted_at = Column(DateTime)
 
-    __table_args__ = (Index("ix_copy_enabled_user", "enabled", "user_id"),)
+    __table_args__ = (
+        Index("ix_copy_enabled_user", "enabled", "user_id"),
+        Index("ix_copy_paused_user", "is_paused", "user_id"),
+    )
+
+
+class Disclosure(Base):
+    """Versioned disclosure/consent document for copy-trading (PR-046)."""
+
+    __tablename__ = "disclosures"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    version = Column(
+        String(50), nullable=False, unique=True, index=True
+    )  # "1.0", "1.1", "2.0"
+    title = Column(
+        String(500), nullable=False
+    )  # e.g., "Copy-Trading Risk Disclosure v1.0"
+    content = Column(Text, nullable=False)  # Full disclosure text (markdown)
+    effective_date = Column(
+        DateTime, nullable=False
+    )  # When this version becomes active
+    is_active = Column(Boolean, default=True)  # Current version for new signups
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_disclosure_version", "version"),
+        Index("ix_disclosure_active", "is_active"),
+    )
+
+
+class UserConsent(Base):
+    """User's acceptance of disclosure (PR-046) - immutable audit trail."""
+
+    __tablename__ = "user_consents"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    disclosure_version = Column(
+        String(50), nullable=False
+    )  # Version accepted (e.g., "1.0")
+    accepted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    ip_address = Column(String(45))  # IPv4 or IPv6
+    user_agent = Column(String(500))  # Browser/client info
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_user_consent_user_version", "user_id", "disclosure_version"),
+        Index("ix_user_consent_user_date", "user_id", "accepted_at"),
+    )
 
 
 class CopyTradeExecution(Base):

@@ -31,11 +31,13 @@ from backend.app.ea.close_schemas import (  # PR-104 Phase 5
     CloseCommandOut,
     CloseCommandsResponse,
 )
+from backend.app.ea.crypto import SignalEnvelope, get_key_manager  # PR-042
 from backend.app.ea.models import Execution, ExecutionStatus
 from backend.app.ea.schemas import (
     AckRequest,
     AckResponse,
-    ApprovedSignalOut,
+    EncryptedPollResponse,
+    EncryptedSignalEnvelope,
     ExecutionParamsOut,
     PollResponse,
 )
@@ -122,7 +124,11 @@ async def poll_approved_signals(
         approvals = result.scalars().all()
 
         # Filter out approvals that have already been executed on this device
-        approved_signals = []
+        # PR-042: Wrap signals in encryption envelope
+        key_manager = get_key_manager()
+        envelope = SignalEnvelope(key_manager)
+        encrypted_signals = []
+
         for approval in approvals:
             # Check if this approval has been executed on this device already
             exec_stmt = select(Execution).where(
@@ -190,22 +196,55 @@ async def poll_approved_signals(
                 )
                 continue
 
-            approved_signals.append(
-                ApprovedSignalOut(
-                    approval_id=approval.id,
-                    instrument=signal.instrument,
-                    side="buy" if signal.side == 0 else "sell",
-                    execution_params=exec_params,
-                    approved_at=approval.created_at,
-                    created_at=signal.created_at,
+            # PR-042: Build plaintext signal object before encryption
+            signal_data = {
+                "approval_id": str(approval.id),
+                "instrument": signal.instrument,
+                "side": "buy" if signal.side == 0 else "sell",
+                "entry_price": float(entry_price),
+                "volume": float(volume),
+                "ttl_minutes": int(ttl_minutes),
+                "approved_at": approval.created_at.isoformat(),
+                "created_at": signal.created_at.isoformat(),
+            }
+
+            # Encrypt the signal payload
+            try:
+                ciphertext_b64, nonce_b64, aad = envelope.encrypt_signal(
+                    device_auth.device_id, signal_data
                 )
-            )
+
+                logger.info(
+                    "Signal encrypted for device",
+                    extra={
+                        "device_id": device_auth.device_id,
+                        "approval_id": str(approval.id),
+                        "ciphertext_length": len(ciphertext_b64),
+                    },
+                )
+
+                encrypted_signals.append(
+                    EncryptedSignalEnvelope(
+                        approval_id=approval.id,
+                        ciphertext=ciphertext_b64,
+                        nonce=nonce_b64,
+                        aad=aad,
+                    )
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to encrypt signal",
+                    extra={"approval_id": str(approval.id), "error": str(e)},
+                    exc_info=True,
+                )
+                # Skip this signal if encryption fails
+                continue
 
         logger.info(
             "Poll response",
             extra={
                 "device_id": device_auth.device_id,
-                "signals_count": len(approved_signals),
+                "signals_count": len(encrypted_signals),
             },
         )
 
@@ -213,9 +252,9 @@ async def poll_approved_signals(
         duration = time.time() - start_time
         metrics.record_ea_poll_duration(duration)
 
-        return PollResponse(
-            approvals=approved_signals,
-            count=len(approved_signals),
+        return EncryptedPollResponse(
+            approvals=encrypted_signals,
+            count=len(encrypted_signals),
             polled_at=datetime.utcnow(),
             next_poll_seconds=10,
         )

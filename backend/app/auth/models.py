@@ -2,14 +2,18 @@
 
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.core.db import Base
+
+if TYPE_CHECKING:
+    pass
 
 
 class UserRole(str, Enum):
@@ -48,6 +52,33 @@ class User(Base):
         onupdate=datetime.utcnow,
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    account_links: Mapped[list] = relationship(
+        "AccountLink",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+    # Trust scoring relationships - use string forward references only
+    # Avoid primaryjoin string to prevent mapper initialization issues
+    endorsements_given: Mapped[list] = relationship(
+        "Endorsement",
+        foreign_keys="[Endorsement.endorser_id]",
+        back_populates="endorser",
+        lazy="select",
+        viewonly=False,
+    )
+    endorsements_received: Mapped[list] = relationship(
+        "Endorsement",
+        foreign_keys="[Endorsement.endorsee_id]",
+        back_populates="endorsee",
+        lazy="select",
+        viewonly=False,
+    )
+    trust_score: Mapped[object] = relationship(
+        "UserTrustScore", back_populates="user", uselist=False, lazy="select"
+    )
 
     def __init__(self, **kwargs):
         """Initialize User with default role."""

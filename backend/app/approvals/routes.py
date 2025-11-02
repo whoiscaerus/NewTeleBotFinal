@@ -15,6 +15,7 @@ from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.observability import get_metrics
+from backend.app.risk.service import RiskService
 from backend.app.signals.models import Signal
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,30 @@ async def create_approval(
                 extra={"signal_id": request_data.signal_id, "user_id": current_user.id},
             )
             raise HTTPException(status_code=403, detail="Not signal owner")
+
+        # ===== NEW: Risk Check (PR-048 Integration) =====
+        # Validate signal against client risk limits before approval
+        risk_check = await RiskService.check_risk_limits(current_user.id, signal, db)
+        if not risk_check["passes"]:
+            # Log violations for audit
+            violation_details = [v["message"] for v in risk_check["violations"]]
+            logger.warning(
+                f"Signal {request_data.signal_id} rejected due to risk violations",
+                extra={
+                    "signal_id": request_data.signal_id,
+                    "user_id": current_user.id,
+                    "violations": violation_details,
+                },
+            )
+            # Return 403 with violation details
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "message": "Signal violates risk limits",
+                    "violations": risk_check["violations"],
+                },
+            )
+        # ===== END: Risk Check =====
 
         # Check for duplicate approval (signal_id, user_id)
         existing = await db.execute(

@@ -31,6 +31,19 @@ class DeviceOut(BaseModel):
         from_attributes = True
 
 
+class DeviceCreateResponse(DeviceOut):
+    """Response from device creation - includes secrets (shown once).
+
+    PR-042: Includes both HMAC secret and encryption key material.
+    Both are shown ONCE ONLY at registration time.
+    """
+
+    secret: str | None = None  # HMAC secret
+    encryption_key: str | None = (
+        None  # Base64-encoded AES-256 key for signal decryption
+    )
+
+
 class DevicePollRequest(BaseModel):
     """Device polling request (with HMAC signature)."""
 
