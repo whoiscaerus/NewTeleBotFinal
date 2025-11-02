@@ -5,6 +5,8 @@ Provides services to compute equity curves and drawdown from warehouse data.
 Handles gaps, partial days, and peak tracking robustly.
 """
 
+from __future__ import annotations
+
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Optional
@@ -75,7 +77,7 @@ class EquitySeries:
         """
         return [
             ((p - e) / p * Decimal(100)) if p > 0 else Decimal(0)
-            for e, p in zip(self.equity, self.peak_equity)
+            for e, p in zip(self.equity, self.peak_equity, strict=True)
         ]
 
     @property
@@ -86,6 +88,25 @@ class EquitySeries:
             Decimal: Maximum drawdown percentage
         """
         return max(self.drawdown) if self.drawdown else Decimal(0)
+
+    @property
+    def points(self) -> list[dict]:
+        """Get equity points as list of dictionaries.
+
+        Returns:
+            List[dict]: List of point dicts with date, equity, cumulative_pnl, drawdown_percent
+        """
+        return [
+            {
+                "date": d,
+                "equity": float(e),
+                "cumulative_pnl": float(c),
+                "drawdown_percent": float(dd),
+            }
+            for d, e, c, dd in zip(
+                self.dates, self.equity, self.cumulative_pnl, self.drawdown, strict=True
+            )
+        ]
 
     @property
     def final_equity(self) -> Decimal:
@@ -108,6 +129,42 @@ class EquitySeries:
         first = self.equity[0]
         last = self.equity[-1]
         return ((last - first) / first * Decimal(100)) if first > 0 else Decimal(0)
+
+    @property
+    def total_return_percent(self) -> float:
+        """Get total return percentage as float.
+
+        Returns:
+            float: Return percentage
+        """
+        return float(self.total_return)
+
+    @property
+    def initial_equity(self) -> float:
+        """Get initial equity value.
+
+        Returns:
+            float: First equity value
+        """
+        return float(self.equity[0]) if self.equity else 0.0
+
+    @property
+    def max_drawdown_percent(self) -> float:
+        """Get maximum drawdown percentage as float.
+
+        Returns:
+            float: Maximum drawdown percentage
+        """
+        return float(self.max_drawdown)
+
+    @property
+    def days_in_period(self) -> int:
+        """Get number of trading days in period.
+
+        Returns:
+            int: Number of days
+        """
+        return len(self.dates)
 
     def __repr__(self):
         return (

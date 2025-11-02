@@ -4,7 +4,7 @@ import os
 import sys
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 # Mock MetaTrader5 BEFORE any imports that might use it
 # MetaTrader5 is Windows-only and not available on Linux/GitHub Actions
@@ -627,7 +627,9 @@ async def other_user(db_session: AsyncSession):
 @pytest_asyncio.fixture
 async def auth_headers(test_user) -> dict:
     """Create JWT authentication headers for test user."""
-    from backend.app.auth.security import create_access_token
+    from backend.app.auth.utils import create_access_token
 
-    token = create_access_token(subject=test_user.id, expires_delta=None)
+    token = create_access_token(
+        subject=test_user.id, role=test_user.role, expires_delta=None
+    )
     return {"Authorization": f"Bearer {token}"}

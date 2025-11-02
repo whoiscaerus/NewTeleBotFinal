@@ -11,8 +11,11 @@ Support query parameters for date ranges and windows.
 Include caching and error handling.
 """
 
+from __future__ import annotations
+
 import csv
 import json
+import logging
 from datetime import date, datetime, timedelta
 from io import StringIO
 from typing import Optional
@@ -27,9 +30,10 @@ from backend.app.analytics.drawdown import DrawdownAnalyzer
 from backend.app.analytics.equity import EquityEngine
 from backend.app.analytics.metrics import PerformanceMetrics
 from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.models import User
 from backend.app.core.db import get_db
-from backend.app.core.observability import logger
-from backend.app.users.models import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
