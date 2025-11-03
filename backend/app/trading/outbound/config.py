@@ -109,10 +109,12 @@ class OutboundConfig:
 
         if not enabled:
             # Return disabled config with minimal required fields
+            # Note: All fields must still pass validation, so using dummy values
+            # that meet the minimum requirements (e.g., secret must be >= 16 bytes)
             return cls(
-                producer_id="disabled",
-                producer_secret="disabled",
-                server_base_url="disabled",
+                producer_id="disabled-producer-id",
+                producer_secret="disabled-secret-1234",
+                server_base_url="http://disabled",
                 enabled=False,
                 timeout_seconds=30.0,
             )

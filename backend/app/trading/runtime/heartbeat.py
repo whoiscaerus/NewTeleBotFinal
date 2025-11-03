@@ -222,7 +222,7 @@ class HeartbeatManager:
                 try:
                     await asyncio.sleep(self.interval_seconds)
 
-                    metrics = metrics_provider()
+                    metrics = await metrics_provider()
                     await self.emit(**metrics)
                 except asyncio.CancelledError:
                     self._logger.info(

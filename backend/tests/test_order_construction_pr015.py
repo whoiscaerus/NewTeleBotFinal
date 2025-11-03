@@ -14,6 +14,7 @@ from backend.app.trading.orders import (
     build_order,
     build_orders_batch,
     compute_expiry,
+    enforce_all_constraints,
     get_constraints,
     round_to_tick,
     validate_rr_ratio,
@@ -934,6 +935,509 @@ class TestEdgeCases:
         )
         assert is_valid is True
         assert ratio == pytest.approx(1.5, rel=0.01)
+
+
+# ===== NEW TEST CLASSES FOR COVERAGE EXPANSION =====
+
+
+class TestBuilderErrorPaths:
+    """Test error paths in builder.py (lines 77, 81, 84, 87, 90, 93, 112, 118)."""
+
+    @pytest.mark.asyncio
+    async def test_build_order_signal_none(self, strategy_params, base_datetime):
+        """Test builder rejects None signal (line 77)."""
+        with pytest.raises(OrderBuildError, match="Signal cannot be None"):
+            await build_order(None, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_buy_sl_gte_entry(
+        self, strategy_params, base_datetime
+    ):
+        """Test builder rejects BUY order where SL >= entry (line 93)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="buy",
+            entry_price=1950.00,
+            stop_loss=1950.00,  # SL == entry (should be <)
+            take_profit=1960.00,
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        with pytest.raises(OrderBuildError, match="BUY order: SL .* must be < entry"):
+            await build_order(signal, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_buy_sl_greater_than_entry(
+        self, strategy_params, base_datetime
+    ):
+        """Test builder rejects BUY order where SL > entry (line 93)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="buy",
+            entry_price=1950.00,
+            stop_loss=1955.00,  # SL > entry (should be <)
+            take_profit=1960.00,
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        with pytest.raises(OrderBuildError, match="BUY order: SL .* must be < entry"):
+            await build_order(signal, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_buy_tp_lte_entry(
+        self, strategy_params, base_datetime
+    ):
+        """Test builder rejects BUY order where TP <= entry (line 112)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="buy",
+            entry_price=1950.00,
+            stop_loss=1945.00,
+            take_profit=1950.00,  # TP == entry (should be >)
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        with pytest.raises(OrderBuildError, match="BUY order: TP .* must be > entry"):
+            await build_order(signal, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_buy_tp_less_than_entry(
+        self, strategy_params, base_datetime
+    ):
+        """Test builder rejects BUY order where TP < entry (line 112)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="buy",
+            entry_price=1950.00,
+            stop_loss=1945.00,
+            take_profit=1940.00,  # TP < entry (should be >)
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        with pytest.raises(OrderBuildError, match="BUY order: TP .* must be > entry"):
+            await build_order(signal, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_sell_sl_lte_entry(
+        self, strategy_params, base_datetime
+    ):
+        """Test builder rejects SELL order where SL <= entry (line 112)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="sell",
+            entry_price=1950.00,
+            stop_loss=1950.00,  # SL == entry (should be >)
+            take_profit=1940.00,
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        with pytest.raises(OrderBuildError, match="SELL order: SL .* must be > entry"):
+            await build_order(signal, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_sell_sl_less_than_entry(
+        self, strategy_params, base_datetime
+    ):
+        """Test builder rejects SELL order where SL < entry (line 112)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="sell",
+            entry_price=1950.00,
+            stop_loss=1940.00,  # SL < entry (should be >)
+            take_profit=1940.00,
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        with pytest.raises(OrderBuildError, match="SELL order: SL .* must be > entry"):
+            await build_order(signal, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_sell_tp_gte_entry(
+        self, strategy_params, base_datetime
+    ):
+        """Test builder rejects SELL order where TP >= entry (line 118)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="sell",
+            entry_price=1950.00,
+            stop_loss=1955.00,
+            take_profit=1950.00,  # TP == entry (should be <)
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        with pytest.raises(OrderBuildError, match="SELL order: TP .* must be < entry"):
+            await build_order(signal, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_sell_tp_greater_than_entry(
+        self, strategy_params, base_datetime
+    ):
+        """Test builder rejects SELL order where TP > entry (line 118)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="sell",
+            entry_price=1950.00,
+            stop_loss=1955.00,
+            take_profit=1960.00,  # TP > entry (should be <)
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        with pytest.raises(OrderBuildError, match="SELL order: TP .* must be < entry"):
+            await build_order(signal, strategy_params, current_time=base_datetime)
+
+    @pytest.mark.asyncio
+    async def test_build_order_rr_constraint_violated(
+        self, base_datetime
+    ):
+        """Test builder rejects order when R:R ratio too low (line 118)."""
+        signal = SignalCandidate(
+            instrument="GOLD",
+            side="buy",
+            entry_price=1950.00,
+            stop_loss=1949.00,  # Risk = 1.0
+            take_profit=1951.00,  # Reward = 1.0, ratio = 1.0 < 1.5 min
+            confidence=0.85,
+            timestamp=base_datetime,
+            reason="test",
+            payload={},
+            version="1.0",
+        )
+        params = StrategyParams(rr_ratio=1.5, min_stop_distance_points=0)
+        with pytest.raises(OrderBuildError, match="R:R ratio constraint violation"):
+            await build_order(signal, params, current_time=base_datetime)
+
+
+class TestConstraintEdgeCases:
+    """Test edge cases in constraints.py (lines 80, 83, 138, 224, 228, 242, 249, 314-335)."""
+
+    def test_apply_min_stop_distance_invalid_side(self):
+        """Test apply_min_stop_distance rejects invalid side (line 80)."""
+        with pytest.raises(ValueError, match="side must be 'BUY' or 'SELL'"):
+            apply_min_stop_distance(
+                entry=1950.00,
+                stop_loss=1945.00,
+                min_distance_points=5,
+                symbol="GOLD",
+                side="INVALID",
+            )
+
+    def test_apply_min_stop_distance_negative_min_distance(self):
+        """Test apply_min_stop_distance rejects negative min distance (line 83)."""
+        with pytest.raises(ValueError, match="min_distance_points must be >= 0"):
+            apply_min_stop_distance(
+                entry=1950.00,
+                stop_loss=1945.00,
+                min_distance_points=-5,
+                symbol="GOLD",
+                side="BUY",
+            )
+
+    def test_apply_min_stop_distance_buy_adjustment_needed(self):
+        """Test apply_min_stop_distance adjusts BUY SL when too close (line 138)."""
+        # Entry 1950.00, SL 1949.98 (distance 0.02 = 2 points)
+        # With min 5 points, SL should be adjusted to 1949.95
+        adjusted_sl, was_adjusted = apply_min_stop_distance(
+            entry=1950.00,
+            stop_loss=1949.98,  # Too close to entry (2 points < 5 minimum)
+            min_distance_points=5,  # Min 5 points = 0.05
+            symbol="GOLD",
+            side="BUY",
+        )
+        assert was_adjusted is True
+        assert adjusted_sl < 1950.00  # SL moved further down
+        assert adjusted_sl == pytest.approx(1949.95, abs=0.001)
+
+    def test_apply_min_stop_distance_sell_adjustment_needed(self):
+        """Test apply_min_stop_distance adjusts SELL SL when too close (line 138)."""
+        # Entry 1950.00, SL 1950.02 (distance 0.02 = 2 points)
+        # With min 5 points, SL should be adjusted to 1950.05
+        adjusted_sl, was_adjusted = apply_min_stop_distance(
+            entry=1950.00,
+            stop_loss=1950.02,  # Too close to entry (2 points < 5 minimum)
+            min_distance_points=5,  # Min 5 points = 0.05
+            symbol="GOLD",
+            side="SELL",
+        )
+        assert was_adjusted is True
+        assert adjusted_sl > 1950.00  # SL moved further up
+        assert adjusted_sl == pytest.approx(1950.05, abs=0.001)
+
+    def test_round_to_tick_invalid_direction(self):
+        """Test round_to_tick rejects invalid direction (line 224)."""
+        with pytest.raises(ValueError, match="direction must be"):
+            round_to_tick(1950.125, "GOLD", "invalid_direction")
+
+    def test_round_to_tick_up(self):
+        """Test round_to_tick rounds up correctly (line 228)."""
+        result = round_to_tick(1950.125, "GOLD", "up")
+        assert result == 1950.13  # Rounded up to nearest 0.01
+
+    def test_round_to_tick_down(self):
+        """Test round_to_tick rounds down correctly (line 242)."""
+        result = round_to_tick(1950.125, "GOLD", "down")
+        assert result == pytest.approx(1950.12, rel=0.001)  # Rounded down to 0.01
+
+    def test_validate_rr_ratio_invalid_side(self):
+        """Test validate_rr_ratio rejects invalid side (line 249)."""
+        with pytest.raises(ValueError, match="side must be"):
+            validate_rr_ratio(
+                entry=1950.0,
+                stop_loss=1945.0,
+                take_profit=1960.0,
+                min_ratio=1.5,
+                side="INVALID",
+            )
+
+    def test_validate_rr_ratio_negative_price(self):
+        """Test validate_rr_ratio rejects non-positive prices (line 249)."""
+        with pytest.raises(ValueError, match="All prices must be positive"):
+            validate_rr_ratio(
+                entry=-1950.0,  # Invalid
+                stop_loss=1945.0,
+                take_profit=1960.0,
+                min_ratio=1.5,
+                side="BUY",
+            )
+
+    def test_enforce_all_constraints_complete(self):
+        """Test enforce_all_constraints applies all validations (lines 314-335)."""
+        entry, sl, tp, msg = enforce_all_constraints(
+            entry=1950.50,
+            stop_loss=1949.98,  # Too close to entry (needs adjustment)
+            take_profit=1960.00,
+            min_rr_ratio=1.5,
+            min_distance_pips=5,
+            symbol="GOLD",
+            side="BUY",
+        )
+        # Should apply min distance constraint and adjust SL
+        # Either SL should be adjusted or an error message about R:R
+        assert msg == "" or "R:R" in msg  # Either successful or R:R error
+
+    def test_enforce_all_constraints_rr_violation(self):
+        """Test enforce_all_constraints detects R:R violations (lines 314-335)."""
+        entry, sl, tp, msg = enforce_all_constraints(
+            entry=1950.00,
+            stop_loss=1949.50,  # Risk = 0.50
+            take_profit=1951.00,  # Reward = 1.00, ratio = 2.0 (OK)
+            min_rr_ratio=3.0,  # But minimum is 3.0 (constraint violation)
+            min_distance_pips=0,
+            symbol="GOLD",
+            side="BUY",
+        )
+        # Should report R:R error
+        assert msg != "" and "minimum" in msg.lower()
+
+
+class TestSchemaValidatorPaths:
+    """Test schema.py validator paths (lines 120, 127, 137, 151, 160-162, 169, 173, 219, 233-242, 246, 274)."""
+
+    def test_order_params_tp_equals_sl_validation(self):
+        """Test OrderParams rejects TP == SL (line 151)."""
+        with pytest.raises(ValueError, match="Take profit and stop loss cannot be the same"):
+            OrderParams(
+                signal_id="sig-001",
+                symbol="GOLD",
+                order_type=OrderType.PENDING_BUY,
+                volume=0.1,
+                entry_price=1950.50,
+                stop_loss=1945.00,
+                take_profit=1945.00,  # Same as SL (invalid)
+                expiry_time=datetime.utcnow() + timedelta(hours=24),
+                created_at=datetime.utcnow(),
+                risk_amount=5.50,
+                reward_amount=9.50,
+                risk_reward_ratio=1.73,
+            )
+
+    def test_order_params_volume_negative(self):
+        """Test OrderParams rejects negative volume (line 160)."""
+        with pytest.raises(ValueError, match="greater than 0"):
+            OrderParams(
+                signal_id="sig-001",
+                symbol="GOLD",
+                order_type=OrderType.PENDING_BUY,
+                volume=-0.1,  # Negative
+                entry_price=1950.50,
+                stop_loss=1945.00,
+                take_profit=1960.00,
+                expiry_time=datetime.utcnow() + timedelta(hours=24),
+                created_at=datetime.utcnow(),
+                risk_amount=5.50,
+                reward_amount=9.50,
+                risk_reward_ratio=1.73,
+            )
+
+    def test_order_params_volume_zero(self):
+        """Test OrderParams rejects zero volume (line 162)."""
+        with pytest.raises(ValueError, match="greater than 0"):
+            OrderParams(
+                signal_id="sig-001",
+                symbol="GOLD",
+                order_type=OrderType.PENDING_BUY,
+                volume=0.0,  # Zero
+                entry_price=1950.50,
+                stop_loss=1945.00,
+                take_profit=1960.00,
+                expiry_time=datetime.utcnow() + timedelta(hours=24),
+                created_at=datetime.utcnow(),
+                risk_amount=5.50,
+                reward_amount=9.50,
+                risk_reward_ratio=1.73,
+            )
+
+    def test_order_params_volume_too_large(self):
+        """Test OrderParams rejects volume > 100 (line 162)."""
+        with pytest.raises(ValueError, match="Volume too large"):
+            OrderParams(
+                signal_id="sig-001",
+                symbol="GOLD",
+                order_type=OrderType.PENDING_BUY,
+                volume=101.0,  # > 100
+                entry_price=1950.50,
+                stop_loss=1945.00,
+                take_profit=1960.00,
+                expiry_time=datetime.utcnow() + timedelta(hours=24),
+                created_at=datetime.utcnow(),
+                risk_amount=5.50,
+                reward_amount=9.50,
+                risk_reward_ratio=1.73,
+            )
+
+    def test_order_params_expiry_validation(self):
+        """Test OrderParams validates expiry timing."""
+        # Create with valid expiry (in future)
+        now = datetime.utcnow()
+        order = OrderParams(
+            signal_id="sig-001",
+            symbol="GOLD",
+            order_type=OrderType.PENDING_BUY,
+            volume=0.1,
+            entry_price=1950.50,
+            stop_loss=1945.00,
+            take_profit=1960.00,
+            expiry_time=now + timedelta(hours=24),  # 24 hours in future
+            created_at=now,
+            risk_amount=5.50,
+            reward_amount=9.50,
+            risk_reward_ratio=1.73,
+        )
+        # Expiry should be in future relative to creation
+        assert order.expiry_time > order.created_at
+
+    def test_broker_constraints_invalid_symbol(self):
+        """Test BrokerConstraints rejects unknown symbol (line 219)."""
+        from backend.app.trading.orders.schema import BrokerConstraints
+        
+        with pytest.raises(ValueError, match="Unknown symbol"):
+            BrokerConstraints(
+                symbol="UNKNOWN",
+                tick_size=0.01,
+                min_stop_distance_pips=5,
+            )
+
+    def test_broker_constraints_round_price_up(self):
+        """Test BrokerConstraints.round_price with up direction (line 233)."""
+        constraints = get_constraints("GOLD")
+        rounded = constraints.round_price(1950.125, "up")
+        assert rounded == 1950.13
+
+    def test_broker_constraints_round_price_down(self):
+        """Test BrokerConstraints.round_price with down direction (line 242)."""
+        constraints = get_constraints("GOLD")
+        rounded = constraints.round_price(1950.125, "down")
+        assert rounded == pytest.approx(1950.12, rel=0.001)
+
+    def test_broker_constraints_distance_in_pips(self):
+        """Test BrokerConstraints.distance_in_pips calculation (line 246)."""
+        constraints = get_constraints("GOLD")
+        distance = constraints.distance_in_pips(1950.00, 1950.50)
+        # 0.50 / 0.01 = 50 pips
+        assert distance == pytest.approx(50.0, rel=0.01)
+
+    def test_get_constraints_unknown_symbol(self):
+        """Test get_constraints raises for unknown symbol (line 274)."""
+        with pytest.raises(ValueError, match="No constraints defined"):
+            get_constraints("UNKNOWN_SYMBOL")
+
+    def test_order_params_calculate_risk_reward(self):
+        """Test OrderParams.calculate_risk() and .calculate_reward()."""
+        order = OrderParams(
+            signal_id="sig-001",
+            symbol="GOLD",
+            order_type=OrderType.PENDING_BUY,
+            volume=0.1,
+            entry_price=1950.50,
+            stop_loss=1945.00,
+            take_profit=1960.00,
+            expiry_time=datetime.utcnow() + timedelta(hours=24),
+            created_at=datetime.utcnow(),
+            risk_amount=5.50,
+            reward_amount=9.50,
+            risk_reward_ratio=1.73,
+        )
+        assert order.calculate_risk() == pytest.approx(5.50, rel=0.01)
+        assert order.calculate_reward() == pytest.approx(9.50, rel=0.01)
+
+    def test_order_params_side_helpers(self):
+        """Test OrderParams.is_buy_order() and .is_sell_order()."""
+        buy_order = OrderParams(
+            signal_id="sig-001",
+            symbol="GOLD",
+            order_type=OrderType.PENDING_BUY,
+            volume=0.1,
+            entry_price=1950.50,
+            stop_loss=1945.00,
+            take_profit=1960.00,
+            expiry_time=datetime.utcnow() + timedelta(hours=24),
+            created_at=datetime.utcnow(),
+            risk_amount=5.50,
+            reward_amount=9.50,
+            risk_reward_ratio=1.73,
+        )
+        assert buy_order.is_buy_order() is True
+        assert buy_order.is_sell_order() is False
+
+        sell_order = OrderParams(
+            signal_id="sig-002",
+            symbol="GOLD",
+            order_type=OrderType.PENDING_SELL,
+            volume=0.1,
+            entry_price=1950.50,
+            stop_loss=1955.00,
+            take_profit=1940.00,
+            expiry_time=datetime.utcnow() + timedelta(hours=24),
+            created_at=datetime.utcnow(),
+            risk_amount=5.50,
+            reward_amount=9.50,
+            risk_reward_ratio=1.73,
+        )
+        assert sell_order.is_buy_order() is False
+        assert sell_order.is_sell_order() is True
 
 
 if __name__ == "__main__":

@@ -54,14 +54,14 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships
+    # NOTE: AccountLink (PR-043), Endorsement (PR-024), and UserTrustScore (PR-024) are implemented
+    
     account_links: Mapped[list] = relationship(
         "AccountLink",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",
     )
-    # Trust scoring relationships - use string forward references only
-    # Avoid primaryjoin string to prevent mapper initialization issues
     endorsements_given: Mapped[list] = relationship(
         "Endorsement",
         foreign_keys="[Endorsement.endorser_id]",

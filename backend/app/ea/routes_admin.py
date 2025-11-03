@@ -8,15 +8,17 @@ Endpoints:
 """
 
 import logging
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.approvals.models import Approval
+from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.models import User
+from backend.app.auth.rbac import require_roles
 from backend.app.core.db import get_db
-from backend.app.core.rbac import require_roles
 from backend.app.ea.aggregate import (
     get_approval_execution_status,
     get_execution_success_rate,
@@ -29,10 +31,11 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/{approval_id}", response_model=AggregateExecutionStatus)
+@require_roles("admin", "owner")
 async def query_approval_executions(
-    approval_id: UUID,
+    approval_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    current_user: User = Depends(require_roles("admin", "owner")),  # noqa: B008
 ) -> AggregateExecutionStatus:
     """
     Get aggregated execution status for an approval.
@@ -43,9 +46,9 @@ async def query_approval_executions(
     Requires: admin or owner role
 
     Args:
-        approval_id: Approval ID to query
-        db: Database session
+        approval_id: Approval ID to query (as UUID string)
         current_user: Authenticated user (admin/owner)
+        db: Database session
 
     Returns:
         AggregateExecutionStatus with counts and execution details
@@ -94,10 +97,11 @@ async def query_approval_executions(
 
 
 @router.get("/device/{device_id}/executions", response_model=list[ExecutionOut])
+@require_roles("admin", "owner")
 async def query_device_executions(
-    device_id: UUID,
+    device_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    current_user: User = Depends(require_roles("admin", "owner")),  # noqa: B008
     limit: int = 100,
 ) -> list[ExecutionOut]:
     """
@@ -109,7 +113,7 @@ async def query_device_executions(
     Requires: admin or owner role
 
     Args:
-        device_id: Device ID to query
+        device_id: Device ID to query (as UUID string)
         db: Database session
         current_user: Authenticated user (admin/owner)
         limit: Max results to return (default 100, max 1000)
@@ -157,10 +161,11 @@ async def query_device_executions(
 
 
 @router.get("/device/{device_id}/success-rate", response_model=dict)
+@require_roles("admin", "owner")
 async def query_device_success_rate(
-    device_id: UUID,
+    device_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    current_user: User = Depends(require_roles("admin", "owner")),  # noqa: B008
     hours: int = 24,
 ) -> dict:
     """

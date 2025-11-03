@@ -69,6 +69,10 @@ async def build_order(
         >>> order.is_buy_order()
         True
     """
+    # ========== STEP 0: Check signal is not None ==========
+    if signal is None:
+        raise OrderBuildError("Signal cannot be None")
+
     # Use defaults if not provided
     if broker_constraints is None:
         broker_constraints = get_constraints(signal.instrument)
@@ -76,9 +80,7 @@ async def build_order(
     if current_time is None:
         current_time = datetime.utcnow()
 
-    # ========== STEP 1: Validate signal structure ==========
-    if signal is None:
-        raise OrderBuildError("Signal cannot be None")
+    # ========== STEP 1: Validate signal structure =========="
 
     if not hasattr(signal, "instrument"):
         raise OrderBuildError("Signal missing required field: instrument")

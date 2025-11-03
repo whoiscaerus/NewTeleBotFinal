@@ -143,9 +143,14 @@ class CircuitBreaker:
                 self._state = CircuitState.HALF_OPEN
                 self._half_open_calls = 0
             else:
+                retry_in = int(
+                    self.timeout_seconds - (time.time() - self._last_failure_time)
+                )
                 raise MT5CircuitBreakerOpen(
-                    f"Circuit breaker is open. Retry in "
-                    f"{self.timeout_seconds - (time.time() - self._last_failure_time):.0f}s"
+                    f"Circuit breaker is open. Retry in {retry_in}s",
+                    self._failure_count,
+                    self.failure_threshold,
+                    retry_in,
                 )
 
         # If HALF_OPEN, limit calls

@@ -41,6 +41,7 @@ os.environ["DB_DSN"] = "postgresql+psycopg://user:pass@localhost:5432/test_app"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["HMAC_PRODUCER_ENABLED"] = "false"
 
+from backend.app.accounts.models import AccountLink  # noqa: F401, E402
 from backend.app.audit.models import AuditLog  # noqa: F401, E402
 
 # Import all models so they're registered with Base.metadata
@@ -52,6 +53,7 @@ from backend.app.trading.store.models import (  # noqa: F401, E402
     Trade,
     ValidationLog,
 )
+from backend.app.trust.models import Endorsement, UserTrustScore  # noqa: F401, E402
 
 
 @pytest.fixture(scope="session", autouse=True)

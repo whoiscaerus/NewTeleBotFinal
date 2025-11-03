@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/devices", tags=["devices"])
 
 
-@router.post("", status_code=201, response_model=DeviceCreateResponse)
+@router.post("/register", status_code=201, response_model=DeviceCreateResponse)
 async def register_device(
     request: DeviceRegister,
     db: AsyncSession = Depends(get_db),  # noqa: B008
@@ -64,21 +64,23 @@ async def register_device(
         return DeviceCreateResponse(**device_dict)
 
     except APIError as e:
-        raise e.to_http_exception() from e
+        raise
     except ValueError as e:
         logger.warning(f"Device registration validation failed: {e}")
         raise APIError(
             status_code=400,
-            code="REGISTER_VALIDATION_ERROR",
-            message=str(e),
-        ).to_http_exception() from e
+            error_type="validation",
+            title="Device Registration Validation Error",
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Registration failed: {e}", exc_info=True)
         raise APIError(
             status_code=500,
-            code="REGISTER_ERROR",
-            message="Failed to register device",
-        ).to_http_exception() from e
+            error_type="internal_error",
+            title="Device Registration Error",
+            detail="Failed to register device",
+        ) from e
 
 
 @router.get("", response_model=list[DeviceOut])
@@ -93,14 +95,15 @@ async def list_devices(
         return cast(list[DeviceOut], result)
 
     except APIError as e:
-        raise e.to_http_exception() from e
+        raise
     except Exception as e:
         logger.error(f"Listing failed: {e}", exc_info=True)
         raise APIError(
             status_code=500,
-            code="LIST_ERROR",
-            message="Failed to list devices",
-        ).to_http_exception() from e
+            error_type="internal_error",
+            title="Device Listing Error",
+            detail="Failed to list devices",
+        ) from e
 
 
 @router.get("/{device_id}", response_model=DeviceOut)
@@ -118,21 +121,23 @@ async def get_device(
         if device.client_id != current_user.id:
             raise APIError(
                 status_code=403,
-                code="FORBIDDEN",
-                message="You do not have access to this device",
+                error_type="forbidden",
+                title="Access Denied",
+                detail="You do not have access to this device",
             )
 
         return device
 
     except APIError as e:
-        raise e.to_http_exception() from e
+        raise
     except Exception as e:
         logger.error(f"Retrieval failed: {e}", exc_info=True)
         raise APIError(
             status_code=500,
-            code="GET_ERROR",
-            message="Failed to get device",
-        ).to_http_exception() from e
+            error_type="internal_error",
+            title="Device Retrieval Error",
+            detail="Failed to get device",
+        ) from e
 
 
 @router.patch("/{device_id}", response_model=DeviceOut)
@@ -151,8 +156,9 @@ async def rename_device(
         if device.client_id != current_user.id:
             raise APIError(
                 status_code=403,
-                code="FORBIDDEN",
-                message="You do not have access to this device",
+                error_type="forbidden",
+                title="Access Denied",
+                detail="You do not have access to this device",
             )
 
         updated = await service.update_device_name(device_id, request.device_name)
@@ -165,21 +171,23 @@ async def rename_device(
         return updated
 
     except APIError as e:
-        raise e.to_http_exception() from e
+        raise
     except ValueError as e:
         logger.warning(f"Device rename validation failed: {e}")
         raise APIError(
             status_code=400,
-            code="RENAME_VALIDATION_ERROR",
-            message=str(e),
-        ).to_http_exception() from e
+            error_type="validation",
+            title="Device Rename Validation Error",
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Renaming failed: {e}", exc_info=True)
         raise APIError(
             status_code=500,
-            code="RENAME_ERROR",
-            message="Failed to rename device",
-        ).to_http_exception() from e
+            error_type="internal_error",
+            title="Device Rename Error",
+            detail="Failed to rename device",
+        ) from e
 
 
 @router.post("/{device_id}/revoke", status_code=204)
@@ -197,8 +205,9 @@ async def revoke_device(
         if device.client_id != current_user.id:
             raise APIError(
                 status_code=403,
-                code="FORBIDDEN",
-                message="You do not have access to this device",
+                error_type="forbidden",
+                title="Access Denied",
+                detail="You do not have access to this device",
             )
 
         await service.revoke_device(device_id)
@@ -209,18 +218,20 @@ async def revoke_device(
         )
 
     except APIError as e:
-        raise e.to_http_exception() from e
+        raise
     except ValueError as e:
         logger.warning(f"Device revoke validation failed: {e}")
         raise APIError(
             status_code=400,
-            code="REVOKE_VALIDATION_ERROR",
-            message=str(e),
-        ).to_http_exception() from e
+            error_type="validation",
+            title="Device Revoke Validation Error",
+            detail=str(e),
+        ) from e
     except Exception as e:
         logger.error(f"Revocation failed: {e}", exc_info=True)
         raise APIError(
             status_code=500,
-            code="REVOKE_ERROR",
-            message="Failed to revoke device",
-        ).to_http_exception() from e
+            error_type="internal_error",
+            title="Device Revoke Error",
+            detail="Failed to revoke device",
+        ) from e

@@ -10,9 +10,9 @@ Examples:
         async def post_signal(signal: SignalCandidate) -> Response:
             return await client.post(signal)
 
-    Use directly with async coroutines:
+    Use directly with a coroutine factory:
         result = await retry_async(
-            post_signal(signal),
+            lambda: post_signal(signal),
             max_retries=5,
             base_delay=2.0
         )
@@ -297,7 +297,7 @@ def with_retry(
 
 
 async def retry_async(
-    coro: Coroutine[Any, Any, T],
+    coro_func: Callable[[], Coroutine[Any, Any, T]],
     *,
     max_retries: int = 5,
     base_delay: float = 5.0,
@@ -306,12 +306,14 @@ async def retry_async(
     max_delay: float = 120.0,
     logger_: logging.Logger | None = None,
 ) -> T:
-    """Retry an async coroutine with exponential backoff.
+    """Retry an async coroutine factory with exponential backoff.
 
     Retries on any exception. On exhaustion, raises RetryExhaustedError.
+    Takes a callable that returns a coroutine (not a pre-created coroutine),
+    since coroutines can only be awaited once.
 
     Args:
-        coro: Async coroutine to execute with retries
+        coro_func: Callable that returns a coroutine (e.g., lambda: post_signal())
         max_retries: Maximum retry attempts (default: 5)
         base_delay: Base delay between retries in seconds (default: 5.0)
         backoff_multiplier: Multiplier for exponential backoff (default: 2.0)
@@ -327,16 +329,18 @@ async def retry_async(
 
     Examples:
         >>> result = await retry_async(
-        ...     post_signal(signal),
+        ...     lambda: post_signal(signal),
         ...     max_retries=3,
         ...     base_delay=2.0
         ... )
     """
     _logger = logger_ or logger
-    operation_name = getattr(coro, "__name__", "coroutine")
+    operation_name = getattr(coro_func, "__name__", "async_operation")
 
     for attempt in range(max_retries + 1):
         try:
+            # Create new coroutine for each attempt
+            coro = coro_func()
             result = await coro
             if attempt > 0:
                 _logger.info(f"Coroutine succeeded after {attempt} retries")
@@ -372,17 +376,3 @@ async def retry_async(
             )
 
             await asyncio.sleep(delay)
-            # Recreate coroutine for next attempt (coroutines are single-use)
-            coro = (
-                coro.__class__(*coro.cr_frame.f_locals.values())
-                if hasattr(coro, "cr_frame")
-                else coro
-            )
-
-    # Should not reach here
-    raise RetryExhaustedError(
-        message="Retry logic error: exhaustion not properly detected",
-        attempts=max_retries + 1,
-        last_error=RuntimeError("Internal retry error"),
-        operation=operation_name,
-    )

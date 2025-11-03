@@ -1,0 +1,155 @@
+﻿
+[ROOT CONFTEST] pytest_configure called
+[ROOT CONFTEST] Importing minimal models...
+[ROOT CONFTEST] Base.metadata.tables: ['account_links', 'account_info', 'audit_logs', 'users', 'entitlement_types', 'user_entitlements', 'stripe_events', 'trades', 'positions', 'equity_points', 'validation_logs', 'endorsements', 'user_trust_scores', 'trust_calculation_logs']
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-8.4.2, pluggy-1.6.0 -- C:\Users\FCumm\NewTeleBotFinal\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\FCumm\NewTeleBotFinal\backend
+configfile: pytest.ini
+plugins: anyio-4.11.0, locust-2.42.0, asyncio-1.2.0, cov-7.0.0, mock-3.15.1, sugar-1.1.1, timeout-2.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 60.0s
+timeout method: thread
+timeout func_only: False
+collecting ... collected 34 items
+
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_creation_valid PASSED [  2%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_buy_price_relationships PASSED [  5%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_sell_creation PASSED [  8%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_sell_price_relationships PASSED [ 11%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_with_optional_fields PASSED [ 14%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_exit_fields_initially_null PASSED [ 17%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_with_exit_fields PASSED [ 20%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_decimal_precision PASSED [ 23%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_large_volume PASSED [ 26%]
+backend\tests\test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_min_volume PASSED [ 29%]
+backend\tests\test_pr_016_trade_store.py::TestPositionModel::test_position_creation_buy PASSED [ 32%]
+backend\tests\test_pr_016_trade_store.py::TestPositionModel::test_position_creation_sell PASSED [ 35%]
+backend\tests\test_pr_016_trade_store.py::TestPositionModel::test_position_multiple_symbols PASSED [ 38%]
+backend\tests\test_pr_016_trade_store.py::TestEquityPointModel::test_equity_point_creation PASSED [ 41%]
+backend\tests\test_pr_016_trade_store.py::TestEquityPointModel::test_equity_point_with_drawdown PASSED [ 44%]
+backend\tests\test_pr_016_trade_store.py::TestEquityPointModel::test_equity_point_max_drawdown PASSED [ 47%]
+backend\tests\test_pr_016_trade_store.py::TestEquityPointModel::test_equity_point_recovery PASSED [ 50%]
+backend\tests\test_pr_016_trade_store.py::TestValidationLogModel::test_validation_log_creation PASSED [ 52%]
+backend\tests\test_pr_016_trade_store.py::TestValidationLogModel::test_validation_log_event_types PASSED [ 55%]
+backend\tests\test_pr_016_trade_store.py::TestValidationLogModel::test_validation_log_details_json PASSED [ 58%]
+backend\tests\test_pr_016_trade_store.py::TestValidationLogModel::test_validation_log_error_type PASSED [ 61%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid PASSED [ 64%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_sell_trade_valid PASSED [ 67%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_trade_invalid_buy_prices PASSED [ 70%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_trade_invalid_sell_prices PASSED [ 73%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_trade_with_optional_fields PASSED [ 76%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceCRUD::test_get_trade PASSED [ 79%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceCRUD::test_get_trade_nonexistent PASSED [ 82%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceCRUD::test_list_trades PASSED [ 85%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_tp_hit PASSED [ 88%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_sl_hit PASSED [ 91%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_manual PASSED [ 94%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_calculates_profit PASSED [ 97%]
+backend\tests\test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_nonexistent PASSED [100%]
+
+============================== warnings summary ===============================
+backend\app\accounts\service.py:49
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\accounts\service.py:49: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AccountLinkOut(BaseModel):
+
+backend\app\accounts\service.py:63
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\accounts\service.py:63: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AccountInfoOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\affiliates\schema.py:8: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AffiliateOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\affiliates\schema.py:27: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ReferralOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\affiliates\schema.py:43: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class CommissionOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\affiliates\schema.py:69: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class PayoutOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\alerts\service.py:565: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("symbol")
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\alerts\service.py:581: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AlertOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\approvals\schema.py:21: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ApprovalOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:319: PydanticDeprecatedSince20: `json_encoders` is deprecated. See https://docs.pydantic.dev/2.12/concepts/serialization/#custom-serializers for alternatives. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    warnings.warn(
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\signals\schema.py:61: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("instrument")
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\signals\schema.py:81: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("payload")
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\signals\schema.py:21: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SignalCreate(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\signals\schema.py:108: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class SignalOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\clients\devices\schema.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class DeviceOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\clients\exec\schema.py:34: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ExecutionRecordOut(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\telegram\schema.py:27: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class TelegramMessage(BaseModel):
+
+tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+  C:\Users\FCumm\NewTeleBotFinal\backend\app\telegram\schema.py:42: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class TelegramCallback(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.11.9-final-0 _______________
+
+Name                                    Stmts   Miss  Cover   Missing
+---------------------------------------------------------------------
+backend\app\trading\store\__init__.py       4      0   100%
+backend\app\trading\store\models.py        77      5    94%   131-132, 184, 217, 254
+backend\app\trading\store\schemas.py      101      0   100%
+backend\app\trading\store\service.py      149     76    49%   100, 104, 172, 189-190, 258, 260, 262, 264, 266, 287-321, 342-373, 381-404, 426-434, 449-499
+---------------------------------------------------------------------
+TOTAL                                     331     81    76%
+============================ slowest 15 durations =============================
+2.26s setup    tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+0.63s setup    tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_trade_invalid_buy_prices
+0.63s setup    tests/test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_calculates_profit
+0.59s setup    tests/test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_tp_hit
+0.58s setup    tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_get_trade
+0.57s setup    tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_trade_with_optional_fields
+0.57s setup    tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_list_trades
+0.57s setup    tests/test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_nonexistent
+0.55s setup    tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_trade_invalid_sell_prices
+0.55s setup    tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_sell_trade_valid
+0.52s setup    tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_get_trade_nonexistent
+0.49s setup    tests/test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_sl_hit
+0.46s setup    tests/test_pr_016_trade_store.py::TestTradeServiceClose::test_close_trade_manual
+0.10s call     tests/test_pr_016_trade_store.py::TestTradeServiceCRUD::test_create_buy_trade_valid
+0.06s call     tests/test_pr_016_trade_store.py::TestTradeModelCreation::test_trade_creation_valid
+====================== 34 passed, 20 warnings in 10.23s =======================

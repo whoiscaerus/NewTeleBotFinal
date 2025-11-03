@@ -196,7 +196,7 @@ class TestRetryAsync:
         async def success_coro() -> str:
             return "success"
 
-        result = await retry_async(success_coro(), max_retries=3)
+        result = await retry_async(lambda: success_coro(), max_retries=3)
         assert result == "success"
 
     @pytest.mark.asyncio
@@ -225,7 +225,7 @@ class TestRetryAsync:
             call_count += 1
             return "done"
 
-        result = await retry_async(single_attempt_coro(), max_retries=0)
+        result = await retry_async(lambda: single_attempt_coro(), max_retries=0)
         assert result == "done"
         assert call_count == 1
 
