@@ -79,7 +79,7 @@ class RedisSettings(BaseSettings):
     """Redis cache settings."""
 
     url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
-    enabled: bool = Field(default=True)
+    enabled: bool = Field(default=True, alias="REDIS_ENABLED")
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
