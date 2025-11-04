@@ -41,7 +41,7 @@ class GuideHandler:
             db: Database session
         """
         self.db = db
-        self.bot_token = settings.TELEGRAM_BOT_TOKEN
+        self.bot_token = settings.telegram_bot_token
 
     async def _get_user(self, user_id: str) -> TelegramUser | None:
         """Fetch user from database.
@@ -155,6 +155,9 @@ class GuideHandler:
         Returns:
             InlineKeyboardMarkup with guide actions
         """
+        # Use default frontend URL if not configured
+        frontend_url = getattr(settings, "FRONTEND_URL", "https://app.caerus.com")
+
         buttons = [
             [
                 InlineKeyboardButton(
@@ -163,7 +166,7 @@ class GuideHandler:
                 ),
                 InlineKeyboardButton(
                     text="🔗 Read Full",
-                    url=f"{settings.FRONTEND_URL}/guides/{guide_id}",
+                    url=f"{frontend_url}/guides/{guide_id}",
                 ),
             ],
             [
@@ -295,10 +298,10 @@ class GuideHandler:
             # Format guide content
             response_text = (
                 f"*{guide.title}*\n\n"
-                f"{guide.summary}\n\n"
+                f"{guide.description}\n\n"
                 f"📖 *Category:* {self.GUIDE_CATEGORIES.get(guide.category, guide.category)}\n"
-                f"⏱️ *Read Time:* ~{guide.read_time_minutes} minutes\n"
-                f"⭐ *Difficulty:* {'Beginner' if guide.difficulty == 0 else 'Intermediate' if guide.difficulty == 1 else 'Advanced'}\n\n"
+                f"⭐ *Difficulty:* {'Beginner' if guide.difficulty_level == 0 else 'Intermediate' if guide.difficulty_level == 1 else 'Advanced'}\n"
+                f"👁️ *Views:* {guide.views_count}\n\n"
                 f"👇 Select an action below"
             )
 
