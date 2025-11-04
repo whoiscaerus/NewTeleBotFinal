@@ -93,3 +93,76 @@ class MarketingClick(Base):
             f"<MarketingClick {self.id}: user={self.user_id} "
             f"promo={self.promo_id} at {self.clicked_at}>"
         )
+
+
+class MarketingPromoLog(Base):
+    """Marketing promo posting event log.
+
+    Tracks when promos are posted to channels, recording success/failure
+    counts for analytics and debugging.
+
+    Fields:
+        id: Unique log entry identifier (UUID)
+        promo_id: ID of the promo that was posted
+        posted_to: Number of successful posts
+        failed: Number of failed posts
+        details: JSON metadata (per-chat status, errors, etc.)
+        created_at: Log timestamp (UTC)
+
+    Example:
+        >>> log = MarketingPromoLog(
+        ...     id=str(uuid4()),
+        ...     promo_id="promo_1",
+        ...     posted_to=3,
+        ...     failed=0,
+        ...     created_at=datetime.utcnow()
+        ... )
+    """
+
+    __tablename__ = "marketing_promo_logs"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+        doc="Unique log entry identifier",
+    )
+    promo_id: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        index=True,
+        doc="Promo campaign identifier",
+    )
+    posted_to: Mapped[int] = mapped_column(
+        nullable=False,
+        default=0,
+        doc="Number of successful posts",
+    )
+    failed: Mapped[int] = mapped_column(
+        nullable=False,
+        default=0,
+        doc="Number of failed posts",
+    )
+    details: Mapped[dict] = mapped_column(
+        "details_json",
+        JSON,
+        nullable=False,
+        default=dict,
+        doc="JSON metadata (per-chat status, errors)",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        default=datetime.utcnow,
+        index=True,
+        doc="Log timestamp (UTC)",
+    )
+
+    __table_args__ = (Index("ix_marketing_logs_promo_time", "promo_id", "created_at"),)
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return (
+            f"<MarketingPromoLog {self.id}: promo={self.promo_id} "
+            f"posted={self.posted_to} failed={self.failed} at {self.created_at}>"
+        )
+
