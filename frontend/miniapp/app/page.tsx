@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useTelegram } from "./_providers/TelegramProvider";
-import { apiGet } from "./lib/api";
+import { apiGet } from "@/lib/api";
 
 interface UserProfile {
   id: string;

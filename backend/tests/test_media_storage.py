@@ -116,7 +116,9 @@ class TestSaveChart:
         expected_parent = (
             storage_manager.base_path / "2025-03-15" / user_id / "candlestick"
         )
-        assert file_path.parent == expected_parent, f"Path parent should be {expected_parent}"
+        assert (
+            file_path.parent == expected_parent
+        ), f"Path parent should be {expected_parent}"
 
     def test_save_chart_timestamp_in_filename(self, storage_manager):
         """Test that timestamp is included in filename."""
@@ -133,9 +135,9 @@ class TestSaveChart:
 
         # Filename should be: chart_name_HHMMSS.png
         expected_filename_pattern = "chart_name_143045"  # HH MM SS from 14:30:45
-        assert expected_filename_pattern in file_path.name, (
-            f"Filename should contain timestamp, got {file_path.name}"
-        )
+        assert (
+            expected_filename_pattern in file_path.name
+        ), f"Filename should contain timestamp, got {file_path.name}"
 
     def test_save_chart_multiple_files(self, storage_manager):
         """Test saving multiple charts creates separate files."""
@@ -159,12 +161,8 @@ class TestSaveChart:
         """Test that different users' charts are isolated."""
         png = b"\x89PNG" + b"z" * 100
 
-        path1 = storage_manager.save_chart(
-            png, user_id="user_1", chart_name="chart"
-        )
-        path2 = storage_manager.save_chart(
-            png, user_id="user_2", chart_name="chart"
-        )
+        path1 = storage_manager.save_chart(png, user_id="user_1", chart_name="chart")
+        path2 = storage_manager.save_chart(png, user_id="user_2", chart_name="chart")
 
         # Should be in different directories
         assert "user_1" in str(path1)
@@ -248,7 +246,9 @@ class TestSaveExport:
             )
 
         # Path should contain 'exports' subdirectory
-        assert "exports" in str(file_path), f"Path should contain 'exports', got {file_path}"
+        assert "exports" in str(
+            file_path
+        ), f"Path should contain 'exports', got {file_path}"
 
         # Structure: YYYY-MM-DD/user_id/exports/
         expected_parent = storage_manager.base_path / "2025-03-15" / user_id / "exports"
@@ -407,7 +407,9 @@ class TestCleanupOldFiles:
 
         # Old file should be deleted
         assert not old_file.exists(), "Old file should be deleted"
-        assert deleted_count >= 1, f"Should have deleted at least 1 file, deleted {deleted_count}"
+        assert (
+            deleted_count >= 1
+        ), f"Should have deleted at least 1 file, deleted {deleted_count}"
 
     def test_cleanup_preserves_recent_files(self, storage_manager):
         """Test cleanup preserves recent files."""
@@ -478,7 +480,9 @@ class TestCleanupOldFiles:
         deleted_count = storage_manager.cleanup_old_files(days_to_keep=30)
 
         # Should delete all 5 files
-        assert deleted_count >= 5, f"Should delete at least 5 files, deleted {deleted_count}"
+        assert (
+            deleted_count >= 5
+        ), f"Should delete at least 5 files, deleted {deleted_count}"
 
     def test_cleanup_returns_count(self, storage_manager):
         """Test cleanup returns correct deletion count."""

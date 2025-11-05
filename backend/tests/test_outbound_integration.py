@@ -235,9 +235,7 @@ class TestHmacSignatureIntegration:
             bodies.append(body2)
 
         # Bodies should be identical (canonical serialization)
-        assert (
-            bodies[0] == bodies[1]
-        ), "Signal body serialization should be canonical!"
+        assert bodies[0] == bodies[1], "Signal body serialization should be canonical!"
 
 
 class TestNetworkErrorHandling:
@@ -333,7 +331,9 @@ class TestSignatureServerVerification:
         body_dict = client._serialize_signal(signal)
         import json
 
-        body_bytes = json.dumps(body_dict, separators=(",", ":"), sort_keys=True).encode()
+        body_bytes = json.dumps(
+            body_dict, separators=(",", ":"), sort_keys=True
+        ).encode()
 
         # Simulate getting timestamp from client headers
         from backend.app.trading.outbound.client import _get_rfc3339_timestamp

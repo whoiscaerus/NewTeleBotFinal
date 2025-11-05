@@ -6,27 +6,17 @@ Comprehensive testing for PR-018 which implements:
 3. Integration between retry failures and alert notifications
 """
 
-import asyncio
-import json
-import logging
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from backend.app.core.retry import (
-    with_retry,
-    retry_async,
-    calculate_backoff_delay,
-    RetryError,
     RetryExhaustedError,
+    calculate_backoff_delay,
+    with_retry,
 )
-from backend.app.ops.alerts import (
-    OpsAlertService,
-    AlertConfigError,
-    send_owner_alert,
-    send_signal_delivery_error,
-)
-
+from backend.app.ops.alerts import AlertConfigError, OpsAlertService
 
 # ============================================================================
 # EXPONENTIAL BACKOFF TESTS

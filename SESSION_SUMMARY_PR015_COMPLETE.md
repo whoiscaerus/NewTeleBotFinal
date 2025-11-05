@@ -6,7 +6,7 @@
 - **Coverage**: 93% (220/236 statements) - **EXCEEDS 90% TARGET**
 - **Tests**: 86 passing (0 failures)
 - **Test File**: `/backend/tests/test_order_construction_pr015.py`
-- **Implementation Files**: 
+- **Implementation Files**:
   - `backend/app/trading/orders/builder.py` (100% covered)
   - `backend/app/trading/orders/constraints.py` (95% covered)
   - `backend/app/trading/orders/expiry.py` (100% covered)

@@ -123,7 +123,7 @@
 SUMMARY:
 ═══════
 
-Your trading signal platform's core security and compliance systems have been 
+Your trading signal platform's core security and compliance systems have been
 comprehensively validated with REAL business logic tests covering:
 
 • Production scenarios (secret rotation, audit queries)

@@ -1,6 +1,6 @@
 # 🚀 PR-017/018 Continuation Plan
 
-**Session Status:** ✅ COMPLETE - 88% Coverage Achieved  
+**Session Status:** ✅ COMPLETE - 88% Coverage Achieved
 **Next Session:** Ready to Execute Phase 6 (Edge Case Tests for 90%+)
 
 ---
@@ -22,7 +22,7 @@
 - **Pass Rate:** 100%
 
 ### Bug Fixed (VERIFIED)
-✅ Disabled config validation now works correctly  
+✅ Disabled config validation now works correctly
 ✅ Verification test: test_from_env_disabled_config_with_valid_params passing
 
 ---
@@ -34,7 +34,7 @@
 ### Target Gaps (27 Lines to Cover)
 
 #### 1. exceptions.py (6 lines - 65% coverage)
-**File:** `/backend/app/trading/outbound/exceptions.py`  
+**File:** `/backend/app/trading/outbound/exceptions.py`
 **Missed Lines:** 51-56 (Error message formatting)
 
 **What to Test:**
@@ -60,8 +60,8 @@ def test_outbound_client_error_with_nested_exception():
         assert "Original error" in str(error)
 ```
 
-#### 2. config.py (4 lines - 93% coverage)  
-**File:** `/backend/app/trading/outbound/config.py`  
+#### 2. config.py (4 lines - 93% coverage)
+**File:** `/backend/app/trading/outbound/config.py`
 **Missed Lines:** 138-139, 146-147 (Error message formatting in __repr__)
 
 **What to Test:**
@@ -87,7 +87,7 @@ def test_config_repr_with_special_chars():
 ```
 
 #### 3. hmac.py (3 lines - 93% coverage)
-**File:** `/backend/app/trading/outbound/hmac.py`  
+**File:** `/backend/app/trading/outbound/hmac.py`
 **Missed Lines:** 194, 213-214 (Edge cases in signature generation)
 
 **What to Test:**
@@ -106,7 +106,7 @@ def test_hmac_signature_deterministic():
 ```
 
 #### 4. client.py (17 lines - 83% coverage)
-**File:** `/backend/app/trading/outbound/client.py`  
+**File:** `/backend/app/trading/outbound/client.py`
 **Missed Lines:** Advanced HTTP error handling scenarios
 
 **What to Test:**
@@ -129,7 +129,7 @@ async def test_outbound_client_handles_read_timeout():
 ```
 
 #### 5. responses.py (1 line - 92% coverage)
-**File:** `/backend/app/trading/outbound/responses.py`  
+**File:** `/backend/app/trading/outbound/responses.py`
 **Missed Line:** 63 (Response parsing edge case)
 
 **What to Test:**
@@ -317,7 +317,7 @@ def test_signal_ingest_response_parses_minimal_json():
 
 ---
 
-**Session Complete** ✅  
-**Status:** Ready for Phase 6 continuation  
-**Remaining Effort:** 3-5 tests to reach 90%+ coverage  
+**Session Complete** ✅
+**Status:** Ready for Phase 6 continuation
+**Remaining Effort:** 3-5 tests to reach 90%+ coverage
 **Business Logic:** Fully validated and production-ready

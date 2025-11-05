@@ -23,7 +23,7 @@ PHASE 3: GAP TEST CREATION (20:00 - 40:00)
 │  ├─ Production security, rotation, TTL, concurrency, error recovery
 │  └─ Real async/await, real provider calls, real cache timing
 ├─ Created test_pr_008_audit_gaps.py (480 lines, 40 tests)
-│  ├─ 11 test classes  
+│  ├─ 11 test classes
 │  ├─ Immutability, recording, PII, queries, indexes, resilience
 │  └─ Real AsyncSession, real database operations, real ORM behavior
 └─ Result: ✅ 84 gap tests created
@@ -151,7 +151,7 @@ collected 123 items
 
 **Final Output:**
 ```
-============================== warnings summary =============================== 
+============================== warnings summary ===============================
 tests/test_pr_008_audit_gaps.py::TestAuditLogImmutability::test_audit_log_cannot_be_updated
   C:\Users\FCumm\NewTeleBotFinal\backend\app\accounts\service.py:49: PydanticDeprecatedSince20: ...
   (multiple Pydantic v2 deprecation warnings - not related to our tests)
@@ -406,4 +406,3 @@ Expected output: `===== 123 passed in 6.18s =====`
 **Generated: October 31, 2025**
 **Project: Trading Signal Platform**
 **Status: ✅ VALIDATED & APPROVED FOR DEPLOYMENT**
-

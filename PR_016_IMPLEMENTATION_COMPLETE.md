@@ -97,7 +97,7 @@ PR-016 Trade Store Migration test suite has been successfully created, executed,
 ### Detailed Coverage Report
 
 ```
-Name                                    Stmts   Miss  Cover   
+Name                                    Stmts   Miss  Cover
 -------------------------------------------------------------
 backend\app\trading\store\__init__.py       4      0   100%
 backend\app\trading\store\models.py        77      5    94%
@@ -146,7 +146,7 @@ TOTAL                                     331     81    76%
 
 **Problem**: Tests failed with mapper error when trying to initialize User model relationships.
 
-**Root Cause**: 
+**Root Cause**:
 - `Endorsement` model (from `/backend/app/trust/models.py`) was imported somewhere in the dependency chain
 - Endorsement references `endorsements_given` and `endorsements_received` relationships on User
 - These relationships were commented out, causing SQLAlchemy mapper to fail
@@ -454,4 +454,3 @@ Created during this PR implementation:
 ✅ Service: 49% coverage (all core operations tested)
 ✅ No known issues
 ✅ Production deployment ready
-

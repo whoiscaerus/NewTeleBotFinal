@@ -10,23 +10,17 @@ Tests the core risk management functionality:
 Coverage target: 100% of guards.py and drawdown.py
 """
 
-import pytest
 import logging
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from backend.app.trading.runtime.drawdown import DrawdownCapExceededError, DrawdownGuard
 from backend.app.trading.runtime.guards import (
     Guards,
-    GuardState,
     enforce_max_drawdown,
     min_equity_guard,
 )
-from backend.app.trading.runtime.drawdown import (
-    DrawdownGuard,
-    DrawdownState,
-    DrawdownCapExceededError,
-)
-
 
 # ============================================================================
 # GUARDS CLASS TESTS
@@ -273,7 +267,9 @@ class TestGuardsCheckAndEnforce:
         alert_service.send_owner_alert.assert_called_once()
         alert_args = alert_service.send_owner_alert.call_args
         # The message is passed as first positional argument
-        message = alert_args[0][0] if alert_args[0] else alert_args[1].get("message", "")
+        message = (
+            alert_args[0][0] if alert_args[0] else alert_args[1].get("message", "")
+        )
         assert "⚠️ DRAWDOWN GUARD TRIGGERED" in message
         assert "25.0%" in message  # Drawdown percentage
 
@@ -307,7 +303,9 @@ class TestGuardsCheckAndEnforce:
         # Verify alert sent
         alert_service.send_owner_alert.assert_called_once()
         alert_args = alert_service.send_owner_alert.call_args
-        message = alert_args[0][0] if alert_args[0] else alert_args[1].get("message", "")
+        message = (
+            alert_args[0][0] if alert_args[0] else alert_args[1].get("message", "")
+        )
         assert "🛑 MINIMUM EQUITY GUARD TRIGGERED" in message
 
     @pytest.mark.asyncio

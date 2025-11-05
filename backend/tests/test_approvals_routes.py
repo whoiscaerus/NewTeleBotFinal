@@ -16,12 +16,10 @@ ALL tests use REAL endpoint logic with mocked HTTP client.
 """
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.signals.models import Signal, SignalStatus
 from backend.app.auth.models import User
-from backend.app.approvals.models import Approval, ApprovalDecision
+from backend.app.signals.models import Signal, SignalStatus
 
 
 class TestCreateApprovalEndpoint:
@@ -307,6 +305,7 @@ class TestCreateApprovalEndpoint:
 
         # Query database to verify IP captured
         from sqlalchemy import select
+
         from backend.app.approvals.models import Approval
 
         result = await db_session.execute(

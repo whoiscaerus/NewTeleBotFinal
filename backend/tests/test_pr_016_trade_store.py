@@ -13,17 +13,9 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.trading.store.models import (
-    EquityPoint,
-    Position,
-    Trade,
-    ValidationLog,
-)
+from backend.app.trading.store.models import EquityPoint, Position, Trade, ValidationLog
 from backend.app.trading.store.service import TradeService
-
 
 # ===== TEST: Trade Model Creation and Validation =====
 
@@ -360,8 +352,15 @@ class TestValidationLogModel:
         """Test different event types in validation logs."""
         now = datetime.utcnow()
         trade_id = str(uuid4())
-        event_types = ["CREATED", "EXECUTED", "CLOSED", "ERROR", "ADJUSTED", "CANCELLED"]
-        
+        event_types = [
+            "CREATED",
+            "EXECUTED",
+            "CLOSED",
+            "ERROR",
+            "ADJUSTED",
+            "CANCELLED",
+        ]
+
         logs = [
             ValidationLog(
                 trade_id=trade_id,
@@ -371,7 +370,7 @@ class TestValidationLogModel:
             )
             for event_type in event_types
         ]
-        
+
         assert len(logs) == 6
         assert all(log.event_type in event_types for log in logs)
 
@@ -478,7 +477,7 @@ class TestTradeServiceCRUD:
         service = TradeService(db_session)
         signal_id = str(uuid4())
         device_id = str(uuid4())
-        
+
         trade = await service.create_trade(
             user_id=str(uuid4()),
             symbol="GOLD",
@@ -492,7 +491,7 @@ class TestTradeServiceCRUD:
             strategy="fib_rsi",
             timeframe="H1",
         )
-        
+
         assert trade.signal_id == signal_id
         assert trade.device_id == device_id
         assert trade.strategy == "fib_rsi"
@@ -510,7 +509,7 @@ class TestTradeServiceCRUD:
             take_profit=Decimal("1960.00"),
             volume=Decimal("1.0"),
         )
-        
+
         retrieved = await service.get_trade(created.trade_id)
         assert retrieved is not None
         assert retrieved.trade_id == created.trade_id
@@ -527,7 +526,7 @@ class TestTradeServiceCRUD:
         """Test listing trades."""
         service = TradeService(db_session)
         user_id = str(uuid4())
-        
+
         # Create multiple trades
         for i in range(3):
             await service.create_trade(
@@ -539,7 +538,7 @@ class TestTradeServiceCRUD:
                 take_profit=Decimal("1960.00"),
                 volume=Decimal("1.0"),
             )
-        
+
         # List all trades (service doesn't filter by user_id)
         trades = await service.list_trades()
         assert len(trades) >= 3
@@ -556,7 +555,7 @@ class TestTradeServiceClose:
         """Test closing trade at take profit."""
         service = TradeService(db_session)
         user_id = str(uuid4())
-        
+
         trade = await service.create_trade(
             user_id=user_id,
             symbol="GOLD",
@@ -566,13 +565,11 @@ class TestTradeServiceClose:
             take_profit=Decimal("1960.00"),
             volume=Decimal("1.0"),
         )
-        
+
         closed = await service.close_trade(
-            trade_id=trade.trade_id,
-            exit_price=Decimal("1960.00"),
-            exit_reason="TP_HIT"
+            trade_id=trade.trade_id, exit_price=Decimal("1960.00"), exit_reason="TP_HIT"
         )
-        
+
         assert closed.status == "CLOSED"
         assert closed.exit_price == Decimal("1960.00")
         assert closed.exit_reason == "TP_HIT"
@@ -582,7 +579,7 @@ class TestTradeServiceClose:
         """Test closing trade at stop loss."""
         service = TradeService(db_session)
         user_id = str(uuid4())
-        
+
         trade = await service.create_trade(
             user_id=user_id,
             symbol="GOLD",
@@ -592,13 +589,11 @@ class TestTradeServiceClose:
             take_profit=Decimal("1960.00"),
             volume=Decimal("1.0"),
         )
-        
+
         closed = await service.close_trade(
-            trade_id=trade.trade_id,
-            exit_price=Decimal("1945.00"),
-            exit_reason="SL_HIT"
+            trade_id=trade.trade_id, exit_price=Decimal("1945.00"), exit_reason="SL_HIT"
         )
-        
+
         assert closed.status == "CLOSED"
         assert closed.exit_reason == "SL_HIT"
 
@@ -607,7 +602,7 @@ class TestTradeServiceClose:
         """Test closing trade manually."""
         service = TradeService(db_session)
         user_id = str(uuid4())
-        
+
         trade = await service.create_trade(
             user_id=user_id,
             symbol="GOLD",
@@ -617,14 +612,12 @@ class TestTradeServiceClose:
             take_profit=Decimal("1960.00"),
             volume=Decimal("1.0"),
         )
-        
+
         exit_price = (trade.entry_price + trade.take_profit) / 2
         closed = await service.close_trade(
-            trade_id=trade.trade_id,
-            exit_price=exit_price,
-            exit_reason="MANUAL"
+            trade_id=trade.trade_id, exit_price=exit_price, exit_reason="MANUAL"
         )
-        
+
         assert closed.status == "CLOSED"
         assert closed.exit_reason == "MANUAL"
 
@@ -633,7 +626,7 @@ class TestTradeServiceClose:
         """Test close trade calculates profit correctly."""
         service = TradeService(db_session)
         user_id = str(uuid4())
-        
+
         trade = await service.create_trade(
             user_id=user_id,
             symbol="GOLD",
@@ -643,12 +636,12 @@ class TestTradeServiceClose:
             take_profit=Decimal("1960.00"),
             volume=Decimal("1.0"),
         )
-        
+
         closed = await service.close_trade(
             trade_id=trade.trade_id,
             exit_price=Decimal("1960.00"),
         )
-        
+
         # Profit = (exit - entry) * volume = (1960 - 1950) * 1.0 = 10.0
         assert closed.profit is not None
         assert abs(closed.profit - Decimal("10.00")) < Decimal("0.01")

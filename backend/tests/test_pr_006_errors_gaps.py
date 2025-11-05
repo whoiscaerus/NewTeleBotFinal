@@ -7,18 +7,13 @@ Covers the ~8 missing scenarios to reach 95%+ coverage:
 - Request context propagation in structured logs
 """
 
+from unittest.mock import MagicMock
+
 import pytest
-import pytest_asyncio
-from pydantic import BaseModel, ValidationError as PydanticValidationError
-from unittest.mock import patch, MagicMock
+from pydantic import BaseModel
+from pydantic import ValidationError as PydanticValidationError
 
-from backend.app.core.errors import (
-    ValidationError,
-    ProblemDetail,
-    APIException,
-    AuthenticationError,
-)
-
+from backend.app.core.errors import AuthenticationError, ProblemDetail, ValidationError
 
 # ============================================================================
 # GAP 1: PYDANTIC FIELD VALIDATION INTEGRATION
@@ -30,6 +25,7 @@ class TestPydanticFieldValidation:
 
     def test_pydantic_required_field_error(self):
         """Test missing required field generates ValidationError."""
+
         class UserSchema(BaseModel):
             email: str
             password: str
@@ -41,10 +37,14 @@ class TestPydanticFieldValidation:
         assert len(errors) == 1
         # Error dict has 'loc' (field path) instead of 'field'
         assert errors[0]["loc"][0] == "password"
-        assert "required" in errors[0]["msg"].lower() or "missing" in errors[0]["msg"].lower()
+        assert (
+            "required" in errors[0]["msg"].lower()
+            or "missing" in errors[0]["msg"].lower()
+        )
 
     def test_pydantic_type_validation_error(self):
         """Test wrong type generates ValidationError."""
+
         class SignalSchema(BaseModel):
             price: float
             quantity: int
@@ -93,6 +93,7 @@ class TestPydanticFieldValidation:
 
     def test_pydantic_multiple_field_errors_collected(self):
         """Test multiple validation errors collected together."""
+
         class OrderSchema(BaseModel):
             price: float
             quantity: int
@@ -109,6 +110,7 @@ class TestPydanticFieldValidation:
 
     def test_validation_error_to_problem_detail(self):
         """Test Pydantic errors converted to RFC 7807 ProblemDetail."""
+
         class SignalSchema(BaseModel):
             instrument: str
             side: str
@@ -121,12 +123,9 @@ class TestPydanticFieldValidation:
             exc = ValidationError(
                 detail="Validation failed",
                 errors=[
-                    {
-                        "field": str(err["loc"][0]),
-                        "message": err["msg"]
-                    }
+                    {"field": str(err["loc"][0]), "message": err["msg"]}
                     for err in errors
-                ]
+                ],
             )
 
             problem = ProblemDetail(
@@ -157,7 +156,7 @@ class TestPydanticFieldValidation:
         with pytest.raises(PydanticValidationError) as exc_info:
             EventSchema(
                 name="Event",
-                location={"lat": "invalid", "lng": 10.0}  # lat is wrong type
+                location={"lat": "invalid", "lng": 10.0},  # lat is wrong type
             )
 
         errors = exc_info.value.errors()
@@ -216,7 +215,7 @@ class TestStackTraceRedaction:
 
         try:
             raise Exception("Test error in prod")
-        except Exception as e:
+        except Exception:
             # In production, no traceback in response
             error_response = {
                 "type": "https://api.example.com/errors/server",
@@ -232,7 +231,6 @@ class TestStackTraceRedaction:
 
     def test_production_error_logs_traceback_server_side(self):
         """Test traceback logged server-side but not in response."""
-        import logging
 
         # Mock logger
         mock_logger = MagicMock()
@@ -251,7 +249,9 @@ class TestStackTraceRedaction:
 
             # Verify logger.error was called with exc_info
             mock_logger.error.assert_called_once()
-            assert response["detail"] != str(e), "Response shouldn't expose error details"
+            assert response["detail"] != str(
+                e
+            ), "Response shouldn't expose error details"
 
     def test_sensitive_fields_redacted_in_errors(self):
         """Test sensitive fields (passwords, API keys) redacted."""
@@ -456,11 +456,12 @@ class TestErrorHandlingFullFlow:
 
         # Pydantic validation error
         try:
+
             class TestSchema(BaseModel):
                 email: str
 
             TestSchema(email="invalid")
-        except PydanticValidationError as e:
+        except PydanticValidationError:
             # Convert to RFC 7807 with context and redaction
             error = {
                 "type": "https://api.example.com/errors/validation",

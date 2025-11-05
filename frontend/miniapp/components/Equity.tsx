@@ -113,7 +113,7 @@ export const Equity: React.FC<EquityProps> = ({ data, title = "Equity Curve" }) 
             className="text-gray-600 dark:text-gray-400"
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperClassName="text-gray-700 dark:text-gray-300" />
+          <Legend />
           <Line
             type="monotone"
             dataKey="equity"

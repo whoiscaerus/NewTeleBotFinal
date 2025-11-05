@@ -8,6 +8,7 @@ from backend.app.affiliates.routes import router as affiliates_router
 from backend.app.analytics.routes import router as analytics_router
 from backend.app.approvals.routes import router as approvals_router
 from backend.app.auth.routes import router as auth_router
+from backend.app.billing.pricing.routes import router as pricing_router
 from backend.app.billing.routes import router as billing_router
 from backend.app.clients.devices.routes import router as devices_router
 from backend.app.clients.exec.routes import router as exec_router
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(analytics_router)
     app.include_router(billing_router)
+    app.include_router(pricing_router)
     app.include_router(miniapp_router)
     app.include_router(affiliates_router)
     app.include_router(approvals_router)

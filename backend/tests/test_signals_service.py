@@ -13,15 +13,12 @@ Tests cover:
 
 import hashlib
 import hmac
-import json
-from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.signals.models import Signal, SignalStatus
-from backend.app.signals.schema import SignalCreate, SignalOut
+from backend.app.signals.schema import SignalCreate
 from backend.app.signals.service import (
     DuplicateSignalError,
     SignalNotFoundError,
@@ -128,9 +125,7 @@ class TestSignalCreationBasic:
         )
 
         # Query database directly
-        result = await db_session.execute(
-            select(Signal).where(Signal.id == signal.id)
-        )
+        result = await db_session.execute(select(Signal).where(Signal.id == signal.id))
         db_signal = result.scalar()
 
         assert db_signal is not None
@@ -521,9 +516,7 @@ class TestSignalRetrieval:
         )
 
         # Update status to approved
-        await signal_service.update_signal_status(
-            signal1.id, SignalStatus.APPROVED
-        )
+        await signal_service.update_signal_status(signal1.id, SignalStatus.APPROVED)
 
         # List only new signals
         new_signals, _ = await signal_service.list_signals(
@@ -618,7 +611,9 @@ class TestSignalStatusUpdate:
         assert signal.status == SignalStatus.EXECUTED.value
 
         # EXECUTED → CLOSED
-        signal = await signal_service.update_signal_status(signal.id, SignalStatus.CLOSED)
+        signal = await signal_service.update_signal_status(
+            signal.id, SignalStatus.CLOSED
+        )
         assert signal.status == SignalStatus.CLOSED.value
 
     @pytest.mark.asyncio
@@ -630,9 +625,7 @@ class TestSignalStatusUpdate:
             )
 
     @pytest.mark.asyncio
-    async def test_update_signal_timestamp(
-        self, signal_service, valid_signal_create
-    ):
+    async def test_update_signal_timestamp(self, signal_service, valid_signal_create):
         """Test signal updated_at changes when status updated."""
         signal = await signal_service.create_signal(
             user_id="user_timestamp",
@@ -799,9 +792,7 @@ class TestSignalOutSchema:
     """Test SignalOut schema serialization."""
 
     @pytest.mark.asyncio
-    async def test_signal_out_side_label(
-        self, signal_service, valid_signal_create
-    ):
+    async def test_signal_out_side_label(self, signal_service, valid_signal_create):
         """Test side_label property."""
         signal = await signal_service.create_signal(
             user_id="user_schema",
@@ -811,9 +802,7 @@ class TestSignalOutSchema:
         assert signal.side_label == "buy"
 
     @pytest.mark.asyncio
-    async def test_signal_out_status_label(
-        self, signal_service, valid_signal_create
-    ):
+    async def test_signal_out_status_label(self, signal_service, valid_signal_create):
         """Test status_label property."""
         signal = await signal_service.create_signal(
             user_id="user_status_label",

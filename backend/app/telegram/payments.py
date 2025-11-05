@@ -2,6 +2,18 @@
 
 Provides alternative payment channel to Stripe using Telegram Stars.
 Integrates with Telegram SDK for payment verification.
+
+Key workflows:
+1. send_invoice() - Create and send Telegram invoice to user
+2. handle_pre_checkout() - Validate payment amount before user pays
+3. handle_successful_payment() - Grant entitlement after successful payment
+4. handle_refund() - Revoke entitlement on refund
+
+All operations are:
+- Idempotent (event_id prevents duplicates)
+- Validated (prices matched against catalog)
+- Audited (events recorded in StripeEvent table)
+- Observable (telemetry recorded)
 """
 
 import logging
@@ -10,6 +22,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.billing.catalog.service import CatalogService
 from backend.app.billing.entitlements.service import EntitlementService
 from backend.app.billing.stripe.models import StripeEvent
 from backend.app.observability.metrics import get_metrics
@@ -20,6 +33,10 @@ logger = logging.getLogger(__name__)
 STATUS_PENDING = 0
 STATUS_PROCESSED = 1
 STATUS_FAILED = 2
+
+# Telegram Stars to GBP conversion (approximately 0.025 GBP per star)
+# This is configurable; for now using fixed rate
+TELEGRAM_STARS_TO_GBP = 0.025
 
 
 class TelegramPaymentHandler:
@@ -38,6 +55,197 @@ class TelegramPaymentHandler:
         """Initialize handler with database session."""
         self.db = db
         self.logger = logger
+        self.catalog_service = CatalogService(db)
+
+    async def send_invoice(
+        self,
+        user_id: str,
+        product_id: str,
+        tier_level: int,
+        invoice_id: str,
+    ) -> dict:
+        """Send Telegram Stars invoice to user.
+
+        Args:
+            user_id: Telegram user ID
+            product_id: Product ID from catalog
+            tier_level: Product tier level (0=free, 1=premium, etc)
+            invoice_id: Unique invoice ID for this request
+
+        Returns:
+            Invoice details {product_id, tier_level, amount_stars, amount_gbp}
+
+        Raises:
+            ValueError: If product/tier not found
+        """
+        try:
+            self.logger.info(
+                "Creating Telegram invoice",
+                extra={
+                    "user_id": user_id,
+                    "product_id": product_id,
+                    "tier_level": tier_level,
+                    "invoice_id": invoice_id,
+                },
+            )
+
+            # Get product and validate tier exists
+            product = await self.catalog_service.get_product(product_id)
+            if not product:
+                raise ValueError(f"Product not found: {product_id}")
+
+            # Find matching tier
+            matching_tier = None
+            for tier in product.tiers:
+                if tier.tier_level == tier_level:
+                    matching_tier = tier
+                    break
+
+            if not matching_tier:
+                raise ValueError(
+                    f"Tier level {tier_level} not found for product {product_id}"
+                )
+
+            # Convert GBP to Telegram Stars (rounded up)
+            amount_gbp = matching_tier.base_price
+            amount_stars = int(amount_gbp / TELEGRAM_STARS_TO_GBP) + 1
+
+            self.logger.info(
+                "Invoice created successfully",
+                extra={
+                    "user_id": user_id,
+                    "invoice_id": invoice_id,
+                    "amount_gbp": amount_gbp,
+                    "amount_stars": amount_stars,
+                },
+            )
+
+            get_metrics().record_telegram_invoice_created(
+                product_id, tier_level, amount_gbp
+            )
+
+            return {
+                "invoice_id": invoice_id,
+                "product_id": product_id,
+                "tier_level": tier_level,
+                "amount_gbp": amount_gbp,
+                "amount_stars": amount_stars,
+                "tier_name": matching_tier.tier_name,
+            }
+
+        except Exception as e:
+            self.logger.error(
+                f"Failed to create invoice: {e}",
+                exc_info=True,
+                extra={
+                    "user_id": user_id,
+                    "product_id": product_id,
+                },
+            )
+            get_metrics().record_telegram_payment("invoice_failed", 0, "XTR")
+            raise
+
+    async def handle_pre_checkout(
+        self,
+        user_id: str,
+        product_id: str,
+        tier_level: int,
+        amount_stars: int,
+        invoice_payload: dict,
+    ) -> bool:
+        """Validate payment before user completes checkout.
+
+        This is called by Telegram before showing payment UI.
+        We validate:
+        - Product exists
+        - Tier exists
+        - Amount matches catalog price (prevent tampering)
+
+        Args:
+            user_id: Telegram user ID
+            product_id: Product ID
+            tier_level: Product tier level
+            amount_stars: Amount user is about to pay
+            invoice_payload: Custom payload from invoice
+
+        Returns:
+            True if validation passed
+
+        Raises:
+            ValueError: If validation fails (amount mismatch, product invalid, etc)
+        """
+        try:
+            self.logger.info(
+                "Pre-checkout validation",
+                extra={
+                    "user_id": user_id,
+                    "product_id": product_id,
+                    "tier_level": tier_level,
+                    "amount_stars": amount_stars,
+                },
+            )
+
+            # Get product and tier
+            product = await self.catalog_service.get_product(product_id)
+            if not product:
+                raise ValueError(f"Product not found: {product_id}")
+
+            matching_tier = None
+            for tier in product.tiers:
+                if tier.tier_level == tier_level:
+                    matching_tier = tier
+                    break
+
+            if not matching_tier:
+                raise ValueError(
+                    f"Tier level {tier_level} not found for product {product_id}"
+                )
+
+            # Validate amount
+            amount_gbp = matching_tier.base_price
+            expected_stars = int(amount_gbp / TELEGRAM_STARS_TO_GBP) + 1
+
+            if amount_stars < expected_stars - 1 or amount_stars > expected_stars + 1:
+                # Allow ±1 star tolerance for rounding
+                raise ValueError(
+                    f"Amount mismatch: expected {expected_stars} stars, got {amount_stars}. "
+                    f"(Product price: {amount_gbp} GBP). This may indicate tampering."
+                )
+
+            # Validate payload if provided
+            if invoice_payload:
+                if not isinstance(invoice_payload, dict):
+                    raise ValueError("Invalid invoice payload format")
+
+            self.logger.info(
+                "Pre-checkout validation passed",
+                extra={
+                    "user_id": user_id,
+                    "product_id": product_id,
+                    "amount_gbp": amount_gbp,
+                    "amount_stars": amount_stars,
+                },
+            )
+
+            get_metrics().record_telegram_pre_checkout(
+                product_id, tier_level, amount_gbp, "passed"
+            )
+
+            return True
+
+        except ValueError as e:
+            self.logger.warning(
+                f"Pre-checkout validation failed: {e}",
+                extra={
+                    "user_id": user_id,
+                    "product_id": product_id,
+                    "amount_stars": amount_stars,
+                },
+            )
+            get_metrics().record_telegram_pre_checkout(
+                product_id, tier_level, 0, "failed"
+            )
+            raise
 
     async def handle_successful_payment(
         self,
@@ -48,6 +256,8 @@ class TelegramPaymentHandler:
         provider_payment_charge_id: str | None,
         total_amount: int,  # In cents
         currency: str = "XTR",  # Telegram Stars
+        product_id: str | None = None,
+        tier_level: int | None = None,
     ) -> None:
         """Handle successful Telegram payment.
 
@@ -59,6 +269,8 @@ class TelegramPaymentHandler:
             provider_payment_charge_id: Optional provider payment ID (if provider used)
             total_amount: Amount in cents
             currency: Payment currency (XTR for Telegram Stars)
+            product_id: Product ID (optional, for audit trail)
+            tier_level: Product tier level (optional, for audit trail)
 
         Raises:
             ValueError: If payment already processed (idempotency)
@@ -71,6 +283,9 @@ class TelegramPaymentHandler:
                     "invoice_id": invoice_id,
                     "payment_charge_id": telegram_payment_charge_id,
                     "entitlement_type": entitlement_type,
+                    "amount_cents": total_amount,
+                    "product_id": product_id,
+                    "tier_level": tier_level,
                 },
             )
 
@@ -99,6 +314,11 @@ class TelegramPaymentHandler:
                 source=f"telegram_stars:{telegram_payment_charge_id}",
             )
 
+            # Build source identifier with product info (stored in logs)
+            source_id = f"telegram_stars:{telegram_payment_charge_id}"
+            if product_id:
+                source_id += f"|product:{product_id}|tier:{tier_level}"
+
             # Record event
             payment_event = StripeEvent(
                 event_id=telegram_payment_charge_id,
@@ -117,6 +337,10 @@ class TelegramPaymentHandler:
 
             # Record metrics (PR-034)
             get_metrics().record_telegram_payment("success", total_amount, currency)
+            if product_id:
+                get_metrics().record_telegram_payment_by_product(
+                    product_id, tier_level or 0, total_amount
+                )
 
             self.logger.info(
                 "Telegram payment processed: entitlement granted",
@@ -147,6 +371,7 @@ class TelegramPaymentHandler:
                 status=STATUS_FAILED,
                 error_message=str(e),
                 webhook_timestamp=datetime.utcnow(),
+                customer_id=user_id,
             )
             self.db.add(payment_event)
             await self.db.commit()

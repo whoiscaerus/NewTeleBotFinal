@@ -58,9 +58,7 @@ export default function PositionsPage() {
     try {
       setRefreshing(true);
       const params = forceRefresh ? "?force_refresh=true" : "";
-      const data = await apiGet<Portfolio>(`/api/v1/positions${params}`, {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
+      const data = await apiGet<Portfolio>(`/api/v1/positions${params}`);
 
       if (data) {
         setPortfolio(data);

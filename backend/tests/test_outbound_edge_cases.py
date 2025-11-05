@@ -9,16 +9,11 @@ This module tests boundary conditions and edge cases in:
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.app.trading.outbound.config import OutboundConfig
-from backend.app.trading.outbound.exceptions import (
-    OutboundClientError,
-    OutboundSignatureError,
-)
+from backend.app.trading.outbound.exceptions import OutboundClientError
 from backend.app.trading.outbound.hmac import build_signature
 from backend.app.trading.outbound.responses import SignalIngestResponse
-
 
 # ============================================================================
 # EXCEPTIONS EDGE CASES (6 missed lines in exceptions.py)
@@ -64,7 +59,9 @@ class TestOutboundClientErrorEdgeCases:
 
     def test_error_str_conversion(self):
         """Test __str__ returns just the message."""
-        error = OutboundClientError("Test error", http_code=500, details={"key": "value"})
+        error = OutboundClientError(
+            "Test error", http_code=500, details={"key": "value"}
+        )
         str_repr = str(error)
 
         # __str__ is inherited from Exception and returns the message arg
@@ -168,7 +165,7 @@ class TestHmacSignatureEdgeCases:
     def test_signature_deterministic_with_same_inputs(self):
         """Test signature is deterministic (same inputs = same signature)."""
         import json
-        
+
         signal_data = {
             "signal_id": "sig-123",
             "instrument": "GOLD",
@@ -189,7 +186,7 @@ class TestHmacSignatureEdgeCases:
     def test_signature_changes_with_different_secret(self):
         """Test signature changes when secret changes."""
         import json
-        
+
         signal_data = {
             "signal_id": "sig-123",
             "instrument": "GOLD",
@@ -208,7 +205,7 @@ class TestHmacSignatureEdgeCases:
     def test_signature_changes_with_different_timestamp(self):
         """Test signature changes when timestamp changes."""
         import json
-        
+
         signal_data = {
             "signal_id": "sig-123",
             "instrument": "GOLD",
@@ -227,15 +224,13 @@ class TestHmacSignatureEdgeCases:
     def test_signature_with_large_payload(self):
         """Test signature generation with large signal payload."""
         import json
-        
+
         signal_data = {
             "signal_id": "sig-" + "x" * 1000,
             "instrument": "GOLD",
             "side": "buy",
             "price": 1950.50,
-            "metadata": {
-                "key_" + str(i): "value_" + str(i) for i in range(100)
-            },
+            "metadata": {"key_" + str(i): "value_" + str(i) for i in range(100)},
         }
         body = json.dumps(signal_data).encode("utf-8")
         secret = b"test-secret-key-1234"
@@ -250,7 +245,7 @@ class TestHmacSignatureEdgeCases:
     def test_signature_with_special_characters_in_payload(self):
         """Test signature with special characters in signal data."""
         import json
-        
+
         signal_data = {
             "signal_id": "sig-123!@#$%",
             "instrument": "GOLD",
@@ -280,7 +275,7 @@ class TestSignalIngestResponseEdgeCases:
     def test_response_parsing_with_minimal_json(self):
         """Test response parsing with minimal required JSON."""
         from datetime import datetime
-        
+
         response_data = {
             "signal_id": "sig-123",
             "status": "received",
@@ -294,7 +289,7 @@ class TestSignalIngestResponseEdgeCases:
     def test_response_parsing_with_pending_approval_status(self):
         """Test response parsing with pending_approval status."""
         from datetime import datetime
-        
+
         response_data = {
             "signal_id": "sig-456",
             "status": "pending_approval",
@@ -309,7 +304,7 @@ class TestSignalIngestResponseEdgeCases:
     def test_response_parsing_with_rejected_status(self):
         """Test response parsing with rejected status."""
         from datetime import datetime
-        
+
         response_data = {
             "signal_id": "sig-789",
             "status": "rejected",
@@ -334,8 +329,9 @@ class TestOutboundClientHttpEdgeCases:
     @pytest.mark.asyncio
     async def test_client_handles_malformed_json_response(self):
         """Test client handles malformed JSON in response."""
-        from backend.app.trading.outbound.client import HmacClient
         import logging
+
+        from backend.app.trading.outbound.client import HmacClient
 
         config = OutboundConfig(
             enabled=True,
@@ -380,8 +376,9 @@ class TestOutboundClientHttpEdgeCases:
 
     def test_client_init_with_disabled_config(self):
         """Test client can be created with disabled config."""
-        from backend.app.trading.outbound.client import HmacClient
         import logging
+
+        from backend.app.trading.outbound.client import HmacClient
 
         config = OutboundConfig(
             enabled=False,  # Disabled
@@ -397,8 +394,9 @@ class TestOutboundClientHttpEdgeCases:
 
     def test_hmac_client_with_very_long_id(self):
         """Test client with very long producer ID."""
-        from backend.app.trading.outbound.client import HmacClient
         import logging
+
+        from backend.app.trading.outbound.client import HmacClient
 
         config = OutboundConfig(
             enabled=True,
@@ -438,7 +436,7 @@ class TestOutboundModuleIntegration:
     def test_signature_with_config_values(self):
         """Test signature generation with actual config values."""
         import json
-        
+
         config = OutboundConfig(
             enabled=True,
             producer_id="test-producer-123",

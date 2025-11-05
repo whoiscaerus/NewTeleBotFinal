@@ -13,7 +13,7 @@ Tests validate BUSINESS LOGIC, not implementation details.
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -25,9 +25,8 @@ from backend.app.trading.mt5.errors import (
     MT5Error,
     MT5InitError,
 )
-from backend.app.trading.mt5.health import MT5HealthStatus, probe
+from backend.app.trading.mt5.health import probe
 from backend.app.trading.mt5.session import MT5SessionManager
-
 
 # ============================================================================
 # FIXTURES
@@ -79,18 +78,26 @@ def circuit_breaker():
 class TestMT5SessionManagerInitialization:
     """Test MT5SessionManager initialization and state."""
 
-    def test_manager_initializes_with_correct_credentials(self, session_manager, mt5_settings):
+    def test_manager_initializes_with_correct_credentials(
+        self, session_manager, mt5_settings
+    ):
         """Manager stores credentials correctly."""
         assert session_manager.login == mt5_settings["login"]
         assert session_manager.password == mt5_settings["password"]
         assert session_manager.server == mt5_settings["server"]
         assert session_manager.terminal_path == mt5_settings["terminal_path"]
 
-    def test_manager_initializes_with_backoff_settings(self, session_manager, mt5_settings):
+    def test_manager_initializes_with_backoff_settings(
+        self, session_manager, mt5_settings
+    ):
         """Manager stores backoff configuration."""
         assert session_manager.max_failures == mt5_settings["max_failures"]
-        assert session_manager.backoff_base_seconds == mt5_settings["backoff_base_seconds"]
-        assert session_manager.backoff_max_seconds == mt5_settings["backoff_max_seconds"]
+        assert (
+            session_manager.backoff_base_seconds == mt5_settings["backoff_base_seconds"]
+        )
+        assert (
+            session_manager.backoff_max_seconds == mt5_settings["backoff_max_seconds"]
+        )
 
     def test_manager_starts_disconnected(self, session_manager):
         """Manager starts in disconnected state."""
@@ -138,7 +145,9 @@ class TestMT5ConnectionSuccess:
     """Test successful MT5 connection scenarios."""
 
     @pytest.mark.asyncio
-    async def test_connect_success_initializes_and_logs_in(self, session_manager, mt5_mock):
+    async def test_connect_success_initializes_and_logs_in(
+        self, session_manager, mt5_mock
+    ):
         """Successful connect initializes MT5 and logs in."""
         mt5_mock.initialize.return_value = True
         mt5_mock.login.return_value = True
@@ -155,12 +164,16 @@ class TestMT5ConnectionSuccess:
         )
 
     @pytest.mark.asyncio
-    async def test_connect_resets_failure_tracking_on_success(self, session_manager, mt5_mock):
+    async def test_connect_resets_failure_tracking_on_success(
+        self, session_manager, mt5_mock
+    ):
         """Successful connect resets failure count and backoff."""
         session_manager._failure_count = 3
         session_manager._backoff_exponent = 4
         session_manager._circuit_breaker_open = True
-        session_manager._last_failure_time = time.time() - 3600  # Set to past so backoff expired
+        session_manager._last_failure_time = (
+            time.time() - 3600
+        )  # Set to past so backoff expired
 
         mt5_mock.initialize.return_value = True
         mt5_mock.login.return_value = True
@@ -208,7 +221,9 @@ class TestMT5ConnectionFailures:
     """Test MT5 connection failure scenarios."""
 
     @pytest.mark.asyncio
-    async def test_connect_fails_if_initialization_fails(self, session_manager, mt5_mock):
+    async def test_connect_fails_if_initialization_fails(
+        self, session_manager, mt5_mock
+    ):
         """Connect raises MT5InitError if MT5.initialize fails."""
         mt5_mock.initialize.return_value = False
         mt5_mock.last_error.return_value = "Terminal not found"
@@ -273,7 +288,9 @@ class TestCircuitBreakerTriggering:
     """Test circuit breaker opening after max failures."""
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_opens_after_max_failures(self, session_manager, mt5_mock):
+    async def test_circuit_breaker_opens_after_max_failures(
+        self, session_manager, mt5_mock
+    ):
         """Circuit breaker opens after max_failures consecutive failures."""
         session_manager.max_failures = 3
         mt5_mock.initialize.return_value = False
@@ -291,7 +308,9 @@ class TestCircuitBreakerTriggering:
         assert session_manager._circuit_breaker_open is True
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_rejects_immediately_when_open(self, session_manager, mt5_mock):
+    async def test_circuit_breaker_rejects_immediately_when_open(
+        self, session_manager, mt5_mock
+    ):
         """Circuit breaker rejects connect attempts when open."""
         session_manager._circuit_breaker_open = True
         session_manager._failure_count = 5
@@ -305,7 +324,9 @@ class TestCircuitBreakerTriggering:
         mt5_mock.initialize.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_recovery_after_backoff_period(self, session_manager, mt5_mock):
+    async def test_circuit_breaker_recovery_after_backoff_period(
+        self, session_manager, mt5_mock
+    ):
         """Circuit breaker allows retry after backoff period elapses."""
         session_manager.max_failures = 2
         session_manager.backoff_base_seconds = 1  # 1 second for testing
@@ -382,7 +403,9 @@ class TestEnsureConnected:
     """Test ensure_connected reconnection logic."""
 
     @pytest.mark.asyncio
-    async def test_ensure_connected_skips_if_already_connected(self, session_manager, mt5_mock):
+    async def test_ensure_connected_skips_if_already_connected(
+        self, session_manager, mt5_mock
+    ):
         """ensure_connected doesn't call connect if already connected."""
         session_manager._is_connected = True
 
@@ -391,7 +414,9 @@ class TestEnsureConnected:
         mt5_mock.initialize.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_ensure_connected_reconnects_if_disconnected(self, session_manager, mt5_mock):
+    async def test_ensure_connected_reconnects_if_disconnected(
+        self, session_manager, mt5_mock
+    ):
         """ensure_connected calls connect if not connected."""
         mt5_mock.initialize.return_value = True
         mt5_mock.login.return_value = True
@@ -402,7 +427,9 @@ class TestEnsureConnected:
         mt5_mock.initialize.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_ensure_connected_propagates_circuit_breaker_error(self, session_manager):
+    async def test_ensure_connected_propagates_circuit_breaker_error(
+        self, session_manager
+    ):
         """ensure_connected propagates circuit breaker open errors."""
         session_manager._circuit_breaker_open = True
         session_manager._failure_count = 5
@@ -459,7 +486,9 @@ class TestMT5Shutdown:
         mt5_mock.shutdown.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_shutdown_handles_exceptions_gracefully(self, session_manager, mt5_mock):
+    async def test_shutdown_handles_exceptions_gracefully(
+        self, session_manager, mt5_mock
+    ):
         """Shutdown logs errors but doesn't raise."""
         session_manager._is_connected = True
         mt5_mock.shutdown.side_effect = Exception("Shutdown error")
@@ -486,7 +515,9 @@ class TestMT5ContextManager:
             assert session_manager._is_connected is True
 
     @pytest.mark.asyncio
-    async def test_context_manager_stays_connected_after_exit(self, session_manager, mt5_mock):
+    async def test_context_manager_stays_connected_after_exit(
+        self, session_manager, mt5_mock
+    ):
         """Context manager keeps session alive after exiting (doesn't shutdown)."""
         mt5_mock.initialize.return_value = True
         mt5_mock.login.return_value = True
@@ -499,7 +530,9 @@ class TestMT5ContextManager:
         mt5_mock.shutdown.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_context_manager_propagates_connection_errors(self, session_manager, mt5_mock):
+    async def test_context_manager_propagates_connection_errors(
+        self, session_manager, mt5_mock
+    ):
         """Context manager propagates connection errors."""
         mt5_mock.initialize.return_value = False
         mt5_mock.last_error.return_value = "Error"
@@ -509,7 +542,9 @@ class TestMT5ContextManager:
                 pass
 
     @pytest.mark.asyncio
-    async def test_context_manager_propagates_exceptions_in_block(self, session_manager, mt5_mock):
+    async def test_context_manager_propagates_exceptions_in_block(
+        self, session_manager, mt5_mock
+    ):
         """Context manager propagates exceptions from code inside block."""
         mt5_mock.initialize.return_value = True
         mt5_mock.login.return_value = True
@@ -708,7 +743,9 @@ class TestCircuitBreakerStateMachine:
         # Open the circuit with failures
         circuit_breaker._state = CircuitState.OPEN
         circuit_breaker._failure_count = 3
-        circuit_breaker._last_failure_time = time.time() - 10  # 10s ago, within 60s timeout
+        circuit_breaker._last_failure_time = (
+            time.time() - 10
+        )  # 10s ago, within 60s timeout
 
         async def func():
             pass
@@ -717,7 +754,9 @@ class TestCircuitBreakerStateMachine:
             await circuit_breaker.call(func)
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_transitions_to_half_open_after_timeout(self, circuit_breaker):
+    async def test_circuit_breaker_transitions_to_half_open_after_timeout(
+        self, circuit_breaker
+    ):
         """Circuit breaker transitions to HALF_OPEN after timeout."""
         # First establish OPEN state by failing
         circuit_breaker._state = CircuitState.OPEN
@@ -734,7 +773,9 @@ class TestCircuitBreakerStateMachine:
         assert circuit_breaker.is_closed is True
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_closes_on_success_in_half_open(self, circuit_breaker):
+    async def test_circuit_breaker_closes_on_success_in_half_open(
+        self, circuit_breaker
+    ):
         """Circuit breaker closes after successful call in HALF_OPEN state."""
         circuit_breaker._state = CircuitState.HALF_OPEN
         circuit_breaker._half_open_calls = 0
@@ -748,7 +789,9 @@ class TestCircuitBreakerStateMachine:
         assert circuit_breaker.is_closed is True
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_reopens_on_failure_in_half_open(self, circuit_breaker):
+    async def test_circuit_breaker_reopens_on_failure_in_half_open(
+        self, circuit_breaker
+    ):
         """Circuit breaker reopens after failure in HALF_OPEN state."""
         circuit_breaker._state = CircuitState.HALF_OPEN
         circuit_breaker._half_open_calls = 0
@@ -762,7 +805,9 @@ class TestCircuitBreakerStateMachine:
         assert circuit_breaker.is_open is True
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_resets_failure_count_on_success(self, circuit_breaker):
+    async def test_circuit_breaker_resets_failure_count_on_success(
+        self, circuit_breaker
+    ):
         """Successful call resets failure count."""
         circuit_breaker._failure_count = 5
 
@@ -793,7 +838,9 @@ class TestEdgeCasesAndErrors:
     """Test edge cases and error scenarios."""
 
     @pytest.mark.asyncio
-    async def test_multiple_connect_attempts_after_failure(self, session_manager, mt5_mock):
+    async def test_multiple_connect_attempts_after_failure(
+        self, session_manager, mt5_mock
+    ):
         """Multiple failed connects increase failure count correctly."""
         mt5_mock.initialize.return_value = False
         mt5_mock.last_error.return_value = "Error"
@@ -804,7 +851,9 @@ class TestEdgeCasesAndErrors:
             assert session_manager._failure_count == i
 
     @pytest.mark.asyncio
-    async def test_connect_after_partial_initialization(self, session_manager, mt5_mock):
+    async def test_connect_after_partial_initialization(
+        self, session_manager, mt5_mock
+    ):
         """Connect handles case where initialize succeeds but login fails."""
         mt5_mock.initialize.return_value = True
         mt5_mock.login.return_value = False
@@ -859,7 +908,9 @@ class TestEdgeCasesAndErrors:
         assert manager.terminal_path is None
 
     @pytest.mark.asyncio
-    async def test_backoff_increases_with_each_circuit_breaker_open(self, session_manager, mt5_mock):
+    async def test_backoff_increases_with_each_circuit_breaker_open(
+        self, session_manager, mt5_mock
+    ):
         """Backoff time increases with each circuit breaker opening."""
         session_manager.max_failures = 2
         session_manager.backoff_base_seconds = 100

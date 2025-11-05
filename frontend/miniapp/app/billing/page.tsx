@@ -53,16 +53,12 @@ export default function BillingPage() {
     try {
       setLoading(true);
 
-      // Fetch subscription
-      const subData = await apiGet<Subscription>("/api/v1/billing/subscription", {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
+      // Fetch subscription (JWT handled automatically by apiGet)
+      const subData = await apiGet<Subscription>("/api/v1/billing/subscription");
       setSubscription(subData || null);
 
       // Fetch devices
-      const devicesData = await apiGet<Device[]>("/api/v1/devices", {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
+      const devicesData = await apiGet<Device[]>("/api/v1/devices");
       setDevices(devicesData || []);
 
       setError(null);
@@ -92,8 +88,7 @@ export default function BillingPage() {
     try {
       const response = await apiPost<Device>(
         "/api/v1/devices",
-        { name: newDeviceName },
-        { headers: { Authorization: `Bearer ${jwt}` } }
+        { name: newDeviceName }
       );
 
       if (response) {
@@ -120,9 +115,7 @@ export default function BillingPage() {
     if (!window.confirm("Revoke this device? The EA will need to re-register.")) return;
 
     try {
-      await apiDelete(`/api/v1/devices/${deviceId}`, {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
+      await apiDelete(`/api/v1/devices/${deviceId}`);
 
       setDevices((prev) => prev.filter((d) => d.id !== deviceId));
 

@@ -11,13 +11,13 @@ SERVICE TESTS (13) — Core Business Logic
 Approval Workflow:
   ✓ test_approve_signal_creates_record
     → Creates Approval with decision=1 (APPROVED)
-  
+
   ✓ test_approve_signal_updates_signal_status
     → Signal.status: NEW → APPROVED
-  
+
   ✓ test_reject_signal_creates_record
     → Creates Approval with decision=0 (REJECTED)
-  
+
   ✓ test_reject_signal_updates_signal_status
     → Signal.status: NEW → REJECTED
 

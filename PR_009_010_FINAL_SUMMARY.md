@@ -45,11 +45,11 @@ def test_http_request_count_metric(self):
 ```python
 def test_record_http_request_increments_counter(self):
     collector = MetricsCollector()
-    collector.record_http_request(route="/api/v1/signals", method="POST", 
+    collector.record_http_request(route="/api/v1/signals", method="POST",
                                  status_code=201, duration_seconds=0.05)
     metrics_bytes = collector.get_metrics()
     metrics_text = metrics_bytes.decode("utf-8")
-    
+
     # REAL TEST: Verify actual Prometheus output
     assert "http_requests_total" in metrics_text
     assert 'route="/api/v1/signals"' in metrics_text
@@ -112,11 +112,11 @@ def test_users_email_unique_constraint_enforced(self, db_session):
     # Create first user
     user1 = User(email="test@example.com", ...)
     await db_session.commit()
-    
+
     # Attempt duplicate
     user2 = User(email="test@example.com", ...)
     await db_session.commit()  # ❌ Raises IntegrityError - constraint works!
-    
+
     assert error_raised
 ```
 
@@ -143,7 +143,7 @@ async def test_concurrent_user_creation_fails_on_duplicate_email(self):
     # First user succeeds
     user1 = User(email="concurrent@example.com", ...)
     await db_session.commit()
-    
+
     # Second user with same email fails
     user2 = User(email="concurrent@example.com", ...)
     with pytest.raises(IntegrityError):  # ✅ Constraint enforced
@@ -172,7 +172,7 @@ async def test_bulk_user_creation_performance(self):
         db_session.add(user)
     await db_session.commit()
     elapsed = time.time() - start
-    
+
     assert elapsed < 5.0  # ✅ Must be fast
 ```
 

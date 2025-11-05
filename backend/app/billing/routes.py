@@ -278,7 +278,7 @@ async def get_invoices(
         customer_id = await service.get_or_create_customer(
             user_id=current_user.id,
             email=current_user.email,
-            name=current_user.name,
+            name=getattr(current_user, "name", None),  # Optional name field
         )
 
         # Fetch invoices from Stripe API
@@ -331,7 +331,7 @@ async def create_portal_session_miniapp(
         customer_id = await service.get_or_create_customer(
             user_id=current_user.id,
             email=current_user.email,
-            name=current_user.name,
+            name=getattr(current_user, "name", None),  # Optional name field
         )
 
         # Create portal session with mini app return URL
@@ -348,6 +348,10 @@ async def create_portal_session_miniapp(
                 "customer_id": customer_id,
             },
         )
+
+        # Record telemetry metric
+        metrics = get_metrics()
+        metrics.record_miniapp_portal_open()
 
         return {"url": portal_response.url}
 

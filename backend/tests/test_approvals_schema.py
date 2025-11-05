@@ -11,8 +11,9 @@ Tests cover:
 ALL tests validate REAL Pydantic schema logic.
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 
 from backend.app.approvals.schema import ApprovalCreate, ApprovalOut
@@ -69,8 +70,7 @@ class TestApprovalCreateValidation:
 
         errors = exc_info.value.errors()
         assert any(
-            err["loc"] == ("decision",) and "pattern" in err["type"]
-            for err in errors
+            err["loc"] == ("decision",) and "pattern" in err["type"] for err in errors
         )
 
     def test_invalid_decision_case_sensitive(self):
@@ -135,9 +135,7 @@ class TestApprovalCreateValidation:
             )
 
         errors = exc_info.value.errors()
-        assert any(
-            err["loc"] == ("reason",) for err in errors
-        )
+        assert any(err["loc"] == ("reason",) for err in errors)
 
     def test_consent_version_default_1(self):
         """Test consent_version defaults to 1."""

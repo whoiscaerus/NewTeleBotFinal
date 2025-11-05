@@ -10,13 +10,13 @@ Tests REAL business logic gaps:
 - Event recording doesn't fail main app
 """
 
-import pytest
-from datetime import datetime, UTC, timedelta
-from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from datetime import UTC, datetime, timedelta
 
-from backend.app.audit.models import AuditLog, AUDIT_ACTIONS
+import pytest
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.audit.models import AuditLog
 from backend.app.audit.service import AuditService
 
 
@@ -222,7 +222,7 @@ class TestAuditLogQuerability:
         for i in range(3):
             await AuditService.record(
                 db=db,
-                action=f"signal.create",
+                action="signal.create",
                 target="signal",
                 actor_id=user_id,
                 actor_role="USER",
@@ -231,9 +231,7 @@ class TestAuditLogQuerability:
         await db.commit()
 
         # Query by actor_id
-        result = await db.execute(
-            select(AuditLog).where(AuditLog.actor_id == user_id)
-        )
+        result = await db.execute(select(AuditLog).where(AuditLog.actor_id == user_id))
         events = result.scalars().all()
 
         assert len(events) == 3
@@ -294,9 +292,7 @@ class TestAuditLogQuerability:
 
         # Query today's range
         result = await db.execute(
-            select(AuditLog).where(
-                AuditLog.timestamp.between(yesterday, tomorrow)
-            )
+            select(AuditLog).where(AuditLog.timestamp.between(yesterday, tomorrow))
         )
         events = result.scalars().all()
 
@@ -323,9 +319,7 @@ class TestAuditLogIndexing:
 
         # Query should use index (we can't directly test this without EXPLAIN ANALYZE,
         # but presence of index is verified at schema level)
-        result = await db.execute(
-            select(AuditLog).where(AuditLog.actor_id == "user_1")
-        )
+        result = await db.execute(select(AuditLog).where(AuditLog.actor_id == "user_1"))
         events = result.scalars().all()
         assert len(events) == 10
 
@@ -423,7 +417,7 @@ class TestAuditBatchOperations:
                 db=db,
                 action="signal.create",
                 target="signal",
-                actor_id=f"user_1",
+                actor_id="user_1",
                 actor_role="USER",
                 target_id=f"signal_{i}",
             )
@@ -497,14 +491,18 @@ class TestAuditEventAggregation:
 
         # Count logins
         result = await db.execute(
-            select(func.count()).select_from(AuditLog).where(AuditLog.action == "auth.login")
+            select(func.count())
+            .select_from(AuditLog)
+            .where(AuditLog.action == "auth.login")
         )
         login_count = result.scalar()
         assert login_count == 5
 
         # Count signals
         result = await db.execute(
-            select(func.count()).select_from(AuditLog).where(AuditLog.action == "signal.create")
+            select(func.count())
+            .select_from(AuditLog)
+            .where(AuditLog.action == "signal.create")
         )
         signal_count = result.scalar()
         assert signal_count == 3
@@ -528,7 +526,9 @@ class TestAuditEventAggregation:
 
         # Count
         result = await db.execute(
-            select(func.count()).select_from(AuditLog).where(AuditLog.actor_id == user_id)
+            select(func.count())
+            .select_from(AuditLog)
+            .where(AuditLog.actor_id == user_id)
         )
         count = result.scalar()
         assert count == 20
@@ -552,7 +552,7 @@ class TestAuditErrorRecovery:
             await db.commit()
             # If we got here, it's recorded
             assert event is not None
-        except Exception as e:
+        except Exception:
             # Even if recording fails, app continues
             # (In real app, audit failure shouldn't break main operation)
             pass

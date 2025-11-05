@@ -1,22 +1,23 @@
 """Approvals API routes."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.approvals.models import Approval, ApprovalDecision
-from backend.app.approvals.schema import ApprovalCreate, ApprovalOut
+from backend.app.approvals.schema import ApprovalCreate, ApprovalOut, PendingApprovalOut
 from backend.app.approvals.service import ApprovalService
 from backend.app.audit.service import AuditService
 from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.jwt_handler import JWTHandler
 from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.observability import get_metrics
 from backend.app.risk.service import RiskService
-from backend.app.signals.models import Signal
+from backend.app.signals.models import Signal, SignalStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["approvals"])
@@ -30,7 +31,163 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@router.post("/approvals", status_code=201, response_model=ApprovalOut)
+@router.get("/approvals/pending", response_model=list[PendingApprovalOut])
+async def get_pending_approvals(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    since: datetime | None = Query(
+        None,
+        description="Only fetch approvals created after this timestamp (ISO format)",
+    ),
+    skip: int = Query(0, ge=0, description="Pagination: number of records to skip"),
+    limit: int = Query(
+        50, ge=1, le=100, description="Pagination: max records to return"
+    ),
+) -> list[PendingApprovalOut]:
+    """Get pending (unapproved) signals for mini app approval console.
+
+    Returns list of signals waiting for user approval, with approval tokens.
+    Used by mini app to fetch pending approvals for real-time polling.
+
+    Args:
+        db: Database session
+        current_user: Authenticated user
+        since: Optional timestamp to fetch only newer approvals (for polling efficiency)
+        skip: Pagination offset (default: 0)
+        limit: Pagination limit, max 100 (default: 50)
+
+    Returns:
+        list[PendingApprovalOut]: List of pending approvals with signal details
+
+    Raises:
+        HTTPException: 401 if not authenticated, 400 if invalid since parameter
+
+    Security:
+        - Returns only user's own approvals (signal.user_id == current_user.id)
+        - Never returns TP/SL data (stored in owner_only field, not exposed)
+        - Tokens valid for 5 minutes only
+        - Requires JWT authentication
+
+    Example:
+        >>> # Fetch pending approvals
+        >>> response = await get_pending_approvals(db=db, current_user=user)
+        >>> len(response) > 0
+        True
+        >>> response[0].signal_id is not None
+        True
+    """
+    try:
+        # Build query: approvals without decision (pending), owned by current user
+        query = (
+            select(Approval, Signal)
+            .join(Signal, Approval.signal_id == Signal.id)
+            .where(
+                and_(
+                    Approval.user_id == str(current_user.id),
+                    Approval.decision.is_(
+                        None
+                    ),  # Type: ignore # NULL decision = pending
+                    Signal.status
+                    == SignalStatus.NEW.value,  # Only NEW signals are pending
+                )
+            )
+            .order_by(Approval.created_at.desc())
+        )
+
+        # Optional: filter by since parameter for polling efficiency
+        if since:
+            try:
+                since_dt = (
+                    since
+                    if isinstance(since, datetime)
+                    else datetime.fromisoformat(
+                        since.isoformat() if hasattr(since, "isoformat") else str(since)
+                    )
+                )
+                query = query.where(Approval.created_at > since_dt)
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid since parameter: {since}")
+                raise HTTPException(
+                    status_code=400, detail="Invalid since parameter format"
+                )
+
+        # Execute query with pagination
+        result = await db.execute(query.offset(skip).limit(limit))
+        rows = result.all()
+
+        # Generate approval tokens for each pending approval
+        jwt_handler = JWTHandler()
+        pending_approvals: list[PendingApprovalOut] = []
+
+        for approval, signal in rows:
+            # Generate 5-minute approval token if not already stored
+            if not approval.approval_token:
+                token_expires_delta = timedelta(minutes=5)
+                token = jwt_handler.create_token(
+                    user_id=str(current_user.id),
+                    audience="miniapp_approval",
+                    expires_delta=token_expires_delta,
+                    role="user",
+                    jti=str(approval.id),  # Unique identifier for this approval token
+                )
+                expires_at = datetime.now(UTC) + token_expires_delta
+
+                # Update approval record with token (for audit trail)
+                approval.approval_token = token
+                approval.expires_at = expires_at
+                db.add(approval)
+            else:
+                expires_at = approval.expires_at
+                token = approval.approval_token
+
+            # Determine lot_size from signal payload or default
+            lot_size = 0.04  # Default fallback
+            if signal.payload and isinstance(signal.payload, dict):
+                lot_size = float(signal.payload.get("lot_size", 0.04))
+
+            # Build response (safe: no SL/TP exposed)
+            pending_approvals.append(
+                PendingApprovalOut(
+                    signal_id=signal.id,
+                    instrument=signal.instrument,
+                    side="buy" if signal.side == 0 else "sell",
+                    lot_size=lot_size,
+                    created_at=signal.created_at,
+                    approval_token=token,
+                    expires_at=expires_at,
+                )
+            )
+
+        # Commit token updates to DB (for audit trail)
+        if pending_approvals:
+            await db.commit()
+
+        # Record telemetry
+        try:
+            metrics = get_metrics()
+            metrics.miniapp_approvals_viewed_total.inc()  # Counter for page views
+        except Exception as e:
+            logger.warning(
+                f"Failed to record miniapp_approvals_viewed_total metric: {e}"
+            )
+
+        logger.info(
+            "Pending approvals fetched for mini app",
+            extra={
+                "user_id": str(current_user.id),
+                "count": len(pending_approvals),
+            },
+        )
+
+        return pending_approvals
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch pending approvals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+
 async def create_approval(
     request_data: ApprovalCreate,
     request: Request,

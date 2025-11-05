@@ -212,7 +212,7 @@ Test Summary:
   - Format validation: 6/6 ✅
   - Edge cases: 4/4 ✅
   - Original tests: 45/45 ✅
-  
+
 TOTAL: 92/92 tests PASSING ✅
 ```
 
@@ -372,7 +372,7 @@ Test Summary:
   - Audit operations: 2/2 ✅
   - Performance: 2/2 ✅
   - Original tests: 33/33 ✅
-  
+
 TOTAL: 75/75 tests PASSING ✅
 ```
 

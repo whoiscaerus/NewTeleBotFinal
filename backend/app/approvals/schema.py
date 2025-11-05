@@ -28,11 +28,36 @@ class ApprovalOut(BaseModel):
     reason: str | None
     consent_version: int
     created_at: datetime
+    approval_token: str | None = None
+    expires_at: datetime | None = None
 
     class Config:
         """Pydantic config."""
 
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+        }
+
+
+class PendingApprovalOut(BaseModel):
+    """Pending approval for mini app console.
+
+    Contains signal details needed for approval decision.
+    Does NOT include SL/TP (stored in owner_only, never exposed).
+    """
+
+    signal_id: str
+    instrument: str
+    side: str  # "buy" or "sell"
+    lot_size: float
+    created_at: datetime
+    approval_token: str = Field(..., description="Short-lived JWT token (5 min expiry)")
+    expires_at: datetime = Field(..., description="Token expiry timestamp")
+
+    class Config:
+        """Pydantic config."""
+
         json_encoders = {
             datetime: lambda v: v.isoformat(),
         }

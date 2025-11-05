@@ -25,6 +25,7 @@ class JWTHandler:
         audience: str | None = None,
         expires_at: datetime | None = None,
         expires_delta: timedelta | None = None,
+        jti: str | None = None,
     ) -> str:
         """
         Create JWT access token.
@@ -36,6 +37,7 @@ class JWTHandler:
             audience: Optional audience claim
             expires_at: Optional explicit expiration time
             expires_delta: Optional expiration delta (takes precedence over expires_at)
+            jti: Optional JWT ID (unique identifier for token)
 
         Returns:
             Encoded JWT token string
@@ -67,6 +69,8 @@ class JWTHandler:
             payload["telegram_user_id"] = telegram_user_id
         if audience:
             payload["aud"] = audience
+        if jti:
+            payload["jti"] = jti
 
         # Encode token
         token = jwt.encode(

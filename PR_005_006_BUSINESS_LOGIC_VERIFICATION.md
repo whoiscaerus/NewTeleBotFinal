@@ -422,7 +422,7 @@ Test Quality Attributes:
    - RateLimiter class from backend.app.core.rate_limit
    - ProblemDetail and exceptions from backend.app.core.errors
    - @rate_limit decorator from backend.app.core.decorators
-   
+
 ✅ Uses REAL Redis:
    - fakeredis.aioredis.FakeRedis for test isolation
    - Lua script execution (not mocked)

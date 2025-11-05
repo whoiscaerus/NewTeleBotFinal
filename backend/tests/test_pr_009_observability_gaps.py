@@ -11,7 +11,6 @@ PR-009: Observability Stack - COMPREHENSIVE GAP TESTS
 Covers: Metrics collection, recording, export, label validation, edge cases
 """
 
-import pytest
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 from backend.app.observability.metrics import MetricsCollector, get_metrics
@@ -333,7 +332,7 @@ class TestErrorMetricsRecording:
 
         error_statuses = [400, 401, 403, 404, 422, 429, 500, 502, 503]
         for status in error_statuses:
-            collector.record_error(status_code=status, endpoint=f"/api/v1/test")
+            collector.record_error(status_code=status, endpoint="/api/v1/test")
 
         metrics_bytes = collector.get_metrics()
         metrics_text = metrics_bytes.decode("utf-8")
@@ -732,9 +731,11 @@ class TestPrometheusFormatValidation:
         metrics_text = collector.get_metrics().decode("utf-8")
 
         # Labels should be in format: {label1="value1",label2="value2"}
-        assert 'http_requests_total{endpoint="/api/v1/test"' in metrics_text or \
-               'http_requests_total{method="POST"' in metrics_text or \
-               'http_requests_total{route="/api/v1/test"' in metrics_text
+        assert (
+            'http_requests_total{endpoint="/api/v1/test"' in metrics_text
+            or 'http_requests_total{method="POST"' in metrics_text
+            or 'http_requests_total{route="/api/v1/test"' in metrics_text
+        )
 
 
 class TestMetricsEdgeCases:

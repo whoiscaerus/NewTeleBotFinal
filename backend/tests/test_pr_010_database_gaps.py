@@ -11,23 +11,22 @@ PR-010: Database Models & Migrations - COMPREHENSIVE GAP TESTS
 Covers: Migrations, schema validation, constraints, indexes, cascades, performance
 """
 
-from datetime import datetime
-
 import pytest
-from sqlalchemy import text, inspect, event
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
 
+from backend.app.audit.models import AuditLog
 from backend.app.auth.models import User, UserRole
 from backend.app.signals.models import Signal, SignalStatus
-from backend.app.audit.models import AuditLog
 
 
 class TestAlembicMigrations:
     """Test Alembic migration execution."""
 
     @pytest.mark.asyncio
-    async def test_initial_migration_creates_base_tables(self, db_session: AsyncSession):
+    async def test_initial_migration_creates_base_tables(
+        self, db_session: AsyncSession
+    ):
         """✅ REAL TEST: Verify initial migration creates required tables."""
 
         def check_tables(sync_conn):
@@ -140,9 +139,7 @@ class TestUserTableConstraints:
             indexes = inspector.get_indexes("users")
 
             # Check for unique constraint or index on email
-            has_unique = any(
-                "email" in c.get("column_names", []) for c in constraints
-            )
+            has_unique = any("email" in c.get("column_names", []) for c in constraints)
             has_unique_index = any(
                 "email" in idx.get("column_names", []) and idx.get("unique", False)
                 for idx in indexes
@@ -255,9 +252,7 @@ class TestSignalTableConstraints:
             pass
 
     @pytest.mark.asyncio
-    async def test_signal_instrument_not_null_enforced(
-        self, db_session: AsyncSession
-    ):
+    async def test_signal_instrument_not_null_enforced(self, db_session: AsyncSession):
         """✅ REAL TEST: Verify instrument NOT NULL enforced."""
 
         def check_nullable(sync_conn):
@@ -359,7 +354,9 @@ class TestDatabaseIndexes:
         indexes = await connection.run_sync(check_indexes)
 
         # Check for index on user_id
-        has_user_index = any("user_id" in idx.get("column_names", []) for idx in indexes)
+        has_user_index = any(
+            "user_id" in idx.get("column_names", []) for idx in indexes
+        )
         assert has_user_index, "Index on signals.user_id not found"
 
     @pytest.mark.asyncio
@@ -495,7 +492,9 @@ class TestAuditLogModelFields:
     """Test AuditLog model field types and defaults."""
 
     @pytest.mark.asyncio
-    async def test_audit_log_table_exists_and_has_columns(self, db_session: AsyncSession):
+    async def test_audit_log_table_exists_and_has_columns(
+        self, db_session: AsyncSession
+    ):
         """✅ REAL TEST: Verify audit_logs table exists with reasonable columns."""
 
         def check_columns(sync_conn):
@@ -509,7 +508,9 @@ class TestAuditLogModelFields:
         col_count = await connection.run_sync(check_columns)
 
         # Should have multiple columns
-        assert col_count > 5, f"audit_logs should have multiple columns, found {col_count}"
+        assert (
+            col_count > 5
+        ), f"audit_logs should have multiple columns, found {col_count}"
 
     @pytest.mark.asyncio
     async def test_audit_log_ts_column_exists(self, db_session: AsyncSession):
@@ -521,7 +522,11 @@ class TestAuditLogModelFields:
             inspector = sync_inspect(sync_conn)
             columns = {col["name"]: col for col in inspector.get_columns("audit_logs")}
             # Look for timestamp column (could be named ts, timestamp, created_at, etc.)
-            timestamp_cols = [name for name in columns.keys() if "ts" in name or "time" in name or "created" in name]
+            timestamp_cols = [
+                name
+                for name in columns.keys()
+                if "ts" in name or "time" in name or "created" in name
+            ]
             return timestamp_cols
 
         connection = await db_session.connection()
@@ -591,7 +596,9 @@ class TestCascadeBehavior:
     """Test cascade delete and relationship behavior."""
 
     @pytest.mark.asyncio
-    async def test_user_signals_relationship_query_works(self, db_session: AsyncSession):
+    async def test_user_signals_relationship_query_works(
+        self, db_session: AsyncSession
+    ):
         """✅ REAL TEST: Verify user-signals relationship queries work."""
         # Create user
         user = User(

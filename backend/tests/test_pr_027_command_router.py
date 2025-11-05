@@ -20,7 +20,6 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.telegram.commands import (
-    CommandInfo,
     CommandRegistry,
     UserRole,
     get_registry,
@@ -28,7 +27,6 @@ from backend.app.telegram.commands import (
 )
 from backend.app.telegram.models import TelegramUser
 from backend.app.telegram.rbac import (
-    RoleMiddleware,
     ensure_admin,
     ensure_owner,
     ensure_public,
@@ -132,9 +130,7 @@ class TestCommandRegistryRegistration:
         async def handler():
             return "test"
 
-        registry.register(
-            "cmd", "Description", UserRole.PUBLIC, handler, "Help text"
-        )
+        registry.register("cmd", "Description", UserRole.PUBLIC, handler, "Help text")
 
         # Registering same name again should raise
         with pytest.raises(ValueError, match="already registered"):
@@ -411,9 +407,9 @@ class TestRoleHierarchy:
         for user_role, commands in permissions.items():
             for cmd_name, should_allow in commands.items():
                 result = registry.is_allowed(cmd_name, user_role)
-                assert result == should_allow, (
-                    f"{user_role} should {'access' if should_allow else 'NOT access'} {cmd_name}"
-                )
+                assert (
+                    result == should_allow
+                ), f"{user_role} should {'access' if should_allow else 'NOT access'} {cmd_name}"
 
     def test_list_commands_for_public_role(self):
         """Test listing available commands for PUBLIC role."""
@@ -509,9 +505,13 @@ class TestHelpTextGeneration:
         async def handler():
             return "test"
 
-        registry.register("start", "Start the bot", UserRole.PUBLIC, handler, "Start help")
+        registry.register(
+            "start", "Start the bot", UserRole.PUBLIC, handler, "Start help"
+        )
         registry.register("help", "Get help", UserRole.PUBLIC, handler, "Help help")
-        registry.register("buy", "Buy subscription", UserRole.SUBSCRIBER, handler, "Buy help")
+        registry.register(
+            "buy", "Buy subscription", UserRole.SUBSCRIBER, handler, "Buy help"
+        )
         registry.register("admin", "Admin panel", UserRole.ADMIN, handler, "Admin help")
 
         help_text = registry.get_help_text(UserRole.PUBLIC)
@@ -623,7 +623,9 @@ class TestHelpTextGeneration:
         async def handler():
             return "test"
 
-        detailed_help = "This is a detailed help text\nWith multiple lines\nAnd examples"
+        detailed_help = (
+            "This is a detailed help text\nWith multiple lines\nAnd examples"
+        )
 
         registry.register("help", "Get help", UserRole.PUBLIC, handler, detailed_help)
 
@@ -1042,17 +1044,13 @@ class TestRealWorldScenarios:
         registry.register("analytics", "Analytics", UserRole.SUBSCRIBER, dummy, "Help")
 
         # ADMIN commands
-        registry.register(
-            "broadcast", "Broadcast", UserRole.ADMIN, dummy, "Help"
-        )
+        registry.register("broadcast", "Broadcast", UserRole.ADMIN, dummy, "Help")
         registry.register(
             "content", "Content management", UserRole.ADMIN, dummy, "Help"
         )
 
         # OWNER commands
-        registry.register(
-            "owner", "Owner panel", UserRole.OWNER, dummy, "Help"
-        )
+        registry.register("owner", "Owner panel", UserRole.OWNER, dummy, "Help")
 
         total_commands = len(registry.get_all_commands())
         assert total_commands == 9
@@ -1184,7 +1182,9 @@ class TestEdgeCasesAndErrors:
 
         aliases = [f"alias_{i}" for i in range(50)]
 
-        registry.register("cmd", "Cmd", UserRole.PUBLIC, handler, "Help", aliases=aliases)
+        registry.register(
+            "cmd", "Cmd", UserRole.PUBLIC, handler, "Help", aliases=aliases
+        )
 
         # All aliases should work
         for alias in aliases[:10]:  # Test first 10
@@ -1332,7 +1332,9 @@ class TestGlobalRegistry:
         async def handler():
             return "test"
 
-        registry.register("cmd1", "Cmd1", UserRole.PUBLIC, handler, "Help", aliases=["c1"])
+        registry.register(
+            "cmd1", "Cmd1", UserRole.PUBLIC, handler, "Help", aliases=["c1"]
+        )
         registry.register("cmd2", "Cmd2", UserRole.PUBLIC, handler, "Help")
         assert len(registry.get_all_commands()) == 2
 
@@ -1345,6 +1347,7 @@ class TestGlobalRegistry:
 
     def test_global_registry_multiple_resets(self):
         """Test registry can be reset multiple times."""
+
         async def handler():
             return "test"
 

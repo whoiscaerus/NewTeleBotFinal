@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from backend.app.core.db import Base
 
@@ -24,6 +25,9 @@ class ProductCategory(Base):
     description = Column(Text, nullable=True)
     icon = Column(String(50), nullable=True)  # Emoji or icon name
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    products = relationship("Product", back_populates="category")
 
     __table_args__ = (Index("ix_categories_slug", "slug"),)
 
@@ -48,6 +52,12 @@ class Product(Base):
     description = Column(Text, nullable=True)
     features = Column(Text, nullable=True)  # JSON array of features
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    category = relationship("ProductCategory", back_populates="products")
+    tiers = relationship(
+        "ProductTier", back_populates="product", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("ix_products_category", "category_id"),
@@ -81,6 +91,9 @@ class ProductTier(Base):
         String(20), nullable=False, default="monthly"
     )  # 'monthly', 'annual'
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    product = relationship("Product", back_populates="tiers")
 
     __table_args__ = (
         Index("ix_product_tiers_product", "product_id"),

@@ -57,9 +57,7 @@ class TestSignalCreationEndpoint:
         assert data["payload"] == {"rsi": 75.5}
 
     @pytest.mark.asyncio
-    async def test_create_signal_missing_authentication_401(
-        self, client: AsyncClient
-    ):
+    async def test_create_signal_missing_authentication_401(self, client: AsyncClient):
         """Test missing authentication returns 401."""
         response = await client.post(
             "/api/v1/signals",
@@ -275,7 +273,7 @@ class TestSignalCreationEndpoint:
 
         # Create wrong signature
         wrong_sig = hmac.new(
-            "wrong-key".encode(),
+            b"wrong-key",
             payload_json.encode(),
             hashlib.sha256,
         ).hexdigest()
@@ -482,9 +480,7 @@ class TestSignalRetrievalEndpoint:
         # For now, verify the signal is correctly owned
         from sqlalchemy import select
 
-        result = await db_session.execute(
-            select(Signal).where(Signal.id == signal_id)
-        )
+        result = await db_session.execute(select(Signal).where(Signal.id == signal_id))
         signal = result.scalar()
 
         assert signal.user_id == auth_headers.get("X-User-Id", "test_user")

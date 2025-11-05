@@ -1,7 +1,7 @@
 # PR-023a Continuation Guide - Pick Up Here
 
-**Current Status:** 53/63 tests passing - 1 blocking issue  
-**Issue:** Test fixture doesn't create Client object for API test  
+**Current Status:** 53/63 tests passing - 1 blocking issue
+**Issue:** Test fixture doesn't create Client object for API test
 **Time to Fix:** ~5 minutes
 
 ## Problem Statement
@@ -17,9 +17,9 @@ The test `test_post_device_register_201` is failing because:
 
 ## Specific Details
 
-**Test File:** `backend/tests/test_pr_023a_devices_comprehensive.py`  
-**Test Function:** `test_post_device_register_201` (around line 300)  
-**Error Message:** `"Client 'c49bdd35-06b8-4677-9a2a-fce50194fdaf' does not exist"`  
+**Test File:** `backend/tests/test_pr_023a_devices_comprehensive.py`
+**Test Function:** `test_post_device_register_201` (around line 300)
+**Error Message:** `"Client 'c49bdd35-06b8-4677-9a2a-fce50194fdaf' does not exist"`
 **HTTP Status Returned:** 400 (should be 201)
 
 ## Root Cause Analysis
@@ -49,13 +49,13 @@ async def authenticated_user(db_session):
     # Create user
     user = User(id="test-user-id", email="test@example.com", ...)
     db_session.add(user)
-    
+
     # Create linked client (KEY ADDITION)
     client = Client(id=user.id, user_id=user.id, ...)
     db_session.add(client)
-    
+
     await db_session.commit()
-    
+
     # Create JWT token for user
     token = create_access_token(user.id)
     return {"user": user, "token": token, "headers": {"Authorization": f"Bearer {token}"}}

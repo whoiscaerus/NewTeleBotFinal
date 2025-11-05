@@ -11,17 +11,13 @@ Tests the event emission infrastructure:
 Coverage target: 100% of events.py (357 lines)
 """
 
-import pytest
 import logging
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-from backend.app.trading.runtime.events import (
-    EventType,
-    Event,
-    EventEmitter,
-)
+import pytest
 
+from backend.app.trading.runtime.events import Event, EventEmitter, EventType
 
 # ============================================================================
 # EVENTTYPE ENUM TESTS
@@ -575,9 +571,7 @@ class TestEventEmitterIntegration:
         emitter = EventEmitter(loop_id="trader_main")
 
         # 1. Loop started
-        loop_started = await emitter.emit_loop_started(
-            metadata={"symbols": ["GOLD"]}
-        )
+        loop_started = await emitter.emit_loop_started(metadata={"symbols": ["GOLD"]})
         assert loop_started.event_type == EventType.LOOP_STARTED
 
         # 2. Signal received
@@ -634,7 +628,10 @@ class TestEventEmitterIntegration:
             await emitter.emit_trade_executed("sig_1", "trade_1", "GOLD", 1.0, 1950.0)
 
             # Verify labels() called with correct event types
-            labels_calls = [call[1]["event_type"] for call in mock_metrics.return_value.analytics_events_total.labels.call_args_list]
+            labels_calls = [
+                call[1]["event_type"]
+                for call in mock_metrics.return_value.analytics_events_total.labels.call_args_list
+            ]
             assert "signal_received" in labels_calls
             assert "signal_approved" in labels_calls
             assert "trade_executed" in labels_calls

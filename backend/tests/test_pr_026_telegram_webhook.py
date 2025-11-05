@@ -19,35 +19,20 @@ NO skipping - every test validates production scenarios.
 
 import hashlib
 import hmac
-import json
 import time
-from datetime import datetime
-from ipaddress import IPv4Network, ip_address
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from ipaddress import IPv4Network
+from unittest.mock import patch
 
 import pytest
-from fastapi import status
-from httpx import AsyncClient
-from prometheus_client import REGISTRY
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.rate_limit import RateLimiter
-from backend.app.core.settings import settings
-from backend.app.telegram.models import TelegramWebhook
 from backend.app.telegram.schema import TelegramUpdate
-from backend.app.telegram.verify import (
-    is_ip_allowed,
-    parse_cidrs,
-    verify_secret_header,
-)
+from backend.app.telegram.verify import is_ip_allowed, parse_cidrs, verify_secret_header
 from backend.app.telegram.webhook import (
     telegram_commands_total,
     telegram_updates_total,
     telegram_verification_failures,
     verify_telegram_signature,
 )
-
 
 # ============================================================================
 # SECTION 1: CIDR PARSING & IP ALLOWLIST VALIDATION
@@ -178,7 +163,9 @@ class TestSecretHeaderVerification:
 
     def test_secret_header_exact_match(self):
         """Matching secrets pass verification."""
-        assert verify_secret_header("my-secret-token-123", "my-secret-token-123") is True
+        assert (
+            verify_secret_header("my-secret-token-123", "my-secret-token-123") is True
+        )
 
     def test_secret_header_mismatch(self):
         """Mismatched secrets fail verification."""
@@ -419,7 +406,11 @@ class TestCommandRouting:
                     "message_id": 1,
                     "date": int(time.time()),
                     "chat": {"id": 789, "type": "private"},
-                    "from": {"id": 999, "is_bot": False, "first_name": "Test"},  # Required
+                    "from": {
+                        "id": 999,
+                        "is_bot": False,
+                        "first_name": "Test",
+                    },  # Required
                 },
             },
         }

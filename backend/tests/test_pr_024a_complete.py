@@ -18,31 +18,25 @@ COVERAGE TARGET: 100% of business logic
 - All API contracts validated
 """
 
-import base64
-import hashlib
-import hmac
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+import fakeredis.aioredis
 import pytest
 import pytest_asyncio
-import fakeredis.aioredis
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.approvals.models import Approval, ApprovalDecision
 from backend.app.auth.models import User
-from backend.app.auth.utils import create_access_token, hash_password
+from backend.app.auth.utils import hash_password
 from backend.app.clients.devices.models import Device
 from backend.app.clients.devices.service import DeviceService
 from backend.app.clients.models import Client
-from backend.app.core.errors import APIError
-from backend.app.ea.auth import DeviceAuthDependency
 from backend.app.ea.hmac import HMACBuilder
 from backend.app.ea.models import Execution, ExecutionStatus
-from backend.app.ea.schemas import AckRequest, AckResponse
 from backend.app.signals.models import Signal
 
 # ===========================================================================================
@@ -108,7 +102,7 @@ async def approved_signal(
         side=0,  # BUY
         price=Decimal("1.0850"),
         status=0,  # NEW
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(signal)
     await db_session.commit()
@@ -124,7 +118,7 @@ async def approved_signal(
         consent_version=1,
         ip="192.168.1.100",
         ua="MT5/5.00",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(approval)
     await db_session.commit()
@@ -146,7 +140,7 @@ async def pending_signal(
         side=1,  # SELL
         price=Decimal("1950.00"),
         status=0,  # NEW
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(signal)
     await db_session.commit()
@@ -169,7 +163,7 @@ async def rejected_signal(
         side=0,  # BUY
         price=Decimal("1.2500"),
         status=0,  # NEW
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(signal)
     await db_session.commit()
@@ -186,7 +180,7 @@ async def rejected_signal(
         reason="Invalid setup",
         ip="192.168.1.100",
         ua="MT5/5.00",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(approval)
     await db_session.commit()
@@ -219,7 +213,10 @@ class TestHMACSignatureBuilding:
             timestamp="2025-10-26T10:30:45Z",
         )
 
-        assert canonical == "GET|/api/v1/client/poll||dev_123|nonce_abc|2025-10-26T10:30:45Z"
+        assert (
+            canonical
+            == "GET|/api/v1/client/poll||dev_123|nonce_abc|2025-10-26T10:30:45Z"
+        )
         assert "|" in canonical
         assert canonical.count("|") == 5
 
@@ -249,7 +246,10 @@ class TestHMACSignatureBuilding:
         assert isinstance(signature, str)
         assert len(signature) > 0
         # Base64 should only contain alphanumeric, +, /, =
-        assert all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=" for c in signature)
+        assert all(
+            c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+            for c in signature
+        )
 
     def test_hmac_signature_deterministic(self):
         """Test same input always produces same signature."""
@@ -314,7 +314,7 @@ class TestDeviceAuthentication:
         body = ""
         device_id = device.id
         nonce = "nonce_" + str(uuid4())
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
         canonical = HMACBuilder.build_canonical_string(
             method, path, body, device_id, nonce, timestamp
@@ -397,7 +397,11 @@ class TestPollEndpoint:
 
     @pytest.mark.asyncio
     async def test_poll_excludes_pending_signals(
-        self, db_session: AsyncSession, user_with_client, approved_signal, pending_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        approved_signal,
+        pending_signal,
     ):
         """Test poll excludes unapproved signals."""
         user, client = user_with_client
@@ -419,7 +423,11 @@ class TestPollEndpoint:
 
     @pytest.mark.asyncio
     async def test_poll_excludes_rejected_signals(
-        self, db_session: AsyncSession, user_with_client, approved_signal, rejected_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        approved_signal,
+        rejected_signal,
     ):
         """Test poll excludes rejected signals."""
         user, client = user_with_client
@@ -437,7 +445,11 @@ class TestPollEndpoint:
 
     @pytest.mark.asyncio
     async def test_poll_excludes_already_executed(
-        self, db_session: AsyncSession, user_with_client, registered_device_with_secret, approved_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        registered_device_with_secret,
+        approved_signal,
     ):
         """Test poll excludes signals already executed on this device."""
         user, client = user_with_client
@@ -455,7 +467,7 @@ class TestPollEndpoint:
             device_id=device.id,
             status=ExecutionStatus.PLACED,
             broker_ticket="ORDER123",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(execution)
         await db_session.commit()
@@ -500,7 +512,7 @@ class TestPollEndpoint:
             side=1,  # SELL
             price=Decimal("150.50"),
             status=0,  # NEW
-            created_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            created_at=datetime.now(UTC) + timedelta(hours=1),
         )
         db_session.add(future_signal)
         await db_session.commit()
@@ -516,13 +528,13 @@ class TestPollEndpoint:
             consent_version=1,
             ip="192.168.1.100",
             ua="MT5/5.00",
-            created_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            created_at=datetime.now(UTC) + timedelta(hours=1),
         )
         db_session.add(future_approval)
         await db_session.commit()
 
         # Query with 'since' filter (only future signals)
-        cutoff = datetime.now(timezone.utc) + timedelta(minutes=30)
+        cutoff = datetime.now(UTC) + timedelta(minutes=30)
         stmt = select(Approval).where(
             (Approval.client_id == str(client.id))
             & (Approval.decision == ApprovalDecision.APPROVED.value)
@@ -546,7 +558,11 @@ class TestAckEndpoint:
 
     @pytest.mark.asyncio
     async def test_ack_creates_execution_record(
-        self, db_session: AsyncSession, user_with_client, registered_device_with_secret, approved_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        registered_device_with_secret,
+        approved_signal,
     ):
         """Test ack creates execution record in database."""
         user, client = user_with_client
@@ -564,7 +580,7 @@ class TestAckEndpoint:
             device_id=device.id,
             status=ExecutionStatus.PLACED,
             broker_ticket="ORDER_123",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(execution)
         await db_session.commit()
@@ -582,7 +598,11 @@ class TestAckEndpoint:
 
     @pytest.mark.asyncio
     async def test_ack_records_placed_status(
-        self, db_session: AsyncSession, user_with_client, registered_device_with_secret, approved_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        registered_device_with_secret,
+        approved_signal,
     ):
         """Test ack records 'placed' status for successful execution."""
         user, client = user_with_client
@@ -598,7 +618,7 @@ class TestAckEndpoint:
             device_id=device.id,
             status=ExecutionStatus.PLACED,
             broker_ticket="ORDER_456",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(execution)
         await db_session.commit()
@@ -612,7 +632,11 @@ class TestAckEndpoint:
 
     @pytest.mark.asyncio
     async def test_ack_records_failed_status_with_error(
-        self, db_session: AsyncSession, user_with_client, registered_device_with_secret, approved_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        registered_device_with_secret,
+        approved_signal,
     ):
         """Test ack records 'failed' status and error message."""
         user, client = user_with_client
@@ -629,7 +653,7 @@ class TestAckEndpoint:
             device_id=device.id,
             status=ExecutionStatus.FAILED,
             error=error_msg,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(execution)
         await db_session.commit()
@@ -644,7 +668,11 @@ class TestAckEndpoint:
 
     @pytest.mark.asyncio
     async def test_ack_optional_broker_ticket(
-        self, db_session: AsyncSession, user_with_client, registered_device_with_secret, approved_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        registered_device_with_secret,
+        approved_signal,
     ):
         """Test ack can omit broker_ticket for failed executions."""
         user, client = user_with_client
@@ -662,7 +690,7 @@ class TestAckEndpoint:
             status=ExecutionStatus.FAILED,
             error="Failed to place order",
             broker_ticket=None,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(execution)
         await db_session.commit()
@@ -725,7 +753,7 @@ class TestAckEndpoint:
             device_id=device1.id,
             status=ExecutionStatus.PLACED,
             broker_ticket="TICKET_1",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         exec2 = Execution(
             id=str(uuid4()),
@@ -733,7 +761,7 @@ class TestAckEndpoint:
             device_id=device2.id,
             status=ExecutionStatus.FAILED,
             error="Connection lost",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(exec1)
         db_session.add(exec2)
@@ -771,8 +799,8 @@ class TestReplayAttackPrevention:
     def test_timestamp_freshness_within_window(self):
         """Test timestamp within 5-minute window is accepted."""
         # 2 seconds in the past (within 300-second window)
-        old_time = datetime.now(timezone.utc) - timedelta(seconds=2)
-        current_time = datetime.now(timezone.utc)
+        old_time = datetime.now(UTC) - timedelta(seconds=2)
+        current_time = datetime.now(UTC)
 
         delta_seconds = (current_time - old_time).total_seconds()
         assert delta_seconds < 300  # Within window
@@ -780,16 +808,16 @@ class TestReplayAttackPrevention:
     def test_timestamp_freshness_exceeds_window(self):
         """Test timestamp older than 5 minutes is rejected."""
         # 10 minutes in the past (exceeds 300-second window)
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
-        current_time = datetime.now(timezone.utc)
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
+        current_time = datetime.now(UTC)
 
         delta_seconds = (current_time - old_time).total_seconds()
         assert delta_seconds > 300  # Outside window
 
     def test_timestamp_future_rejected(self):
         """Test future timestamps are rejected."""
-        future_time = datetime.now(timezone.utc) + timedelta(minutes=1)
-        current_time = datetime.now(timezone.utc)
+        future_time = datetime.now(UTC) + timedelta(minutes=1)
+        current_time = datetime.now(UTC)
 
         delta_seconds = (future_time - current_time).total_seconds()
         assert delta_seconds > 0  # Future
@@ -859,7 +887,11 @@ class TestEndToEndWorkflow:
 
     @pytest.mark.asyncio
     async def test_e2e_full_workflow(
-        self, db_session: AsyncSession, user_with_client, registered_device_with_secret, approved_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        registered_device_with_secret,
+        approved_signal,
     ):
         """Test complete workflow from device registration to execution ack."""
         user, client = user_with_client
@@ -888,7 +920,7 @@ class TestEndToEndWorkflow:
             device_id=device.id,
             status=ExecutionStatus.PLACED,
             broker_ticket="ORDER_E2E_001",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(execution)
         await db_session.commit()
@@ -921,7 +953,7 @@ class TestEndToEndWorkflow:
                 side=i % 2,  # Alternate buy/sell
                 price=Decimal("1.0850") + Decimal(i * 0.01),
                 status=0,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
             db_session.add(signal)
             await db_session.commit()
@@ -936,7 +968,7 @@ class TestEndToEndWorkflow:
                 consent_version=1,
                 ip="192.168.1.100",
                 ua="MT5/5.00",
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
             db_session.add(approval)
             await db_session.commit()
@@ -950,7 +982,7 @@ class TestEndToEndWorkflow:
                 device_id=device.id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"TICKET_{i}",
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
             db_session.add(execution)
         await db_session.commit()
@@ -965,7 +997,11 @@ class TestEndToEndWorkflow:
 
     @pytest.mark.asyncio
     async def test_e2e_device_revocation_blocks_poll(
-        self, db_session: AsyncSession, user_with_client, registered_device_with_secret, approved_signal
+        self,
+        db_session: AsyncSession,
+        user_with_client,
+        registered_device_with_secret,
+        approved_signal,
     ):
         """Test revoked device cannot poll."""
         user, client = user_with_client
@@ -1011,7 +1047,7 @@ class TestEndToEndWorkflow:
             side=0,
             price=Decimal("1.0850"),
             status=0,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         signal2 = Signal(
             id=str(uuid4()),
@@ -1020,7 +1056,7 @@ class TestEndToEndWorkflow:
             side=1,
             price=Decimal("1.2500"),
             status=0,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(signal1)
         db_session.add(signal2)
@@ -1035,7 +1071,7 @@ class TestEndToEndWorkflow:
             consent_version=1,
             ip="192.168.1.100",
             ua="MT5/5.00",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         approval2 = Approval(
             id=str(uuid4()),
@@ -1046,7 +1082,7 @@ class TestEndToEndWorkflow:
             consent_version=1,
             ip="192.168.1.101",
             ua="MT5/5.00",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         db_session.add(approval1)
         db_session.add(approval2)
@@ -1074,10 +1110,12 @@ class TestEndToEndWorkflow:
 # ===========================================================================================
 
 
-@pytest.mark.skip(reason="Requires FastAPI TestClient fixture integration - deferred to API integration phase")
+@pytest.mark.skip(
+    reason="Requires FastAPI TestClient fixture integration - deferred to API integration phase"
+)
 class TestErrorHandling:
     """Test error conditions and proper error responses.
-    
+
     NOTE: These tests require the FastAPI application to be instantiated as a
     TestClient fixture in conftest.py. They validate HTTP error responses which
     requires the full API routing layer. Skipping for now - will be enabled
@@ -1091,7 +1129,7 @@ class TestErrorHandling:
             "/api/v1/client/poll",
             headers={
                 "X-Nonce": "nonce_123",
-                "X-Timestamp": datetime.now(timezone.utc).isoformat(),
+                "X-Timestamp": datetime.now(UTC).isoformat(),
                 "X-Signature": "signature",
             },
         )
@@ -1106,7 +1144,7 @@ class TestErrorHandling:
             "/api/v1/client/poll",
             headers={
                 "X-Device-Id": "dev_123",
-                "X-Timestamp": datetime.now(timezone.utc).isoformat(),
+                "X-Timestamp": datetime.now(UTC).isoformat(),
                 "X-Signature": "signature",
             },
         )
@@ -1135,7 +1173,7 @@ class TestErrorHandling:
             headers={
                 "X-Device-Id": "dev_123",
                 "X-Nonce": "nonce_123",
-                "X-Timestamp": datetime.now(timezone.utc).isoformat(),
+                "X-Timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -1159,7 +1197,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_stale_timestamp_rejected(self, client: AsyncClient):
         """Test poll fails with timestamp older than 5 minutes."""
-        old_timestamp = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        old_timestamp = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
 
         response = await client.get(
             "/api/v1/client/poll",
@@ -1176,7 +1214,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_future_timestamp_rejected(self, client: AsyncClient):
         """Test poll fails with future timestamp."""
-        future_timestamp = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+        future_timestamp = (datetime.now(UTC) + timedelta(minutes=10)).isoformat()
 
         response = await client.get(
             "/api/v1/client/poll",
@@ -1202,7 +1240,7 @@ class TestErrorHandling:
             headers={
                 "X-Device-Id": device.id,
                 "X-Nonce": "nonce_123",
-                "X-Timestamp": datetime.now(timezone.utc).isoformat(),
+                "X-Timestamp": datetime.now(UTC).isoformat(),
                 "X-Signature": "invalid_signature_here",
             },
         )

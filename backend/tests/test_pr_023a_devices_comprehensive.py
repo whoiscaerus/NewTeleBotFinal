@@ -192,7 +192,9 @@ class TestDeviceRetrieval:
         )
 
         # Retrieve
-        retrieved = await device_service.get_device(str(client_obj.id), created_device.id)
+        retrieved = await device_service.get_device(
+            str(client_obj.id), created_device.id
+        )
 
         assert retrieved.id == created_device.id
         assert retrieved.device_name == "Test Device"
@@ -268,7 +270,9 @@ class TestDeviceUpdates:
         )
         device_found = result.scalar()
 
-        assert device_found is None  # Revoked device not found when filtering for active/not-revoked
+        assert (
+            device_found is None
+        )  # Revoked device not found when filtering for active/not-revoked
 
 
 class TestDeviceAPIEndpoints:
@@ -466,7 +470,9 @@ class TestDeviceSecurityEdgeCases:
         assert secret not in caplog.text
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Empty string validation needs investigation - code logic is correct but test fixture may have session issue")
+    @pytest.mark.skip(
+        reason="Empty string validation needs investigation - code logic is correct but test fixture may have session issue"
+    )
     async def test_device_empty_name_rejected(self, db_session: AsyncSession):
         """Test that empty device name is rejected."""
         client_obj = Client(email="empty@example.com")

@@ -55,7 +55,7 @@ class User(Base):
 
     # Relationships
     # NOTE: AccountLink (PR-043), Endorsement (PR-024), and UserTrustScore (PR-024) are implemented
-    
+
     account_links: Mapped[list] = relationship(
         "AccountLink",
         back_populates="user",

@@ -63,7 +63,7 @@ async def register_device(
         }
         return DeviceCreateResponse(**device_dict)
 
-    except APIError as e:
+    except APIError:
         raise
     except ValueError as e:
         logger.warning(f"Device registration validation failed: {e}")
@@ -94,7 +94,7 @@ async def list_devices(
         result = await service.list_devices(current_user.id)
         return cast(list[DeviceOut], result)
 
-    except APIError as e:
+    except APIError:
         raise
     except Exception as e:
         logger.error(f"Listing failed: {e}", exc_info=True)
@@ -128,7 +128,7 @@ async def get_device(
 
         return device
 
-    except APIError as e:
+    except APIError:
         raise
     except Exception as e:
         logger.error(f"Retrieval failed: {e}", exc_info=True)
@@ -170,7 +170,7 @@ async def rename_device(
 
         return updated
 
-    except APIError as e:
+    except APIError:
         raise
     except ValueError as e:
         logger.warning(f"Device rename validation failed: {e}")
@@ -217,7 +217,7 @@ async def revoke_device(
             extra={"user_id": current_user.id, "device_id": device_id},
         )
 
-    except APIError as e:
+    except APIError:
         raise
     except ValueError as e:
         logger.warning(f"Device revoke validation failed: {e}")

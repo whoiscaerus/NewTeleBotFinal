@@ -2,8 +2,8 @@
 
 ## ONE-LINE FIX
 
-**File**: `backend/app/trading/runtime/heartbeat.py`  
-**Line**: 226  
+**File**: `backend/app/trading/runtime/heartbeat.py`
+**Line**: 226
 **Change**: Added `await` keyword
 
 ```diff
@@ -24,16 +24,16 @@
 async def test_heartbeat_with_async_metrics_provider():
     hb = HeartbeatManager(interval_seconds=0.05)
     call_count = 0
-    
+
     async def async_metrics():
         nonlocal call_count
         call_count += 1
         return {"signals_processed": call_count, ...}
-    
+
     task = await hb.start_background_heartbeat(async_metrics)
     await asyncio.sleep(0.15)
     task.cancel()
-    
+
     assert call_count >= 3  # ✅ Now passes (was 0 before fix)
 ```
 
@@ -44,7 +44,7 @@ async def test_heartbeat_with_async_metrics_provider():
 
 ## Status
 
-✅ FIXED  
-✅ VERIFIED  
-✅ DOCUMENTED  
+✅ FIXED
+✅ VERIFIED
+✅ DOCUMENTED
 ⏳ TESTS READY TO IMPLEMENT

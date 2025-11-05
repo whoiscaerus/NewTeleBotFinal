@@ -1,7 +1,7 @@
 # PR-023a Verification Session - Final Report
 
-**Date:** November 3, 2025  
-**Status:** 53/63 tests passing (84%)  
+**Date:** November 3, 2025
+**Status:** 53/63 tests passing (84%)
 **Last Issue:** API endpoint returning 400 instead of 201 (Client validation needed)
 
 ## Summary
@@ -20,7 +20,7 @@ This session focused on verifying and fixing the PR-023a implementation (Device 
   - Device revocation (3)
   - Database persistence (4)
   - Edge cases (2)
-  
+
 - ✅ `test_pr_023a_hmac.py`: 20 tests passing
   - HMAC key generation (4)
   - HMAC key uniqueness (3)
@@ -42,14 +42,14 @@ This session focused on verifying and fixing the PR-023a implementation (Device 
 ## Issues Found & Fixed
 
 ### Issue 1: Routing Prefix Problem (FIXED)
-**Problem:** API endpoints were not accessible.  
-**Root Cause:** Router path was `/api/v1/devices` but endpoint was `POST ""` instead of `POST /register`  
-**Fix:** Changed `@router.post("")` to `@router.post("/register")`  
+**Problem:** API endpoints were not accessible.
+**Root Cause:** Router path was `/api/v1/devices` but endpoint was `POST ""` instead of `POST /register`
+**Fix:** Changed `@router.post("")` to `@router.post("/register")`
 **Result:** ✅ Endpoint now correctly routed to `/api/v1/devices/register`
 
 ### Issue 2: APIError Initialization (FIXED)
-**Problem:** `TypeError: APIException.__init__() got an unexpected keyword argument 'code'`  
-**Root Cause:** Code was passing `code=` and `message=` parameters, but `APIException` expects `error_type=`, `title=`, `detail=`  
+**Problem:** `TypeError: APIException.__init__() got an unexpected keyword argument 'code'`
+**Root Cause:** Code was passing `code=` and `message=` parameters, but `APIException` expects `error_type=`, `title=`, `detail=`
 **Fix:** Updated all APIError raises to use correct parameters:
 ```python
 # Before (wrong)
@@ -66,13 +66,13 @@ raise APIError(
 **Result:** ✅ All APIError instances properly initialized
 
 ### Issue 3: Exception Handling (FIXED)
-**Problem:** `AttributeError: 'APIException' object has no attribute 'to_http_exception'`  
-**Root Cause:** Code was calling `.to_http_exception()` method that doesn't exist  
-**Fix:** Removed `.to_http_exception()` calls; the exception handler registered with FastAPI handles conversion automatically  
+**Problem:** `AttributeError: 'APIException' object has no attribute 'to_http_exception'`
+**Root Cause:** Code was calling `.to_http_exception()` method that doesn't exist
+**Fix:** Removed `.to_http_exception()` calls; the exception handler registered with FastAPI handles conversion automatically
 **Result:** ✅ Exceptions properly propagated to error handler
 
 ### Issue 4: Test Fixture - Client Validation (CURRENT)
-**Problem:** API test returns 400 when creating device  
+**Problem:** API test returns 400 when creating device
 **Root Cause:** DeviceService.create_device() validates that client exists in database, but test fixture doesn't create a Client
 **Status:** IDENTIFIED - requires test fixture fix to create Client for authenticated user
 
@@ -83,7 +83,7 @@ raise APIError(
 **backend/app/clients/devices/routes.py** - 5 sections fixed:
 1. Line 24: Changed `@router.post("")` → `@router.post("/register")`
 2. Lines 68-78: Fixed APIError in register_device exception handler
-3. Lines 101-105: Fixed APIError in list_devices exception handler  
+3. Lines 101-105: Fixed APIError in list_devices exception handler
 4. Lines 123-131: Fixed APIError in get_device exception handler
 5. Lines 154-166: Fixed APIError in rename_device exception handler
 6. Lines 200-212: Fixed APIError in revoke_device exception handler
@@ -99,13 +99,13 @@ All APIError instances now use:
 
 **Backend Service Coverage: ~95%** (based on test count)
 - Database operations: ✅ Full coverage
-- HMAC operations: ✅ Full coverage  
+- HMAC operations: ✅ Full coverage
 - Service logic: ✅ Full coverage
 - API endpoints: ⚠️ Partial (1 test failing on fixture issue)
 
 **Test Breakdown:**
 - Unit tests: 45 tests (good coverage of individual functions)
-- Integration tests: 14 tests (covering service workflows)  
+- Integration tests: 14 tests (covering service workflows)
 - E2E tests: 4 tests (API endpoint tests)
 
 ## Next Steps
@@ -169,10 +169,10 @@ async def handle_request(request: RequestModel, db: AsyncSession, current_user: 
   ```python
   # In routes.py
   router = APIRouter(prefix="/api/v1/devices", tags=["devices"])
-  
+
   # Then in main.py - DON'T add duplicate prefix
   app.include_router(devices_router)  # ✅ Correct
-  
+
   # NOT this:
   app.include_router(devices_router, prefix="/api/v1")  # ❌ Creates /api/v1/api/v1/devices
   ```
@@ -195,5 +195,5 @@ async def handle_request(request: RequestModel, db: AsyncSession, current_user: 
 
 ---
 
-**Next Reviewer:**  
+**Next Reviewer:**
 When resuming PR-023a verification, fix the Client fixture issue in the test setup. The implementation itself is solid and all service tests pass.

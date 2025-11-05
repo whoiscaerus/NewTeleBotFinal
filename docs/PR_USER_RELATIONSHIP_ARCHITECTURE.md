@@ -50,7 +50,7 @@ account_links: Mapped[list] = relationship(
 # Location: /backend/app/accounts/models.py (lines 26-61)
 class AccountLink(Base):
     __tablename__ = "account_links"
-    
+
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     mt5_account_id = Column(String(255), nullable=False)      # Account number
@@ -60,7 +60,7 @@ class AccountLink(Base):
     verified_at = Column(DateTime, nullable=True)             # Verification timestamp
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime)
-    
+
     # Relationships
     user = relationship("User", back_populates="account_links")
     account_info = relationship("AccountInfo", cascade="all, delete-orphan")
@@ -110,14 +110,14 @@ When Alice requests signals:
 # FUTURE: This will be created when PR-024 is implemented
 class Endorsement(Base):
     __tablename__ = "endorsements"
-    
+
     id = Column(String(36), primary_key=True)
     endorser_id = Column(String(36), ForeignKey("users.id"), nullable=False)  # User giving endorsement
     endorsee_id = Column(String(36), ForeignKey("users.id"), nullable=False)   # User receiving endorsement
     rating = Column(Integer, nullable=False)  # 1-5 stars
     reason = Column(String(500), nullable=True)  # Why endorsing
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Bidirectional relationships to User
     endorser = relationship("User", foreign_keys=[endorser_id], back_populates="endorsements_given")
     endorsee = relationship("User", foreign_keys=[endorsee_id], back_populates="endorsements_received")
@@ -157,10 +157,10 @@ When Charlie signs up via Bob's link:
 # FUTURE: When PR-024 implements UserTrustScore
 class UserTrustScore(Base):
     __tablename__ = "user_trust_scores"
-    
+
     id = Column(String(36), primary_key=True)
     user_id = Column(String(36), ForeignKey("users.id"), unique=True, nullable=False)
-    
+
     # Trust signals (computed daily)
     account_age_days = Column(Integer, default=0)            # How long account exists
     endorsement_count = Column(Integer, default=0)           # How many endorsements received
@@ -169,17 +169,17 @@ class UserTrustScore(Base):
     win_rate = Column(Float, default=0)                      # Win rate of their trades
     fraud_flags = Column(Integer, default=0)                 # Red flags found (self-referral, etc)
     account_verified = Column(Boolean, default=False)        # MT5 account verified (AccountLink.verified_at)
-    
+
     # Final score (0-100)
     trust_score = Column(Float, default=0)                   # Computed from above signals
-    
+
     # Thresholds
     affiliate_eligible = Column(Boolean, default=False)      # trust_score >= 60
     commission_tier = Column(Integer, default=1)             # 1=30%, 2=15%, 3=5%
     performance_bonus_eligible = Column(Boolean, default=False)  # trust_score >= 80
-    
+
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
-    
+
     user = relationship("User", back_populates="trust_score")
 ```
 
@@ -190,13 +190,13 @@ New Trader "Frank" (@frank_trader):
   No endorsements
   5 manual trades (60% win rate)
   Account linked but not verified
-  
+
   UserTrustScore:
     - trust_score = 15/100 (very low, new account)
     - affiliate_eligible = False (requires >= 60)
     - commission_tier = Not applicable
     - performance_bonus_eligible = False
-  
+
   Result: Can't become affiliate yet
 
 ---
@@ -207,13 +207,13 @@ Experienced Trader "Grace" (@grace_pro):
   1,200 trades (72% win rate)
   Multiple accounts verified
   No fraud flags
-  
+
   UserTrustScore:
     - trust_score = 88/100 (high trust)
     - affiliate_eligible = True
     - commission_tier = 3 (gets 5% performance bonus if stays 3+ months)
     - performance_bonus_eligible = True
-  
+
   Result: Can become high-tier affiliate with best commission rates
 ```
 
@@ -376,4 +376,3 @@ This project uses a **future-proofing pattern**:
 | **UserTrustScore** | ❌ Future (PR-024) | When PR-024 starts | Leave commented - safe for now |
 
 **Current Action**: Remove `@pytest.mark.skip` from PR-016 tests → Run full suite → Measure 90%+ coverage
-

@@ -7,7 +7,7 @@ Run tests with:
 
 Expected result:
     36 passed, 8 skipped (error handling - deferred to API integration)
-    
+
 Test sections:
     1. HMAC Signature Building           [7 tests] ✅ ALL PASSING
     2. Device Authentication             [4 tests] ✅ ALL PASSING

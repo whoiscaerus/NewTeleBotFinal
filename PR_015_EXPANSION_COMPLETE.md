@@ -35,13 +35,13 @@
   - None signal handling
   - Buy/Sell price validation (SL/TP relationships)
   - R:R ratio constraint violations
-  
+
 - **Constraint Edge Cases**: 12 new tests
   - Min stop distance adjustment (Buy/Sell)
   - Rounding up/down functionality
   - R:R ratio validation
   - All constraint enforcement paths
-  
+
 - **Schema Validator Paths**: 11 new tests
   - Volume validation (negative, zero, too large)
   - Expiry timing validation

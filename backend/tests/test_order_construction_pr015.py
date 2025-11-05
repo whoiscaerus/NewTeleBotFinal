@@ -950,9 +950,7 @@ class TestBuilderErrorPaths:
             await build_order(None, strategy_params, current_time=base_datetime)
 
     @pytest.mark.asyncio
-    async def test_build_order_buy_sl_gte_entry(
-        self, strategy_params, base_datetime
-    ):
+    async def test_build_order_buy_sl_gte_entry(self, strategy_params, base_datetime):
         """Test builder rejects BUY order where SL >= entry (line 93)."""
         signal = SignalCandidate(
             instrument="GOLD",
@@ -990,9 +988,7 @@ class TestBuilderErrorPaths:
             await build_order(signal, strategy_params, current_time=base_datetime)
 
     @pytest.mark.asyncio
-    async def test_build_order_buy_tp_lte_entry(
-        self, strategy_params, base_datetime
-    ):
+    async def test_build_order_buy_tp_lte_entry(self, strategy_params, base_datetime):
         """Test builder rejects BUY order where TP <= entry (line 112)."""
         signal = SignalCandidate(
             instrument="GOLD",
@@ -1030,9 +1026,7 @@ class TestBuilderErrorPaths:
             await build_order(signal, strategy_params, current_time=base_datetime)
 
     @pytest.mark.asyncio
-    async def test_build_order_sell_sl_lte_entry(
-        self, strategy_params, base_datetime
-    ):
+    async def test_build_order_sell_sl_lte_entry(self, strategy_params, base_datetime):
         """Test builder rejects SELL order where SL <= entry (line 112)."""
         signal = SignalCandidate(
             instrument="GOLD",
@@ -1070,9 +1064,7 @@ class TestBuilderErrorPaths:
             await build_order(signal, strategy_params, current_time=base_datetime)
 
     @pytest.mark.asyncio
-    async def test_build_order_sell_tp_gte_entry(
-        self, strategy_params, base_datetime
-    ):
+    async def test_build_order_sell_tp_gte_entry(self, strategy_params, base_datetime):
         """Test builder rejects SELL order where TP >= entry (line 118)."""
         signal = SignalCandidate(
             instrument="GOLD",
@@ -1110,9 +1102,7 @@ class TestBuilderErrorPaths:
             await build_order(signal, strategy_params, current_time=base_datetime)
 
     @pytest.mark.asyncio
-    async def test_build_order_rr_constraint_violated(
-        self, base_datetime
-    ):
+    async def test_build_order_rr_constraint_violated(self, base_datetime):
         """Test builder rejects order when R:R ratio too low (line 118)."""
         signal = SignalCandidate(
             instrument="GOLD",
@@ -1258,7 +1248,9 @@ class TestSchemaValidatorPaths:
 
     def test_order_params_tp_equals_sl_validation(self):
         """Test OrderParams rejects TP == SL (line 151)."""
-        with pytest.raises(ValueError, match="Take profit and stop loss cannot be the same"):
+        with pytest.raises(
+            ValueError, match="Take profit and stop loss cannot be the same"
+        ):
             OrderParams(
                 signal_id="sig-001",
                 symbol="GOLD",
@@ -1352,7 +1344,7 @@ class TestSchemaValidatorPaths:
     def test_broker_constraints_invalid_symbol(self):
         """Test BrokerConstraints rejects unknown symbol (line 219)."""
         from backend.app.trading.orders.schema import BrokerConstraints
-        
+
         with pytest.raises(ValueError, match="Unknown symbol"):
             BrokerConstraints(
                 symbol="UNKNOWN",

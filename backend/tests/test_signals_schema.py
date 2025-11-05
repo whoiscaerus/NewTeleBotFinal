@@ -8,12 +8,13 @@ Tests cover:
 - Error messages
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 
-from backend.app.signals.schema import SignalCreate, SignalOut
 from backend.app.signals.models import SignalStatus
+from backend.app.signals.schema import SignalCreate, SignalOut
 
 
 def _create_signal_out(**kwargs):

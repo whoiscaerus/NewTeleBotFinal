@@ -11,19 +11,18 @@ Tests MT5SyncService business logic:
 100% business logic coverage for position sync workflows.
 """
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, UTC
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.trading.reconciliation.models import ReconciliationLog, PositionSnapshot
-from backend.app.trading.reconciliation.mt5_sync import (
-    MT5Position,
-    MT5AccountSnapshot,
-    MT5SyncService,
-)
-from backend.app.trading.store.models import Trade
 from backend.app.auth.models import User
+from backend.app.trading.reconciliation.models import (
+    PositionSnapshot,
+    ReconciliationLog,
+)
+from backend.app.trading.reconciliation.mt5_sync import MT5AccountSnapshot, MT5Position
 
 
 @pytest.mark.asyncio
@@ -215,7 +214,9 @@ class TestMT5AccountSnapshot:
 class TestReconciliationLogModel:
     """Test ReconciliationLog database model."""
 
-    async def test_reconciliation_log_creation(self, db_session: AsyncSession, test_user: User):
+    async def test_reconciliation_log_creation(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Test creating reconciliation log record."""
         log = ReconciliationLog(
             user_id=test_user.id,
@@ -307,7 +308,9 @@ class TestReconciliationLogModel:
 class TestPositionSnapshotModel:
     """Test PositionSnapshot model for account state tracking."""
 
-    async def test_position_snapshot_creation(self, db_session: AsyncSession, test_user: User):
+    async def test_position_snapshot_creation(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Test creating account snapshot record."""
         snapshot = PositionSnapshot(
             user_id=test_user.id,
@@ -356,7 +359,9 @@ class TestPositionSnapshotModel:
 class TestReconciliationLogPersistence:
     """Test ReconciliationLog database persistence and queries."""
 
-    async def test_query_recent_divergences(self, db_session: AsyncSession, test_user: User):
+    async def test_query_recent_divergences(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Test querying recent divergence records."""
         # Create multiple divergence logs
         for i in range(3):
@@ -388,7 +393,9 @@ class TestReconciliationLogPersistence:
         assert all(d.matched == 2 for d in divergences)
         assert all(d.divergence_reason == "slippage" for d in divergences)
 
-    async def test_query_closes_by_reason(self, db_session: AsyncSession, test_user: User):
+    async def test_query_closes_by_reason(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Test querying closes filtered by close reason."""
         reasons = ["drawdown", "market_guard", "tp_hit", "sl_hit"]
 
@@ -426,6 +433,7 @@ class TestMT5SyncServiceIntegration:
 
     async def test_sync_service_initialization(self):
         """Test initializing sync service."""
+
         # Mock MT5 session
         class MockMT5Session:
             def ensure_connected(self):
@@ -441,7 +449,9 @@ class TestMT5SyncServiceIntegration:
 class TestReconciliationEdgeCases:
     """Test edge cases and error conditions."""
 
-    async def test_divergence_with_zero_entry_price(self, db_session: AsyncSession, test_user: User):
+    async def test_divergence_with_zero_entry_price(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Test handling divergence with invalid entry price."""
         with pytest.raises(Exception):
             log = ReconciliationLog(
@@ -459,7 +469,9 @@ class TestReconciliationEdgeCases:
             db_session.add(log)
             await db_session.commit()
 
-    async def test_snapshot_with_negative_equity(self, db_session: AsyncSession, test_user: User):
+    async def test_snapshot_with_negative_equity(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Test handling negative equity in snapshot."""
         with pytest.raises(Exception):
             snapshot = PositionSnapshot(
@@ -477,7 +489,9 @@ class TestReconciliationEdgeCases:
 class TestReconciliationAuditTrail:
     """Test audit trail recording for reconciliation events."""
 
-    async def test_sync_event_audit_trail(self, db_session: AsyncSession, test_user: User):
+    async def test_sync_event_audit_trail(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Test sync event recorded with timestamp and user."""
         log = ReconciliationLog(
             user_id=test_user.id,
@@ -499,7 +513,9 @@ class TestReconciliationAuditTrail:
         assert log.created_at.tzinfo is not None  # UTC timezone
         assert log.user_id == test_user.id
 
-    async def test_close_event_audit_trail(self, db_session: AsyncSession, test_user: User):
+    async def test_close_event_audit_trail(
+        self, db_session: AsyncSession, test_user: User
+    ):
         """Test close event recorded with all details for audit."""
         log = ReconciliationLog(
             user_id=test_user.id,

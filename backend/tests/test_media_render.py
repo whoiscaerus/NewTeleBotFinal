@@ -11,11 +11,8 @@ Tests cover:
 - Error handling and logging
 """
 
-import hashlib
 import io
-import logging
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -101,9 +98,7 @@ class TestChartRendererCandlestick:
 
     def test_render_candlestick_basic(self, renderer, sample_ohlc_data):
         """Test basic candlestick rendering produces valid PNG bytes."""
-        png_bytes = renderer.render_candlestick(
-            sample_ohlc_data, title="GOLD/USD H1"
-        )
+        png_bytes = renderer.render_candlestick(sample_ohlc_data, title="GOLD/USD H1")
 
         # Validate PNG signature
         assert png_bytes.startswith(b"\x89PNG"), "Invalid PNG signature"
@@ -183,7 +178,9 @@ class TestChartRendererCandlestick:
 
         # Empty data should return graceful fallback (valid PNG)
         png_bytes = renderer.render_candlestick(empty_df)
-        assert png_bytes.startswith(b"\x89PNG"), "Should return valid PNG even for empty data"
+        assert png_bytes.startswith(
+            b"\x89PNG"
+        ), "Should return valid PNG even for empty data"
         assert len(png_bytes) >= 69, "Should return valid placeholder PNG"
 
     def test_render_candlestick_missing_columns(self, renderer):
@@ -192,7 +189,9 @@ class TestChartRendererCandlestick:
 
         # Missing columns should return fallback PNG, not crash
         png_bytes = renderer.render_candlestick(bad_data)
-        assert png_bytes.startswith(b"\x89PNG"), "Should return valid PNG even with missing columns"
+        assert png_bytes.startswith(
+            b"\x89PNG"
+        ), "Should return valid PNG even with missing columns"
         assert len(png_bytes) >= 69, "Should return fallback placeholder"
 
     def test_render_candlestick_invalid_timestamp(self, renderer, sample_ohlc_data):
@@ -244,17 +243,19 @@ class TestChartRendererEquityCurve:
 
         # Missing columns should return graceful fallback
         png_bytes = renderer.render_equity_curve(bad_data)
-        assert png_bytes.startswith(b"\x89PNG"), "Should return valid PNG even with missing columns"
+        assert png_bytes.startswith(
+            b"\x89PNG"
+        ), "Should return valid PNG even with missing columns"
 
     def test_render_equity_curve_empty_data(self, renderer):
         """Test handling of empty equity data."""
-        empty = pd.DataFrame(
-            {"timestamp": [], "equity": [], "drawdown": []}
-        )
+        empty = pd.DataFrame({"timestamp": [], "equity": [], "drawdown": []})
 
         # Empty data should return graceful fallback
         png_bytes = renderer.render_equity_curve(empty)
-        assert png_bytes.startswith(b"\x89PNG"), "Should return valid PNG even for empty data"
+        assert png_bytes.startswith(
+            b"\x89PNG"
+        ), "Should return valid PNG even for empty data"
 
     def test_render_equity_curve_realistic_values(self, renderer):
         """Test equity curve with realistic trading scenario."""
@@ -312,7 +313,9 @@ class TestChartRendererHistogram:
 
         assert png_bytes.startswith(b"\x89PNG")
 
-    def test_render_histogram_cache_deterministic(self, renderer, sample_histogram_data):
+    def test_render_histogram_cache_deterministic(
+        self, renderer, sample_histogram_data
+    ):
         """Test histogram cache keys are deterministic."""
         png1 = renderer.render_histogram(
             sample_histogram_data, column="pnl", title="Test"
@@ -331,7 +334,9 @@ class TestChartRendererHistogram:
         )
         # Should return valid PNG (fallback) or raise error - both acceptable
         if isinstance(png_bytes, bytes):
-            assert png_bytes.startswith(b"\x89PNG"), "Should return valid PNG on graceful fallback"
+            assert png_bytes.startswith(
+                b"\x89PNG"
+            ), "Should return valid PNG on graceful fallback"
 
     def test_render_histogram_empty_data(self, renderer):
         """Test handling of empty DataFrame."""
@@ -354,7 +359,9 @@ class TestChartRendererHistogram:
         """Test handling of NaN values in data."""
         import numpy as np
 
-        data = pd.DataFrame({"values": [1.0, 2.0, np.nan, 4.0, np.nan, 6.0] * 33 + [1.0]})
+        data = pd.DataFrame(
+            {"values": [1.0, 2.0, np.nan, 4.0, np.nan, 6.0] * 33 + [1.0]}
+        )
 
         # Should handle NaN gracefully
         png_bytes = renderer.render_histogram(data, column="values")
@@ -497,9 +504,13 @@ class TestMetricsRecording:
         renderer.render_candlestick(sample_ohlc_data, title="Test1")
 
         # Verify cache hit metric was recorded
-        mock_metrics.media_cache_hits_total.labels.assert_called_with(type="candlestick")
+        mock_metrics.media_cache_hits_total.labels.assert_called_with(
+            type="candlestick"
+        )
 
-    def test_metrics_failure_doesnt_crash(self, renderer, sample_ohlc_data, monkeypatch):
+    def test_metrics_failure_doesnt_crash(
+        self, renderer, sample_ohlc_data, monkeypatch
+    ):
         """Test that metrics failures don't crash rendering."""
         mock_metrics = MagicMock()
         mock_metrics.media_render_total.labels.side_effect = Exception("Metrics error")
@@ -536,13 +547,13 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_render_with_custom_dimensions(self, renderer, sample_ohlc_data):
         """Test rendering with custom width/height."""
-        png_bytes = renderer.render_candlestick(
-            sample_ohlc_data, width=800, height=400
-        )
+        png_bytes = renderer.render_candlestick(sample_ohlc_data, width=800, height=400)
 
         assert png_bytes.startswith(b"\x89PNG")
 
-    def test_render_without_matplotlib_fallback(self, renderer, sample_ohlc_data, monkeypatch):
+    def test_render_without_matplotlib_fallback(
+        self, renderer, sample_ohlc_data, monkeypatch
+    ):
         """Test rendering falls back when matplotlib unavailable."""
         monkeypatch.setattr("backend.app.media.render._HAS_MATPLOTLIB", False)
 
@@ -556,7 +567,9 @@ class TestEdgeCasesAndErrorHandling:
         """Test histogram when all values are identical."""
         data = pd.DataFrame({"values": [50.0] * 100})
 
-        png_bytes = renderer.render_histogram(data, column="values", title="Same values")
+        png_bytes = renderer.render_histogram(
+            data, column="values", title="Same values"
+        )
 
         # Should still render (may show zero variance)
         assert png_bytes.startswith(b"\x89PNG")
@@ -567,7 +580,9 @@ class TestEdgeCasesAndErrorHandling:
             {"values": [10, 11, 12, 13, 14] * 20 + [1000, -1000]}  # Extreme values
         )
 
-        png_bytes = renderer.render_histogram(data, column="values", title="With outliers")
+        png_bytes = renderer.render_histogram(
+            data, column="values", title="With outliers"
+        )
 
         assert png_bytes.startswith(b"\x89PNG")
 
@@ -599,7 +614,9 @@ class TestCacheIntegration:
         # All should be identical (cached)
         assert png1 == png2 == png3
 
-    def test_different_renders_different_cache(self, renderer, sample_ohlc_data, cache_manager):
+    def test_different_renders_different_cache(
+        self, renderer, sample_ohlc_data, cache_manager
+    ):
         """Test different render types use separate cache entries."""
         equity_data = pd.DataFrame(
             {

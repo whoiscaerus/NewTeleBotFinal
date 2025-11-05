@@ -1,6 +1,6 @@
 """Approvals database models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -61,9 +61,9 @@ class Approval(Base):
         nullable=False,
         index=True,
     )
-    decision: Mapped[int] = mapped_column(
-        nullable=False,
-        doc="1=approved, 0=rejected",
+    decision: Mapped[int | None] = mapped_column(
+        nullable=True,
+        doc="1=approved, 0=rejected, NULL=pending",
     )
     consent_version: Mapped[int] = mapped_column(
         nullable=False,
@@ -89,6 +89,15 @@ class Approval(Base):
         nullable=False,
         default=datetime.utcnow,
     )
+    approval_token: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        doc="Short-lived JWT token for approval action (mini app)",
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(
+        nullable=True,
+        doc="Token expiry timestamp",
+    )
 
     # Relationships
     executions: Mapped[list["Execution"]] = relationship(
@@ -108,3 +117,13 @@ class Approval(Base):
     def is_approved(self) -> bool:
         """Check if signal was approved."""
         return self.decision == ApprovalDecision.APPROVED.value
+
+    def is_token_valid(self) -> bool:
+        """Check if approval token is still valid.
+
+        Returns:
+            bool: True if token exists and hasn't expired
+        """
+        if not self.expires_at:
+            return False
+        return datetime.now(UTC) < self.expires_at

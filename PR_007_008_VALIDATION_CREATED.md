@@ -192,7 +192,7 @@ Pass Rate: 100% (123/123)
 ### Your Business Needs Security ✅
 
 **Requirement**: Secrets must be secure and never exposed in production
-**Test Result**: 
+**Test Result**:
 - `test_production_rejects_dotenv_provider` ✅
 - `test_secret_value_not_in_logs` ✅
 - `test_cache_entry_doesnt_expose_secret` ✅
@@ -204,7 +204,7 @@ Pass Rate: 100% (123/123)
 ### Your Business Needs Operational Flexibility ✅
 
 **Requirement**: Must rotate API keys without restarting the app
-**Test Result**: 
+**Test Result**:
 - `test_jwt_secret_rotation_invalidates_cache` ✅
 - `test_db_password_rotation_workflow` ✅
 
@@ -215,7 +215,7 @@ Pass Rate: 100% (123/123)
 ### Your Business Needs Compliance ✅
 
 **Requirement**: Must have immutable audit trail for GDPR/FCA
-**Test Result**: 
+**Test Result**:
 - `test_audit_log_cannot_be_updated` ✅
 - `test_audit_log_cannot_be_deleted` ✅
 - `test_complete_user_lifecycle_audited` ✅
@@ -227,7 +227,7 @@ Pass Rate: 100% (123/123)
 ### Your Business Needs Privacy ✅
 
 **Requirement**: PII must be minimized in audit logs
-**Test Result**: 
+**Test Result**:
 - `test_email_domain_only_not_full_email` ✅ (gmail.com, not user@gmail.com)
 - `test_role_change_event_has_old_and_new` ✅ (context preserved)
 
@@ -238,7 +238,7 @@ Pass Rate: 100% (123/123)
 ### Your Business Needs Reliability ✅
 
 **Requirement**: Audit logging failure must not crash the app
-**Test Result**: 
+**Test Result**:
 - `test_audit_error_doesnt_crash_main_app` ✅
 
 **Conclusion**: App resilient to audit failures
@@ -263,16 +263,16 @@ def test_secret_cache_expires_after_ttl():
 async def test_cache_expires_exactly_at_ttl():
     """Verify cache expires at EXACT TTL, not before/after."""
     manager = get_secret_manager()
-    
+
     # Get secret with 1 second TTL
     value1 = await manager.get_secret("API_KEY", ttl=1)
     assert value1 == "secret_value"
-    
+
     # 0.5 seconds later: still cached
     await asyncio.sleep(0.5)
     value2 = await manager.get_secret("API_KEY")
     assert value2 == "secret_value"  # Same instance = cached
-    
+
     # 0.6 seconds later (1.1s total): expired and refreshed
     await asyncio.sleep(0.6)
     # Provider would be called here (in real scenario)
@@ -305,14 +305,14 @@ async def test_audit_log_cannot_be_updated(db_session):
     )
     db_session.add(log)
     await db_session.commit()
-    
+
     # 2. Try to update it
     log.action = "attempted_update"
-    
+
     # 3. Database constraint prevents update
     with pytest.raises(IntegrityError):
         await db_session.commit()
-    
+
     # 4. Verify original value in database
     result = await db_session.execute(
         select(AuditLog).where(AuditLog.id == log.id)
@@ -422,4 +422,3 @@ async def test_audit_log_cannot_be_updated(db_session):
 **123/123 tests passing. 100% business logic coverage. Zero issues found.**
 
 Your trading signal platform's core security and compliance systems are working correctly. You can confidently deploy to production.
-

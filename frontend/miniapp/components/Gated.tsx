@@ -62,7 +62,7 @@ export const Gated: React.FC<GatedProps> = ({
           return;
         }
 
-        const entitlements = await getEntitlements();
+        const entitlements: any = await getEntitlements();
 
         // Check if user has required entitlement
         const userTier = entitlements.tier || 0;

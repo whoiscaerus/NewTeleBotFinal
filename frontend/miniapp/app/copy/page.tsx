@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, Clock, Toggle2, ArrowRight, Settings } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, ToggleLeft, ArrowRight, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { api } from "@/lib/api";
@@ -56,14 +56,14 @@ export default function CopyTradingPage() {
   const loadCopySettings = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/api/v1/copy/status");
+      const response: any = await api.get("/api/v1/copy/status");
       const settings: CopySettings = {
-        enabled: response.data.enabled,
-        risk_multiplier: response.data.risk_parameters?.risk_multiplier || 1.0,
-        max_drawdown_percent: response.data.risk_parameters?.max_drawdown_percent || 20.0,
-        max_position_size_lot: response.data.risk_parameters?.max_position_size_lot || 5.0,
-        max_daily_trades: response.data.risk_parameters?.max_daily_trades || 50,
-        trades_today: response.data.risk_parameters?.trades_today || 0,
+        enabled: response.enabled,
+        risk_multiplier: response.risk_parameters?.risk_multiplier || 1.0,
+        max_drawdown_percent: response.risk_parameters?.max_drawdown_percent || 20.0,
+        max_position_size_lot: response.risk_parameters?.max_position_size_lot || 5.0,
+        max_daily_trades: response.risk_parameters?.max_daily_trades || 50,
+        trades_today: response.risk_parameters?.trades_today || 0,
         markup_percent: 30.0,
       };
       setCopySettings(settings);
@@ -184,7 +184,7 @@ export default function CopyTradingPage() {
                 onClick={() => setShowEnableConfirm(true)}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
               >
-                <Toggle2 className="h-4 w-4" />
+                <ToggleLeft className="h-4 w-4" />
                 Enable Copy-Trading
               </button>
             ) : (
@@ -200,7 +200,7 @@ export default function CopyTradingPage() {
                   onClick={() => setShowDisableConfirm(true)}
                   className="flex-1 bg-red-900/20 hover:bg-red-900/30 text-red-300 font-semibold py-3 rounded-lg transition border border-red-700/50 flex items-center justify-center gap-2"
                 >
-                  <Toggle2 className="h-4 w-4" />
+                  <ToggleLeft className="h-4 w-4" />
                   Disable
                 </button>
               </>

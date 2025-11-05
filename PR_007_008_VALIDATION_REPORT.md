@@ -372,21 +372,21 @@ def test_secret_rotation():
 async def test_jwt_secret_rotation_invalidates_cache():
     """Test JWT secret rotation clears cache, next call gets new value."""
     manager = get_secret_manager()
-    
+
     # 1. First call caches the value
     first_value = await manager.get_secret("JWT_SECRET")
     assert first_value == "old_jwt_key"
-    
+
     # 2. Manually update the env (simulating vault update)
     monkeypatch.setenv("JWT_SECRET", "new_jwt_key")
-    
+
     # 3. Cache still returns old value (TTL not expired)
     cached_value = await manager.get_secret("JWT_SECRET")
     assert cached_value == "old_jwt_key"
-    
+
     # 4. Invalidate cache
     manager.invalidate_cache("JWT_SECRET")
-    
+
     # 5. Next call gets NEW value from provider
     new_value = await manager.get_secret("JWT_SECRET")
     assert new_value == "new_jwt_key"  # ← Proves rotation works
@@ -419,14 +419,14 @@ async def test_audit_log_cannot_be_updated(db_session):
     )
     db_session.add(log)
     await db_session.commit()
-    
+
     # 2. Try to update the event
     log.action = "updated_action"
-    
+
     # 3. Attempt to flush changes - should fail
     with pytest.raises((IntegrityError, Exception)):
         await db_session.commit()
-    
+
     # 4. Verify original value unchanged in database
     result = await db_session.execute(
         select(AuditLog).where(AuditLog.id == log.id)
@@ -506,4 +506,3 @@ To reproduce these results:
 ```
 
 **Expected Output**: `===== 123 passed in 6.18s =====`
-

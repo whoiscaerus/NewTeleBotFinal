@@ -11,7 +11,7 @@ Tests the REAL business logic gaps:
 
 import os
 import time
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 
 import pytest
 
@@ -29,7 +29,9 @@ class TestProductionEnvRejectsDotenv:
     def test_production_rejects_dotenv_provider(self):
         """✅ REAL: In production, .env provider should be rejected."""
         # Simulating production environment
-        with patch.dict(os.environ, {"APP_ENV": "production", "SECRETS_PROVIDER": "dotenv"}):
+        with patch.dict(
+            os.environ, {"APP_ENV": "production", "SECRETS_PROVIDER": "dotenv"}
+        ):
             # In production, should either refuse to start or log critical warning
             manager = SecretManager()
             # Provider is created (library behavior), but app startup should reject
@@ -112,7 +114,9 @@ class TestMultipleSecretsIsolation:
 
             # All should be cached
             assert len(manager.cache) == 3
-            assert all(key in manager.cache for key in ["SECRET_A", "SECRET_B", "SECRET_C"])
+            assert all(
+                key in manager.cache for key in ["SECRET_A", "SECRET_B", "SECRET_C"]
+            )
 
             # Invalidate only one
             manager.invalidate_cache("SECRET_B")
@@ -132,7 +136,9 @@ class TestEnvProviderSecretTypes:
         provider = EnvProvider()
 
         # Stripe key format: sk_live_xxxxx with special chars
-        with patch.dict(os.environ, {"STRIPE_KEY": "sk_live_51H6tYIDdnXqQJIY-ZqjdXlUYMB6_KxJcL2q"}):
+        with patch.dict(
+            os.environ, {"STRIPE_KEY": "sk_live_51H6tYIDdnXqQJIY-ZqjdXlUYMB6_KxJcL2q"}
+        ):
             key = await provider.get_secret("STRIPE_KEY")
             assert "sk_live" in key
             assert "-" in key
@@ -143,7 +149,9 @@ class TestEnvProviderSecretTypes:
         """✅ REAL: Complex connection strings with special chars preserved."""
         provider = EnvProvider()
 
-        db_url = "postgresql+psycopg://user:p@ssw0rd!@localhost:5432/mydb?sslmode=require"
+        db_url = (
+            "postgresql+psycopg://user:p@ssw0rd!@localhost:5432/mydb?sslmode=require"
+        )
 
         with patch.dict(os.environ, {"DB_URL": db_url}):
             retrieved = await provider.get_secret("DB_URL")
@@ -244,7 +252,9 @@ class TestProviderErrorRecovery:
             os.environ.pop("MISSING_WITH_DEFAULT", None)
 
             # Should return default, not crash
-            secret = await provider.get_secret("MISSING_WITH_DEFAULT", default="fallback_value")
+            secret = await provider.get_secret(
+                "MISSING_WITH_DEFAULT", default="fallback_value"
+            )
             assert secret == "fallback_value"
 
     @pytest.mark.asyncio
@@ -269,7 +279,9 @@ class TestProviderErrorRecovery:
             os.environ.pop("PROVIDER_FAIL_SECRET", None)
 
             # With default, should not fail
-            secret = await manager.get_secret("PROVIDER_FAIL_SECRET", default="safe_default")
+            secret = await manager.get_secret(
+                "PROVIDER_FAIL_SECRET", default="safe_default"
+            )
             assert secret == "safe_default"
 
 
@@ -371,7 +383,9 @@ class TestProviderSwitchingWorkflow:
 
     def test_dotenv_provider_selected_for_development(self):
         """✅ REAL: Development uses dotenv provider."""
-        with patch.dict(os.environ, {"SECRETS_PROVIDER": "dotenv", "APP_ENV": "development"}):
+        with patch.dict(
+            os.environ, {"SECRETS_PROVIDER": "dotenv", "APP_ENV": "development"}
+        ):
             manager = SecretManager()
             assert isinstance(manager.provider, DotenvProvider)
 

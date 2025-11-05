@@ -48,9 +48,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({ jwt }) => {
 
     try {
       setLoading(true);
-      const data = await apiGet<Invoice[]>("/api/v1/billing/invoices", {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
+      const data = await apiGet<Invoice[]>("/api/v1/billing/invoices");
 
       setInvoices(data || []);
       setError(null);

@@ -12,27 +12,16 @@ Validates 100% of business logic for:
 Coverage: 90-100% business logic
 """
 
-import asyncio
-import logging
-import time
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pandas as pd
 import pytest
 
-from backend.app.trading.data.mt5_puller import (
-    MT5DataPuller,
-    DataValidationError,
-)
-from backend.app.trading.data.pipeline import (
-    DataPipeline,
-    PullConfig,
-    PipelineStatus,
-)
+from backend.app.trading.data.mt5_puller import MT5DataPuller
+from backend.app.trading.data.pipeline import DataPipeline
 from backend.app.trading.mt5 import MT5SessionManager
 from backend.app.trading.time import MarketCalendar
-
 
 # ============================================================================
 # FIXTURES
@@ -341,9 +330,7 @@ class TestMissingBarsHandling:
         df = pd.DataFrame(data)
         # Forward fill would repeat last value for missing 01:00
         df_reindexed = df.set_index("time").reindex(
-            pd.date_range(
-                "2025-01-01 00:00", periods=4, freq="h", tz="UTC"
-            ),
+            pd.date_range("2025-01-01 00:00", periods=4, freq="h", tz="UTC"),
             method="ffill",
         )
         assert len(df_reindexed) == 4
@@ -582,9 +569,7 @@ class TestDataPipelineOrchestration:
     def test_pipeline_tracks_active_symbols(self, pipeline):
         """Pipeline tracks which symbols are active."""
         pipeline.add_pull_config(
-            name="tracking_test",
-            symbols=["GOLD", "EURUSD"],
-            timeframe="H1"
+            name="tracking_test", symbols=["GOLD", "EURUSD"], timeframe="H1"
         )
         # Status should reflect active symbols
 
@@ -605,32 +590,19 @@ class TestMultiSymbolMultiTimeframe:
     def test_pull_multiple_symbols_simultaneously(self, pipeline):
         """Can pull GOLD, EURUSD, S&P500 concurrently."""
         symbols = ["GOLD", "EURUSD", "S&P500"]
-        pipeline.add_pull_config(
-            name="multi_symbol",
-            symbols=symbols,
-            timeframe="H1"
-        )
+        pipeline.add_pull_config(name="multi_symbol", symbols=symbols, timeframe="H1")
         # All symbols should be tracked
 
     def test_pull_multiple_timeframes_separately(self, pipeline):
         """Can maintain H1, H15, M5 separately."""
         pipeline.add_pull_config(
-            name="gold_h1",
-            symbols=["GOLD"],
-            timeframe="H1",
-            interval_seconds=300
+            name="gold_h1", symbols=["GOLD"], timeframe="H1", interval_seconds=300
         )
         pipeline.add_pull_config(
-            name="gold_h15",
-            symbols=["GOLD"],
-            timeframe="H15",
-            interval_seconds=900
+            name="gold_h15", symbols=["GOLD"], timeframe="H15", interval_seconds=900
         )
         pipeline.add_pull_config(
-            name="gold_m5",
-            symbols=["GOLD"],
-            timeframe="M5",
-            interval_seconds=300
+            name="gold_m5", symbols=["GOLD"], timeframe="M5", interval_seconds=300
         )
 
         assert len(pipeline.pull_configs) >= 3
@@ -638,9 +610,7 @@ class TestMultiSymbolMultiTimeframe:
     def test_symbol_isolated_from_each_other(self, pipeline):
         """Pull failure for one symbol doesn't affect others."""
         pipeline.add_pull_config(
-            name="multi_sym",
-            symbols=["GOLD", "EURUSD"],
-            timeframe="H1"
+            name="multi_sym", symbols=["GOLD", "EURUSD"], timeframe="H1"
         )
         # If GOLD pull fails, EURUSD should still pull
 
@@ -798,16 +768,10 @@ class TestIntegration:
         pipeline = DataPipeline(puller)
 
         pipeline.add_pull_config(
-            name="config1",
-            symbols=["GOLD"],
-            timeframe="H1",
-            interval_seconds=300
+            name="config1", symbols=["GOLD"], timeframe="H1", interval_seconds=300
         )
         pipeline.add_pull_config(
-            name="config2",
-            symbols=["EURUSD"],
-            timeframe="H15",
-            interval_seconds=900
+            name="config2", symbols=["EURUSD"], timeframe="H15", interval_seconds=900
         )
 
         assert len(pipeline.pull_configs) == 2

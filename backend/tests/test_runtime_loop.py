@@ -13,14 +13,13 @@ Tests the core trading loop functionality:
 Coverage target: 100% of loop.py (717 lines)
 """
 
-import pytest
 import asyncio
-import logging
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from backend.app.trading.runtime.loop import TradingLoop, HeartbeatMetrics, Event
+import pytest
 
+from backend.app.trading.runtime.loop import TradingLoop
 
 # ============================================================================
 # TRADINLOOP INITIALIZATION TESTS

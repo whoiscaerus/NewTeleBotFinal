@@ -21,15 +21,12 @@ Total Test Cases: 48
 Expected Pass Rate: 100%
 """
 
-import json
-from datetime import datetime, timedelta, timezone
-from uuid import UUID, uuid4
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from fastapi import status as http_status
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy import select
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.approvals.models import Approval, ApprovalDecision
@@ -43,9 +40,8 @@ from backend.app.ea.aggregate import (
     get_executions_by_device,
 )
 from backend.app.ea.models import Execution, ExecutionStatus
-from backend.app.signals.models import Signal
 from backend.app.main import app
-
+from backend.app.signals.models import Signal
 
 # =============================================================================
 # FIXTURES: Setup test data with correct relationships
@@ -120,15 +116,16 @@ async def client(db_session: AsyncSession) -> AsyncClient:
     """Create HTTP client for endpoint testing."""
     app.dependency_overrides[get_db] = lambda: db_session
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         yield client
     app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
-async def signal_with_approval(db_session: AsyncSession, admin_user: User) -> tuple[Signal, Approval]:
+async def signal_with_approval(
+    db_session: AsyncSession, admin_user: User
+) -> tuple[Signal, Approval]:
     """Create signal and associated approval for testing."""
     signal = Signal(
         id=str(uuid4()),
@@ -351,7 +348,9 @@ class TestExecutionAggregation:
         status = await get_approval_execution_status(db_session, approval_id)
 
         returned_device_ids = {str(e.device_id) for e in status.executions}
-        assert returned_device_ids == set(device_ids), "All device IDs should be preserved"
+        assert returned_device_ids == set(
+            device_ids
+        ), "All device IDs should be preserved"
 
     @pytest.mark.asyncio
     async def test_aggregate_ordered_by_creation_time(
@@ -361,7 +360,7 @@ class TestExecutionAggregation:
         _, approval = signal_with_approval
         approval_id = str(approval.id)
 
-        base_time = datetime.now(timezone.utc)
+        base_time = datetime.now(UTC)
 
         # Create executions with staggered timestamps
         exec_ids = []
@@ -396,7 +395,7 @@ class TestExecutionAggregation:
         _, approval = signal_with_approval
         approval_id = str(approval.id)
 
-        created_time = datetime.now(timezone.utc)
+        created_time = datetime.now(UTC)
         execution = Execution(
             id=str(uuid4()),
             approval_id=approval_id,
@@ -519,7 +518,7 @@ class TestDeviceSuccessRate:
             device_id=device_id,
             status=ExecutionStatus.FAILED,
             error="Old error",
-            created_at=datetime.now(timezone.utc) - timedelta(hours=48),
+            created_at=datetime.now(UTC) - timedelta(hours=48),
         )
         db_session.add(old_execution)
 
@@ -531,7 +530,7 @@ class TestDeviceSuccessRate:
                 device_id=device_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"RECENT_{i}",
-                created_at=datetime.now(timezone.utc) - timedelta(hours=12),
+                created_at=datetime.now(UTC) - timedelta(hours=12),
             )
             db_session.add(execution)
 
@@ -546,7 +545,9 @@ class TestDeviceSuccessRate:
         assert metrics["success_rate"] == 100.0
 
     @pytest.mark.asyncio
-    async def test_success_rate_no_executions_returns_zero(self, db_session: AsyncSession):
+    async def test_success_rate_no_executions_returns_zero(
+        self, db_session: AsyncSession
+    ):
         """Test success rate with no executions returns 0 metrics."""
         device_id = str(uuid4())
 
@@ -558,7 +559,9 @@ class TestDeviceSuccessRate:
         assert metrics["total_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_success_rate_multiple_devices_isolated(self, db_session: AsyncSession):
+    async def test_success_rate_multiple_devices_isolated(
+        self, db_session: AsyncSession
+    ):
         """Test success rates for different devices are isolated."""
         device1_id = str(uuid4())
         device2_id = str(uuid4())
@@ -617,7 +620,11 @@ class TestAdminEndpointsRBAC:
 
     @pytest.mark.asyncio
     async def test_query_approval_executions_admin_allowed(
-        self, client: AsyncClient, admin_token: str, signal_with_approval, db_session: AsyncSession
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        signal_with_approval,
+        db_session: AsyncSession,
     ):
         """Test admin user can query approval executions."""
         _, approval = signal_with_approval
@@ -645,7 +652,11 @@ class TestAdminEndpointsRBAC:
 
     @pytest.mark.asyncio
     async def test_query_approval_executions_owner_allowed(
-        self, client: AsyncClient, owner_token: str, signal_with_approval, db_session: AsyncSession
+        self,
+        client: AsyncClient,
+        owner_token: str,
+        signal_with_approval,
+        db_session: AsyncSession,
     ):
         """Test owner user can query approval executions."""
         _, approval = signal_with_approval
@@ -1176,7 +1187,11 @@ class TestIntegration:
 
     @pytest.mark.asyncio
     async def test_rbac_and_data_consistency(
-        self, client: AsyncClient, admin_token: str, db_session: AsyncSession, signal_with_approval
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        db_session: AsyncSession,
+        signal_with_approval,
     ):
         """Test RBAC doesn't affect data accuracy."""
         _, approval = signal_with_approval

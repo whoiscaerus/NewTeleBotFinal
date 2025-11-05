@@ -17,6 +17,13 @@ interface Device {
   last_seen: string;
 }
 
+// Type for newly created devices from API (minimal response)
+interface NewDevice {
+  id: string;
+  name: string;
+  secret?: string;
+}
+
 interface Subscription {
   tier: "free" | "premium" | "vip" | "enterprise";
   status: "active" | "past_due" | "canceled";
@@ -112,8 +119,16 @@ export default function DevicesPage() {
     }
   }, [jwt]);
 
-  const handleDeviceCreated = (newDevice: Device) => {
-    setDevices((prev) => [...prev, newDevice]);
+  const handleDeviceCreated = (newDevice: NewDevice) => {
+    // Convert NewDevice to full Device with default values
+    const fullDevice: Device = {
+      id: newDevice.id,
+      name: newDevice.name,
+      is_active: true,  // New devices are active by default
+      created_at: new Date().toISOString(),
+      last_seen: new Date().toISOString(),
+    };
+    setDevices((prev) => [...prev, fullDevice]);
     setShowAddModal(false);
     logger.info("Device added to list", {
       deviceId: newDevice.id,

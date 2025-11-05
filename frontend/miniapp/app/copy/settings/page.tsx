@@ -74,7 +74,7 @@ export default function CopySettingsPage() {
   const fetchStatus = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/api/v1/copy/status");
+      const response: any = await api.get("/api/v1/copy/status");
       setStatus(response);
       setFormData(response.risk_parameters || {});
       setError(null);
@@ -102,7 +102,7 @@ export default function CopySettingsPage() {
         return;
       }
 
-      const response = await api.patch("/api/v1/copy/risk", formData);
+      const response: any = await api.put("/api/v1/copy/risk", formData);
       setStatus(prev => prev ? { ...prev, risk_parameters: response.risk_parameters } : null);
       setSuccess("Risk settings updated successfully");
       setShowSettings(false);

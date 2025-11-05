@@ -12,6 +12,15 @@ from backend.app.core.settings import get_settings
 logger = logging.getLogger(__name__)
 
 
+# Import DEFAULT_PRICES from parent stripe module
+DEFAULT_PRICES = {
+    "free": {"amount": 0, "currency": "gbp", "interval": "month"},
+    "basic": {"amount": 1499, "currency": "gbp", "interval": "month"},  # £14.99
+    "premium": {"amount": 2999, "currency": "gbp", "interval": "month"},  # £29.99
+    "pro": {"amount": 4999, "currency": "gbp", "interval": "month"},  # £49.99
+}
+
+
 class CheckoutSessionRequest(BaseModel):
     """Request to create a Stripe checkout session."""
 
@@ -109,13 +118,24 @@ class StripeCheckoutService:
         """
         try:
             # Look up price ID from plan mapping
+            # First try configured price map, then fall back to DEFAULT_PRICES
             price_id = self.settings.stripe_price_map.get(request.plan_id)
+
             if not price_id:
-                logger.error(
-                    f"Plan not found in price map: {request.plan_id}",
-                    extra={"plan_id": request.plan_id},
+                # Validate plan exists in defaults (for test/dev mode)
+                if request.plan_id not in DEFAULT_PRICES:
+                    logger.error(
+                        f"Plan not found in price map: {request.plan_id}",
+                        extra={"plan_id": request.plan_id},
+                    )
+                    raise ValueError(f"Unknown plan: {request.plan_id}")
+
+                # Use test price ID when configured map is empty
+                price_id = f"price_test_{request.plan_id}"
+                logger.warning(
+                    f"Using test price ID for {request.plan_id}",
+                    extra={"plan_id": request.plan_id, "price_id": price_id},
                 )
-                raise ValueError(f"Unknown plan: {request.plan_id}")
 
             # Create checkout session
             session = stripe.checkout.Session.create(

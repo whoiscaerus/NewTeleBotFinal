@@ -7,7 +7,6 @@ Tests verify that:
 4. Alert includes proper error context and attempt count
 """
 
-import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -259,7 +258,9 @@ class TestRetryBackoffProgression:
             assert delays_used == [1.0, 2.0, 4.0]
 
     @pytest.mark.asyncio
-    async def test_retry_backoff_respects_max_delay(self, config, logger, signal) -> None:
+    async def test_retry_backoff_respects_max_delay(
+        self, config, logger, signal
+    ) -> None:
         """Test backoff delay is capped at max_delay.
 
         With aggressive exponential backoff (multiplier=10), max_delay caps the progression.
@@ -386,7 +387,7 @@ class TestTelegramAlertOnRetryExhaustion:
 
             # Send error alert
             result = await alert_service.send_error_alert(
-                message=f"Signal delivery failed after 3 attempts",
+                message="Signal delivery failed after 3 attempts",
                 error=retry_exhausted,
                 attempts=3,
                 operation="post_signal",

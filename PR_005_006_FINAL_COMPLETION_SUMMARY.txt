@@ -55,17 +55,17 @@ PR-005 (Rate Limiting)
      - Refill calculated correctly ✓
      - Tokens capped at maximum ✓
      - Keys isolated (multi-user/IP works) ✓
-     
+
   ✅ Rate limit enforcement: VERIFIED
      - 429 returned when limit exceeded ✓
      - Response headers set (X-RateLimit-*) ✓
      - Per-endpoint limits work ✓
-     
+
   ✅ Failure modes: VERIFIED
      - Redis down → allow requests (fail-open) ✓
      - Graceful degradation ✓
      - No crashes or hangs ✓
-     
+
   ✅ Concurrency: VERIFIED
      - Lua script atomic (no race conditions) ✓
      - 15 concurrent requests on max=10 → exactly 10 succeed ✓
@@ -75,17 +75,17 @@ PR-006 (Error Handling)
      - All required fields present (type, title, status, detail) ✓
      - Optional fields handled (instance, errors, request_id) ✓
      - JSON serialization works ✓
-     
+
   ✅ Exception hierarchy: VERIFIED
      - All 7 error types working (400-500) ✓
      - Correct HTTP status codes ✓
      - Exception to ProblemDetail conversion ✓
-     
+
   ✅ Error content: VERIFIED
      - Field-level errors included ✓
      - Error messages clear and actionable ✓
      - Request IDs propagated ✓
-     
+
   ✅ FastAPI integration: VERIFIED
      - Exception handlers wired ✓
      - Content-Type application/problem+json ✓

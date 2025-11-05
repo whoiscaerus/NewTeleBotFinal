@@ -2,7 +2,7 @@
 
 CRITICAL TESTS ONLY:
 ✓ Approve signal → creates approval record + updates signal status
-✓ Reject signal → creates approval record + updates signal status  
+✓ Reject signal → creates approval record + updates signal status
 ✓ Duplicate detection → (signal_id, user_id) unique constraint
 ✓ Signal not found → raises ValueError
 ✓ IP/UA capture → fields stored in DB
@@ -12,16 +12,17 @@ CRITICAL TESTS ONLY:
 ALL tests use REAL AsyncSession database - NO MOCKS of business logic.
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
 
 from backend.app.approvals.models import Approval, ApprovalDecision
 from backend.app.approvals.service import ApprovalService
-from backend.app.signals.models import Signal, SignalStatus
 from backend.app.auth.models import User
+from backend.app.signals.models import Signal, SignalStatus
 
 
 @pytest_asyncio.fixture
@@ -59,6 +60,7 @@ async def test_signal(db_session: AsyncSession, test_user: User):
 # ============================================================
 # APPROVAL WORKFLOW TESTS
 # ============================================================
+
 
 @pytest.mark.asyncio
 async def test_approve_signal_creates_record(
@@ -136,12 +138,13 @@ async def test_reject_signal_updates_signal_status(
 # DUPLICATE DETECTION TESTS (CRITICAL)
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_duplicate_approval_raises_error(
     db_session: AsyncSession, test_user: User, test_signal: Signal
 ):
     """Test: Duplicate approval (signal_id, user_id) raises error.
-    
+
     CRITICAL BUSINESS RULE: Only ONE approval per signal per user.
     Enforced by unique constraint (signal_id, user_id).
     """
@@ -167,6 +170,7 @@ async def test_duplicate_approval_raises_error(
 # ERROR HANDLING TESTS
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_approve_nonexistent_signal_raises_error(
     db_session: AsyncSession, test_user: User
@@ -174,7 +178,9 @@ async def test_approve_nonexistent_signal_raises_error(
     """Test: Approving non-existent signal raises error."""
     service = ApprovalService(db_session)
 
-    with pytest.raises((ValueError, Exception)):  # Service may raise ValueError or APIException
+    with pytest.raises(
+        (ValueError, Exception)
+    ):  # Service may raise ValueError or APIException
         await service.approve_signal(
             signal_id="nonexistent",
             user_id=test_user.id,
@@ -185,6 +191,7 @@ async def test_approve_nonexistent_signal_raises_error(
 # ============================================================
 # CONTEXT CAPTURE TESTS
 # ============================================================
+
 
 @pytest.mark.asyncio
 async def test_ip_captured(
@@ -224,6 +231,7 @@ async def test_ua_captured(
 # CONSENT VERSION TESTS
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_consent_version_default_1(
     db_session: AsyncSession, test_user: User, test_signal: Signal
@@ -261,6 +269,7 @@ async def test_consent_version_can_override(
 # MODEL METHOD TESTS
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_is_approved_true(
     db_session: AsyncSession, test_user: User, test_signal: Signal
@@ -296,6 +305,7 @@ async def test_is_approved_false(
 # ============================================================
 # DATABASE PERSISTENCE TESTS
 # ============================================================
+
 
 @pytest.mark.asyncio
 async def test_approval_persisted_to_database(

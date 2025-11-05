@@ -2,27 +2,19 @@
 
 import React, { useState, useEffect } from "react";
 import { useTelegram } from "@/app/_providers/TelegramProvider";
-import { apiGet, apiPost } from "@/lib/api";
+import { SignalCard } from "@/components/SignalCard";
+import { fetchPendingApprovals, approveSignal, rejectSignal, PendingApproval } from "@/lib/approvals";
 import { logger } from "@/lib/logger";
-
-interface Signal {
-  id: string;
-  instrument: string;
-  side: "buy" | "sell";
-  entry_price: number;
-  stop_loss: number;
-  take_profit: number;
-  risk_reward_ratio: number;
-  created_at: string;
-  payload: Record<string, unknown>;
-}
-
-interface Approval {
-  id: string;
-  signal_id: string;
-  signal: Signal;
-  status: "pending" | "approved" | "rejected";
-}
+import { showSuccessToast, showErrorToast } from "@/lib/toastNotifications";
+import { vibrateSuccess, vibrateError } from "@/lib/hapticFeedback";
+import {
+  trackApprovalClick,
+  trackRejectionClick,
+  trackApprovalSuccess,
+  trackApprovalError,
+  trackRejectionSuccess,
+  trackRejectionError,
+} from "@/lib/telemetry";
 
 /**
  * Mini App Approvals Page
@@ -35,20 +27,18 @@ interface Approval {
  */
 export default function ApprovalsPage() {
   const { jwt, isLoading: authLoading, error: authError } = useTelegram();
-  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
 
   // Fetch pending approvals
-  const fetchApprovals = async () => {
+  const handleFetchApprovals = async () => {
     if (!jwt) return;
 
     try {
       setLoading(true);
-      const data = await apiGet<Approval[]>("/api/v1/approvals/pending", {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
+      const data = await fetchPendingApprovals(jwt);
       setApprovals(data || []);
       setError(null);
       logger.info("Approvals fetched", {
@@ -66,55 +56,141 @@ export default function ApprovalsPage() {
   // Set up polling on mount
   useEffect(() => {
     if (!authLoading && jwt) {
-      fetchApprovals();
-      const interval = setInterval(fetchApprovals, 5000); // Poll every 5s
+      handleFetchApprovals();
+      const interval = setInterval(handleFetchApprovals, 5000); // Poll every 5s
       return () => clearInterval(interval);
     }
   }, [authLoading, jwt]);
 
-  // Handle approval
+  // Handle approval with optimistic UI
   const handleApprove = async (approvalId: string, signalId: string) => {
     if (!jwt) return;
 
+    // OPTIMISTIC: Capture original state before removing
+    const removedApproval = approvals.find((a) => a.id === approvalId);
+
     try {
       setProcessing(approvalId);
-      await apiPost(
-        `/api/v1/approvals/${approvalId}/approve`,
-        {},
-        { headers: { Authorization: `Bearer ${jwt}` } }
-      );
 
-      // Remove from list
+      // TELEMETRY: Track approval click (with signal metadata)
+      const confidence = (removedApproval?.signal.payload?.confidence as number) || 0;
+      const maturity = (removedApproval?.signal.payload?.maturity as number) || 0;
+      trackApprovalClick({
+        signal_id: signalId,
+        approval_id: approvalId,
+        confidence,
+        maturity,
+        instrument: removedApproval?.signal.instrument,
+        side: removedApproval?.signal.side,
+      });
+
+      // OPTIMISTIC: Remove immediately from UI
       setApprovals((prev) => prev.filter((a) => a.id !== approvalId));
+
+      // Make API call
+      await approveSignal(jwt, approvalId);
+
+      // TELEMETRY: Track success
+      trackApprovalSuccess({
+        signal_id: signalId,
+        approval_id: approvalId,
+      });
+
+      // Success feedback: Toast + Haptic
+      showSuccessToast("Signal approved!");
+      await vibrateSuccess();
+
       logger.info("Signal approved", { approval_id: approvalId, signal_id: signalId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to approve signal";
+
+      // TELEMETRY: Track error
+      trackApprovalError({
+        signal_id: signalId,
+        error: message,
+      });
+
+      // ROLLBACK: Restore the removed approval if API call failed
+      if (removedApproval) {
+        setApprovals((prev) => [...prev, removedApproval]);
+      }
+
+      // Error feedback: Toast + Haptic
+      showErrorToast(message);
+      await vibrateError();
+
       setError(message);
-      logger.error("Failed to approve signal", { approval_id: approvalId, error: err });
+      logger.error("Failed to approve signal - restored to list", {
+        approval_id: approvalId,
+        error: err,
+      });
     } finally {
       setProcessing(null);
     }
   };
 
-  // Handle rejection
+  // Handle rejection with optimistic UI
   const handleReject = async (approvalId: string, signalId: string) => {
     if (!jwt) return;
 
+    // OPTIMISTIC: Capture original state before removing
+    const removedApproval = approvals.find((a) => a.id === approvalId);
+
     try {
       setProcessing(approvalId);
-      await apiPost(
-        `/api/v1/approvals/${approvalId}/reject`,
-        {},
-        { headers: { Authorization: `Bearer ${jwt}` } }
-      );
 
-      // Remove from list
+      // TELEMETRY: Track rejection click (with signal metadata)
+      const confidence = (removedApproval?.signal.payload?.confidence as number) || 0;
+      const maturity = (removedApproval?.signal.payload?.maturity as number) || 0;
+      trackRejectionClick({
+        signal_id: signalId,
+        approval_id: approvalId,
+        confidence,
+        maturity,
+        instrument: removedApproval?.signal.instrument,
+        side: removedApproval?.signal.side,
+      });
+
+      // OPTIMISTIC: Remove immediately from UI
       setApprovals((prev) => prev.filter((a) => a.id !== approvalId));
+
+      // Make API call
+      await rejectSignal(jwt, approvalId);
+
+      // TELEMETRY: Track success
+      trackRejectionSuccess({
+        signal_id: signalId,
+        approval_id: approvalId,
+      });
+
+      // Success feedback: Toast + Haptic
+      showSuccessToast("Signal rejected!");
+      await vibrateSuccess();
+
       logger.info("Signal rejected", { approval_id: approvalId, signal_id: signalId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to reject signal";
+
+      // TELEMETRY: Track error
+      trackRejectionError({
+        signal_id: signalId,
+        error: message,
+      });
+
+      // ROLLBACK: Restore the removed approval if API call failed
+      if (removedApproval) {
+        setApprovals((prev) => [...prev, removedApproval]);
+      }
+
+      // Error feedback: Toast + Haptic
+      showErrorToast(message);
+      await vibrateError();
+
       setError(message);
-      logger.error("Failed to reject signal", { approval_id: approvalId, error: err });
+      logger.error("Failed to reject signal - restored to list", {
+        approval_id: approvalId,
+        error: err,
+      });
     } finally {
       setProcessing(null);
     }
@@ -172,7 +248,7 @@ export default function ApprovalsPage() {
             <p className="text-sm">{error}</p>
           </div>
           <button
-            onClick={fetchApprovals}
+            onClick={handleFetchApprovals}
             className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
             Retry
@@ -206,82 +282,16 @@ export default function ApprovalsPage() {
         <p className="text-blue-200 text-sm mb-6">{approvals.length} signal(s) waiting</p>
 
         <div className="space-y-4">
-          {approvals.map((approval) => {
-            const signal = approval.signal;
-            const isProcessing = processing === approval.id;
-            const sideColor = signal.side === "buy" ? "text-green-400" : "text-red-400";
-            const sideBg = signal.side === "buy" ? "bg-green-500 bg-opacity-20" : "bg-red-500 bg-opacity-20";
-
-            return (
-              <div
-                key={approval.id}
-                data-testid="signal-card"
-                className={`rounded-lg border border-blue-400 border-opacity-30 p-4 backdrop-blur-sm transition-all ${
-                  isProcessing ? "opacity-50" : "hover:border-opacity-50"
-                }`}
-              >
-                {/* Header */}
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="text-white font-bold text-lg">{signal.instrument}</p>
-                    <p className={`text-sm font-semibold ${sideColor}`}>
-                      {signal.side === "buy" ? "📈 BUY" : "📉 SELL"}
-                    </p>
-                  </div>
-                  <div className={`rounded px-2 py-1 text-xs font-semibold ${sideBg} text-white`}>
-                    RR: {signal.risk_reward_ratio.toFixed(2)}
-                  </div>
-                </div>
-
-                {/* Price levels */}
-                <div className="bg-blue-900 bg-opacity-40 rounded p-3 mb-3 text-sm text-blue-100 space-y-1">
-                  <p>
-                    <span className="text-gray-400">Entry:</span>
-                    <span className="float-right text-white font-mono font-semibold">
-                      {signal.entry_price.toFixed(2)}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="text-gray-400">SL:</span>
-                    <span className="float-right text-red-300 font-mono">{signal.stop_loss.toFixed(2)}</span>
-                  </p>
-                  <p>
-                    <span className="text-gray-400">TP:</span>
-                    <span className="float-right text-green-300 font-mono">{signal.take_profit.toFixed(2)}</span>
-                  </p>
-                </div>
-
-                {/* Time */}
-                <p className="text-xs text-gray-400 mb-4">
-                  {new Date(signal.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })}
-                </p>
-
-                {/* Buttons */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleReject(approval.id, signal.id)}
-                    disabled={isProcessing}
-                    data-testid="reject-button"
-                    className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 disabled:bg-red-400 disabled:opacity-50 transition-colors"
-                  >
-                    {isProcessing ? "..." : "❌ Reject"}
-                  </button>
-                  <button
-                    onClick={() => handleApprove(approval.id, signal.id)}
-                    disabled={isProcessing}
-                    data-testid="approve-button"
-                    className="flex-1 px-3 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 disabled:bg-green-400 disabled:opacity-50 transition-colors"
-                  >
-                    {isProcessing ? "..." : "✅ Approve"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          {approvals.map((approval) => (
+            <SignalCard
+              key={approval.id}
+              approvalId={approval.id}
+              signal={approval.signal}
+              isProcessing={processing === approval.id}
+              onApprove={handleApprove}
+              onReject={handleReject}
+            />
+          ))}
         </div>
 
         {/* Pull to refresh hint */}

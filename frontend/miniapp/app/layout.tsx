@@ -1,15 +1,15 @@
-"use client";
-
 /**
  * Root layout for Telegram Mini App
  *
  * Providers:
  * - TelegramProvider: Telegram SDK initialization
+ * - ToastProvider: Toast notifications
  * - Dark mode support
  */
 
 import { TelegramProvider } from "./_providers/TelegramProvider";
-import "./globals.css";
+import { ToastProvider } from "./_providers/ToastProvider";
+import "../styles/globals.css";
 
 export const metadata = {
   title: "Trading Platform",
@@ -30,7 +30,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <TelegramProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </TelegramProvider>
       </body>
     </html>

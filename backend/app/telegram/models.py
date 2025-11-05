@@ -274,3 +274,64 @@ class DistributionAuditLog(Base):
 
     def __repr__(self) -> str:
         return f"<DistributionAuditLog {self.id}: {self.messages_sent} sent, {self.messages_failed} failed>"
+
+
+class GuideScheduleLog(Base):
+    """Audit log for scheduled guide posts (PR-031).
+
+    Tracks all scheduled guide postings to Telegram groups, including:
+    - Which guide was posted
+    - How many groups successfully received it
+    - How many posts failed
+    - Timestamps and error information
+    """
+
+    __tablename__ = "guide_schedule_log"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    guide_id = Column(
+        String(36),
+        nullable=False,
+        comment="ID of the guide that was posted",
+    )
+    posted_to = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        comment="Number of groups successfully posted to",
+    )
+    failed = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        comment="Number of groups where post failed",
+    )
+    posted_to_chats = Column(
+        JSON,
+        nullable=True,
+        comment="List of chat IDs that successfully received the guide",
+    )
+    failed_chats = Column(
+        JSON,
+        nullable=True,
+        comment="List of chat IDs where post failed",
+    )
+    error_details = Column(
+        JSON,
+        nullable=True,
+        comment="Error messages and details for failed posts",
+    )
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        comment="Timestamp of scheduled posting",
+    )
+
+    __table_args__ = (
+        Index("ix_guide_schedule_log_created_at", "created_at"),
+        Index("ix_guide_schedule_log_guide_id", "guide_id"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<GuideScheduleLog {self.id}: guide={self.guide_id} posted={self.posted_to} failed={self.failed}>"

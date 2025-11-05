@@ -2,10 +2,10 @@
 
 ## Overview
 
-**PR Number**: PR-024a  
-**Title**: EA Poll/Ack API with HMAC Authentication & Replay Prevention  
-**Status**: Implementation Complete & Tested  
-**Date**: 2025-11-03  
+**PR Number**: PR-024a
+**Title**: EA Poll/Ack API with HMAC Authentication & Replay Prevention
+**Status**: Implementation Complete & Tested
+**Date**: 2025-11-03
 
 ## Business Context
 
@@ -205,7 +205,7 @@ Response (201 Created):
 
 #### Replay Prevention
 1. **Timestamp Validation**: Must be within ±300 seconds (5 minutes) of server time
-2. **Nonce Validation**: 
+2. **Nonce Validation**:
    - Redis SETNX: `SET nonce_${device_id}_${nonce} 1 EX 600 NX`
    - If SETNX fails (key exists), reject as replay
    - 600-second TTL allows nonce reuse after expiration
@@ -426,6 +426,6 @@ The implementation is **production-ready** for deployment to main. Future work w
 4. Merge to main
 5. Prepare API integration PR
 
-**Status**: ✅ Ready for merge  
-**Quality**: Enterprise grade  
+**Status**: ✅ Ready for merge
+**Quality**: Enterprise grade
 **Tests**: 36/36 passing (100%)

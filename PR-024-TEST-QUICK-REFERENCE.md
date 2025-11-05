@@ -44,7 +44,7 @@
   "c:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_024_affiliates.py::TestAffiliateRegistration" `
   -v
 
-# Commission calculation tests  
+# Commission calculation tests
 .venv/Scripts/python.exe -m pytest `
   "c:\Users\FCumm\NewTeleBotFinal\backend\tests\test_pr_024_affiliates.py::TestCommissionCalculation" `
   -v

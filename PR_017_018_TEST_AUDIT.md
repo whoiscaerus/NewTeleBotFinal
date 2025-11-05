@@ -29,7 +29,7 @@
    - ✅ TestHmacClientErrorMessages (1 test): Pydantic validation clarity
    - ✅ Tests use mocking for httpx.AsyncClient (dependency only)
    - ✅ Validates: signal validation, HTTP errors (400, 500), timeout handling, header structure
-   - **GAPS**: 
+   - **GAPS**:
      - ❌ Does NOT verify actual HMAC signature is computed (just checks header presence)
      - ❌ Does NOT test integration of build_signature() with actual request
      - ❌ Does NOT test multiple failure scenarios (connection refused, reset, etc.)
@@ -85,7 +85,7 @@ assert headers["X-Producer-Id"] == "test-producer"
 # 4. Signature algorithm (HMAC-SHA256) was used
 ```
 
-**Why This Matters**: 
+**Why This Matters**:
 - Tests would pass even if signature was hardcoded or random
 - Server would reject signatures if algorithm changed
 - This is the core security feature
@@ -96,7 +96,7 @@ assert headers["X-Producer-Id"] == "test-producer"
 async def test_post_signal_signature_is_valid_and_correct():
     """Verify actual HMAC signature is computed and matches spec."""
     client = HmacClient(config, logger)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
@@ -104,19 +104,19 @@ async def test_post_signal_signature_is_valid_and_correct():
         mock_response.status_code = 201
         mock_response.json.return_value = {"signal_id": "sig-1"}
         mock_session.post.return_value = mock_response
-        
+
         await client._ensure_session()
         await client.post_signal(signal)
-        
+
         # Extract actual request
         call_args = mock_session.post.call_args
         actual_headers = call_args.kwargs['headers']
         actual_body = call_args.kwargs['content']
-        
+
         # Verify signature is REAL
         actual_sig = actual_headers['X-Signature']
         timestamp = actual_headers['X-Timestamp']
-        
+
         from backend.app.trading.outbound.hmac import build_signature
         expected_sig = build_signature(
             secret=config.producer_secret.encode(),
@@ -124,7 +124,7 @@ async def test_post_signal_signature_is_valid_and_correct():
             timestamp=timestamp,
             producer_id=config.producer_id
         )
-        
+
         # ✅ THIS IS THE REAL TEST
         assert actual_sig == expected_sig
 ```
@@ -166,7 +166,7 @@ async def test_retry_on_actual_signal_posting_transient_failure():
     """Test retry actually retries real signal posting on transient failure."""
     client = HmacClient(config, logger)
     attempt_count = 0
-    
+
     @with_retry(max_retries=2, base_delay=0.01)
     async def post_with_retry():
         nonlocal attempt_count
@@ -176,7 +176,7 @@ async def test_retry_on_actual_signal_posting_transient_failure():
             raise httpx.ConnectError("Connection refused")
         # Third attempt: success
         return await client.post_signal(signal)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
@@ -184,10 +184,10 @@ async def test_retry_on_actual_signal_posting_transient_failure():
         mock_response.status_code = 201
         mock_response.json.return_value = {"signal_id": "sig-1"}
         mock_session.post.return_value = mock_response
-        
+
         await client._ensure_session()
         result = await post_with_retry()
-        
+
         # ✅ Verify it retried exactly twice (3 total attempts)
         assert attempt_count == 3
         # ✅ Verify final result is success
@@ -226,17 +226,17 @@ async def test_telegram_alert_sent_after_max_retries_exhausted():
     """Test alert sent when signal posting exhausts all retries."""
     client = HmacClient(config, logger)
     alert_service = OpsAlertService(telegram_token="token", telegram_chat_id="chat")
-    
+
     @with_retry(max_retries=2, base_delay=0.01)
     async def post_with_alert_on_failure():
         # All attempts fail
         raise httpx.ConnectError("Broker unreachable")
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
         mock_session.post.side_effect = httpx.ConnectError("Broker unreachable")
-        
+
         try:
             await post_with_alert_on_failure()
         except RetryExhaustedError as ex:
@@ -246,7 +246,7 @@ async def test_telegram_alert_sent_after_max_retries_exhausted():
                 error=ex,
                 attempts=ex.attempts
             )
-            
+
             # ✅ Verify alert was sent
             assert result is True
 ```
@@ -272,20 +272,20 @@ async def test_retry_on_connection_timeout():
     @with_retry(max_retries=1, base_delay=0.01)
     async def post_signal_timeout():
         return await client.post_signal(signal)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
         mock_response = MagicMock()
         mock_response.status_code = 201
         mock_response.json.return_value = {"signal_id": "sig-1"}
-        
+
         # First call: timeout, Second call: success
         mock_session.post.side_effect = [
             httpx.TimeoutException("Read timeout"),
             mock_response
         ]
-        
+
         result = await post_signal_timeout()
         # ✅ Verify it retried after timeout
         assert mock_session.post.call_count == 2
@@ -297,20 +297,20 @@ async def test_retry_on_connection_refused():
     @with_retry(max_retries=1, base_delay=0.01)
     async def post_signal_refused():
         return await client.post_signal(signal)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
         mock_response = MagicMock()
         mock_response.status_code = 201
         mock_response.json.return_value = {"signal_id": "sig-1"}
-        
+
         # First call: connection refused, Second call: success
         mock_session.post.side_effect = [
             ConnectionRefusedError("Connection refused"),
             mock_response
         ]
-        
+
         result = await post_signal_refused()
         assert mock_session.post.call_count == 2
 ```
@@ -333,18 +333,18 @@ async def test_signal_serialization_is_canonical_for_signature_verification():
     """Test serialization is canonical so signatures can be verified."""
     client1 = HmacClient(config, logger)
     client2 = HmacClient(config, logger)
-    
+
     # Same signal serialized by two clients
     body1 = client1._serialize_signal(signal)
     body2 = client2._serialize_signal(signal)
-    
+
     # Must be byte-identical for signature verification to work
     import json
     json1 = json.dumps(body1, separators=(",", ":"), sort_keys=True)
     json2 = json.dumps(body2, separators=(",", ":"), sort_keys=True)
-    
+
     assert json1 == json2
-    
+
     # Signature computed on json1 should verify with json2
     sig1 = build_signature(json1.encode(), config.producer_secret.encode(), ...)
     assert verify_signature(json2.encode(), config.producer_secret.encode(), sig1, ...)
@@ -430,23 +430,23 @@ async def test_signal_serialization_is_canonical_for_signature_verification():
 async def test_post_signal_signature_computation_is_real():
     """Verify actual HMAC-SHA256 signature is computed and sent."""
     client = HmacClient(config, logger)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
         mock_response = MagicMock(status_code=201)
         mock_response.json.return_value = {"signal_id": "sig-1", "status": "pending"}
         mock_session.post.return_value = mock_response
-        
+
         await client._ensure_session()
         await client.post_signal(signal)
-        
+
         # Extract actual request
         call_args = mock_session.post.call_args
         actual_headers = call_args.kwargs['headers']
         actual_body = call_args.kwargs['content']
         timestamp = actual_headers['X-Timestamp']
-        
+
         # Compute expected signature
         from backend.app.trading.outbound.hmac import build_signature
         expected_sig = build_signature(
@@ -455,7 +455,7 @@ async def test_post_signal_signature_computation_is_real():
             timestamp=timestamp,
             producer_id=config.producer_id
         )
-        
+
         # ✅ VERIFY SIGNATURE IS CORRECT
         assert actual_headers['X-Signature'] == expected_sig
 ```
@@ -466,15 +466,15 @@ async def test_post_signal_signature_computation_is_real():
 async def test_timeout_is_caught_and_converted_to_error():
     """Test timeout is properly converted to OutboundClientError."""
     client = HmacClient(config, logger)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
         import httpx
         mock_session.post.side_effect = httpx.TimeoutException("Read timeout")
-        
+
         await client._ensure_session()
-        
+
         with pytest.raises(TimeoutError):
             await client.post_signal(signal)
 ```
@@ -485,14 +485,14 @@ async def test_timeout_is_caught_and_converted_to_error():
 async def test_connection_refused_is_caught_and_converted():
     """Test connection refused is properly converted to OutboundClientError."""
     client = HmacClient(config, logger)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
         mock_session.post.side_effect = ConnectionRefusedError("Connection refused")
-        
+
         await client._ensure_session()
-        
+
         with pytest.raises(OutboundClientError):
             await client.post_signal(signal)
 ```
@@ -508,7 +508,7 @@ async def test_retry_decorator_retries_on_real_posting_failure():
     """Test @with_retry actually retries on real httpx errors."""
     client = HmacClient(config, logger)
     attempt_count = 0
-    
+
     @with_retry(max_retries=2, base_delay=0.01)
     async def post_with_retry():
         nonlocal attempt_count
@@ -516,22 +516,22 @@ async def test_retry_decorator_retries_on_real_posting_failure():
         if attempt_count < 3:
             raise httpx.ConnectError("Server unreachable")
         return await client.post_signal(signal)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
         mock_response = MagicMock(status_code=201)
         mock_response.json.return_value = {"signal_id": "sig-1"}
-        
+
         mock_session.post.side_effect = [
             httpx.ConnectError("Server unreachable"),
             httpx.ConnectError("Server unreachable"),
             mock_response
         ]
-        
+
         await client._ensure_session()
         result = await post_with_retry()
-        
+
         # ✅ Verify all 3 attempts were made
         assert attempt_count == 3
         assert mock_session.post.call_count == 3
@@ -544,10 +544,10 @@ async def test_retry_decorator_retries_on_real_posting_failure():
 async def test_retry_delays_follow_exponential_progression():
     """Test retry backoff delays are: 1.0, 2.0, 4.0 seconds."""
     delays_used = []
-    
+
     async def mock_sleep(seconds):
         delays_used.append(seconds)
-    
+
     with patch("asyncio.sleep", side_effect=mock_sleep):
         @with_retry(
             max_retries=3,
@@ -557,10 +557,10 @@ async def test_retry_delays_follow_exponential_progression():
         )
         async def always_fails():
             raise ValueError("Fail")
-        
+
         with pytest.raises(RetryExhaustedError):
             await always_fails()
-        
+
         # ✅ Verify backoff progression: 1.0, 2.0, 4.0
         assert delays_used == [1.0, 2.0, 4.0]
 ```
@@ -574,16 +574,16 @@ async def test_alert_sent_after_signal_posting_retry_exhaustion():
     """Test Telegram alert sent when signal posting fails all retries."""
     client = HmacClient(config, logger)
     alert_service = OpsAlertService(telegram_token="token", telegram_chat_id="chat")
-    
+
     attempt_count = 0
-    
+
     async def post_with_alert_on_failure():
         @with_retry(max_retries=2, base_delay=0.01)
         async def attempt_post():
             nonlocal attempt_count
             attempt_count += 1
             raise httpx.ConnectError("Broker unreachable")
-        
+
         try:
             return await attempt_post()
         except RetryExhaustedError as ex:
@@ -595,15 +595,15 @@ async def test_alert_sent_after_signal_posting_retry_exhaustion():
                 operation="post_signal"
             )
             raise
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
         mock_session.post.side_effect = httpx.ConnectError("Broker unreachable")
-        
+
         with pytest.raises(RetryExhaustedError):
             await post_with_alert_on_failure()
-        
+
         # ✅ Verify all signal posting attempts failed
         assert attempt_count == 3  # 0, 1, 2
         # ✅ Verify Telegram was called (at least for alert, possibly more for retries)
@@ -639,7 +639,7 @@ start htmlcov/index.html
 ```python
 @pytest.mark.asyncio
 async def test_complete_signal_delivery_workflow_with_resilience():
-    """Test complete workflow: signal creation → HMAC signing → 
+    """Test complete workflow: signal creation → HMAC signing →
     posting with retry → alert on exhaustion.
     """
     # 1. Create signal
@@ -654,13 +654,13 @@ async def test_complete_signal_delivery_workflow_with_resilience():
         timestamp=datetime.utcnow(),
         payload={"rsi": 35, "atr": 5.5}
     )
-    
+
     # 2. Create client with HMAC signing
     client = HmacClient(config, logger)
     alert_service = OpsAlertService(telegram_token="token", telegram_chat_id="chat")
-    
+
     attempt_count = 0
-    
+
     # 3. Post with retry and alert
     @with_retry(max_retries=2, base_delay=0.01)
     async def post_with_resilience():
@@ -671,7 +671,7 @@ async def test_complete_signal_delivery_workflow_with_resilience():
             raise httpx.ConnectError("Network unreachable")
         # Third attempt succeeds
         return await client.post_signal(signal)
-    
+
     with patch("httpx.AsyncClient") as mock_http:
         mock_session = AsyncMock()
         mock_http.return_value = mock_session
@@ -681,26 +681,26 @@ async def test_complete_signal_delivery_workflow_with_resilience():
             "status": "pending_approval",
             "server_timestamp": "2025-10-25T14:30:45.123456Z"
         }
-        
+
         mock_session.post.side_effect = [
             httpx.ConnectError("Network unreachable"),  # Attempt 1: fail
             httpx.ConnectError("Network unreachable"),  # Attempt 2: fail
             mock_response  # Attempt 3: success
         ]
-        
+
         await client._ensure_session()
-        
+
         # ✅ Should retry and eventually succeed
         result = await post_with_resilience()
-        
+
         # Verify retries happened
         assert attempt_count == 3
         assert mock_session.post.call_count == 3
-        
+
         # Verify response
         assert result.signal_id == "sig-prod-123"
         assert result.status == "pending_approval"
-        
+
         # Verify headers contained real HMAC signature
         calls = mock_session.post.call_args_list
         for call in calls:
@@ -723,4 +723,3 @@ async def test_complete_signal_delivery_workflow_with_resilience():
 7. **TODAY**: Create `PR_017_018_IMPLEMENTATION_COMPLETE.md` (15 mins)
 
 **Total Time**: 2-3 hours to reach 90-100% coverage and production-ready state
-

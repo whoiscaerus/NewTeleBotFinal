@@ -1,8 +1,8 @@
 # PR-004: AuthN/AuthZ Core - Comprehensive Business Logic Audit
 
-**Audit Date**: November 3, 2025  
-**Status**: 🟡 PARTIAL - 55 existing tests, identified 35+ gaps  
-**Coverage**: ~60% - Missing critical business logic and edge cases  
+**Audit Date**: November 3, 2025
+**Status**: 🟡 PARTIAL - 55 existing tests, identified 35+ gaps
+**Coverage**: ~60% - Missing critical business logic and edge cases
 
 ## Executive Summary
 
@@ -516,13 +516,12 @@ Total: 55 tests covering core auth logic
 
 ## Implementation Plan
 
-**Phase 1**: Create `backend/tests/test_pr_004_auth_gaps.py` with 50 comprehensive gap tests  
-**Phase 2**: Run combined test suite (55 original + 50 gaps = 105 total)  
-**Phase 3**: Achieve 90%+ coverage on all business logic  
-**Phase 4**: Document findings and commit to GitHub  
+**Phase 1**: Create `backend/tests/test_pr_004_auth_gaps.py` with 50 comprehensive gap tests
+**Phase 2**: Run combined test suite (55 original + 50 gaps = 105 total)
+**Phase 3**: Achieve 90%+ coverage on all business logic
+**Phase 4**: Document findings and commit to GitHub
 
-**Estimated Time**: 4-6 hours  
-**Test Count Target**: 105 total (55 + 50 new)  
-**Coverage Target**: 90-95%  
+**Estimated Time**: 4-6 hours
+**Test Count Target**: 105 total (55 + 50 new)
+**Coverage Target**: 90-95%
 **Expected Bugs Found**: 2-4 (edge cases, race conditions)
-

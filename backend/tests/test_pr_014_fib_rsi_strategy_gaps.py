@@ -12,28 +12,24 @@ Validates 100% of business logic for:
 Coverage: 90-100% business logic
 """
 
-import asyncio
-import logging
-from datetime import datetime, timedelta, time
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
-from pytz import timezone
 
 from backend.app.strategy.fib_rsi.engine import StrategyEngine
-from backend.app.strategy.fib_rsi.params import StrategyParams
-from backend.app.strategy.fib_rsi.schema import SignalCandidate
-from backend.app.strategy.fib_rsi.pattern_detector import RSIPatternDetector
 from backend.app.strategy.fib_rsi.indicators import (
-    RSICalculator,
-    ROCCalculator,
     ATRCalculator,
     FibonacciAnalyzer,
+    ROCCalculator,
+    RSICalculator,
 )
+from backend.app.strategy.fib_rsi.params import StrategyParams
+from backend.app.strategy.fib_rsi.pattern_detector import RSIPatternDetector
+from backend.app.strategy.fib_rsi.schema import SignalCandidate
 from backend.app.trading.time import MarketCalendar
-
 
 # ============================================================================
 # FIXTURES
@@ -416,7 +412,7 @@ class TestIndicatorCalculations:
         # RSI must be a list
         assert isinstance(rsi_values, list)
         assert len(rsi_values) == len(close_prices)
-        
+
         # RSI values must be 0-100
         valid_rsi = [v for v in rsi_values if not (v == 50.0 and len(rsi_values) > 20)]
         assert all(0 <= v <= 100 for v in valid_rsi)
@@ -490,8 +486,10 @@ class TestIndicatorCalculations:
         high_prices = uptrend_df["high"].tolist()
         low_prices = uptrend_df["low"].tolist()
         close_prices = uptrend_df["close"].tolist()
-        
-        atr_values = ATRCalculator.calculate(high_prices, low_prices, close_prices, period=14)
+
+        atr_values = ATRCalculator.calculate(
+            high_prices, low_prices, close_prices, period=14
+        )
 
         # ATR must be positive list
         assert isinstance(atr_values, list)
@@ -501,8 +499,9 @@ class TestIndicatorCalculations:
     def test_atr_high_volatility(self):
         """ATR higher in high volatility."""
         import random
+
         random.seed(42)
-        
+
         # Create high volatility data
         high = [1960.0 + random.uniform(-15, 15) for _ in range(100)]
         low = [1940.0 + random.uniform(-15, 15) for _ in range(100)]
@@ -519,8 +518,10 @@ class TestIndicatorCalculations:
         high_prices = tiny_atr_df["high"].tolist()
         low_prices = tiny_atr_df["low"].tolist()
         close_prices = tiny_atr_df["close"].tolist()
-        
-        atr_values = ATRCalculator.calculate(high_prices, low_prices, close_prices, period=14)
+
+        atr_values = ATRCalculator.calculate(
+            high_prices, low_prices, close_prices, period=14
+        )
 
         # Recent ATR should be very small
         recent_atr = atr_values[-1]
@@ -539,9 +540,9 @@ class TestIndicatorCalculations:
 
         # All values should be between low and high
         for key, level in levels.items():
-            assert low_price <= level <= high_price, f"Level {key}={level} outside range"
-
-
+            assert (
+                low_price <= level <= high_price
+            ), f"Level {key}={level} outside range"
 
 
 # ============================================================================
@@ -693,7 +694,7 @@ class TestRateLimiting:
         engine._last_signal_times[instrument] = datetime.utcnow()
 
         # Second signal 30 seconds later should be blocked
-        time_since_last = (datetime.utcnow() - engine._last_signal_times[instrument])
+        time_since_last = datetime.utcnow() - engine._last_signal_times[instrument]
         is_rate_limited = time_since_last.total_seconds() < (3600 / 5)
 
         assert is_rate_limited is True
@@ -703,9 +704,7 @@ class TestRateLimiting:
         instrument = "GOLD"
 
         # First signal sent 1 hour ago
-        engine._last_signal_times[instrument] = (
-            datetime.utcnow() - timedelta(hours=1)
-        )
+        engine._last_signal_times[instrument] = datetime.utcnow() - timedelta(hours=1)
 
         # New signal should be allowed
         time_since_last = (
@@ -719,9 +718,7 @@ class TestRateLimiting:
     def test_rate_limit_per_instrument(self, engine):
         """Rate limit tracks per instrument."""
         engine._last_signal_times["GOLD"] = datetime.utcnow()
-        engine._last_signal_times["EURUSD"] = datetime.utcnow() - timedelta(
-            hours=1
-        )
+        engine._last_signal_times["EURUSD"] = datetime.utcnow() - timedelta(hours=1)
 
         # GOLD is rate limited
         gold_limited = (
@@ -860,9 +857,7 @@ class TestSignalGeneration:
             await engine.generate_signal(invalid_df, "GOLD", current_time)
 
     @pytest.mark.asyncio
-    async def test_signal_generation_checks_market_hours(
-        self, engine, uptrend_df
-    ):
+    async def test_signal_generation_checks_market_hours(self, engine, uptrend_df):
         """Signal generation checks market hours."""
         engine.market_calendar.is_market_open = MagicMock(return_value=False)
 
@@ -885,9 +880,7 @@ class TestSignalGeneration:
         assert result is None or isinstance(result, (type(None), dict))
 
     @pytest.mark.asyncio
-    async def test_signal_generation_full_orchestration(
-        self, engine, uptrend_df
-    ):
+    async def test_signal_generation_full_orchestration(self, engine, uptrend_df):
         """Full signal generation flow."""
         engine.market_calendar.is_market_open = MagicMock(return_value=True)
         current_time = pd.Timestamp("2025-01-06 14:35", tz="UTC")
@@ -1029,48 +1022,60 @@ class TestPatternDetectorComprehensive:
 
     def test_detect_setup_dispatches_to_short_or_long(self, detector):
         """Test detect_setup() correctly dispatches to short/long detection."""
-        times = pd.date_range(start="2025-01-01 09:30", periods=150, freq="1h", tz="UTC")
+        times = pd.date_range(
+            start="2025-01-01 09:30", periods=150, freq="1h", tz="UTC"
+        )
         closes = [1950 + i * 2 for i in range(150)]
-        
-        df = pd.DataFrame({
-            'open': [c - 1 for c in closes],
-            'high': [c + 2 for c in closes],
-            'low': [c - 3 for c in closes],
-            'close': closes,
-            'volume': [1000000] * 150,
-        }, index=times)
-        
+
+        df = pd.DataFrame(
+            {
+                "open": [c - 1 for c in closes],
+                "high": [c + 2 for c in closes],
+                "low": [c - 3 for c in closes],
+                "close": closes,
+                "volume": [1000000] * 150,
+            },
+            index=times,
+        )
+
         # Add RSI that starts low (< 40), rises high (> 70)
-        rsi_values = [30] * 50 + [i * 0.8 for i in range(50)] + [70 + (i * 0.5 % 40) for i in range(50)]
-        df['rsi'] = rsi_values
-        
+        rsi_values = (
+            [30] * 50
+            + [i * 0.8 for i in range(50)]
+            + [70 + (i * 0.5 % 40) for i in range(50)]
+        )
+        df["rsi"] = rsi_values
+
         setup = detector.detect_setup(df)
-        
+
         # Should detect at least one setup (LONG or SHORT)
         if setup:
-            assert 'type' in setup
-            assert setup['type'] in ['long', 'short']
-            assert 'entry' in setup
-            assert 'stop_loss' in setup
+            assert "type" in setup
+            assert setup["type"] in ["long", "short"]
+            assert "entry" in setup
+            assert "stop_loss" in setup
 
     def test_short_pattern_incomplete_no_rsi_drop(self, detector):
         """SHORT pattern incomplete: RSI > 70 but never drops to <= 40."""
         times = pd.date_range(start="2025-01-01", periods=120, freq="1h", tz="UTC")
         closes = [1950 + i * 1 for i in range(120)]
-        
-        df = pd.DataFrame({
-            'open': closes,
-            'high': [c + 2 for c in closes],
-            'low': [c - 2 for c in closes],
-            'close': closes,
-            'volume': [1000000] * 120,
-        }, index=times)
-        
+
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": [c + 2 for c in closes],
+                "low": [c - 2 for c in closes],
+                "close": closes,
+                "volume": [1000000] * 120,
+            },
+            index=times,
+        )
+
         # RSI rises above 70 but stays high (never drops to 40)
-        df['rsi'] = [30] * 50 + [71 + (i * 0.1 % 20) for i in range(70)]
-        
+        df["rsi"] = [30] * 50 + [71 + (i * 0.1 % 20) for i in range(70)]
+
         setup = detector.detect_short_setup(df)
-        
+
         # Should return None (pattern incomplete)
         assert setup is None
 
@@ -1078,71 +1083,83 @@ class TestPatternDetectorComprehensive:
         """SHORT pattern timeout: RSI drop happens after 100-hour window expires."""
         times = pd.date_range(start="2025-01-01", periods=200, freq="1h", tz="UTC")
         closes = [1950] * 200
-        
-        df = pd.DataFrame({
-            'open': closes,
-            'high': [1952] * 200,
-            'low': [1948] * 200,
-            'close': closes,
-            'volume': [1000000] * 200,
-        }, index=times)
-        
+
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": [1952] * 200,
+                "low": [1948] * 200,
+                "close": closes,
+                "volume": [1000000] * 200,
+            },
+            index=times,
+        )
+
         # RSI: crosses 70 at hour 50, drops to 40 at hour 155 (>100 hour window from crossing at 50)
         rsi_data = [30] * 50 + [71] * 105 + [39] * 45
-        df['rsi'] = rsi_data
-        
+        df["rsi"] = rsi_data
+
         setup = detector.detect_short_setup(df)
-        
+
         # Should timeout (>100 hours between crossing and drop to 40)
         assert setup is None
 
     def test_short_pattern_invalid_price_high_not_higher(self, detector):
         """SHORT pattern invalid: price_high <= price_low."""
         times = pd.date_range(start="2025-01-01", periods=60, freq="1h", tz="UTC")
-        
-        df = pd.DataFrame({
-            'open': [1950] * 60,
-            'high': [1948] * 60,  # High is below low!
-            'low': [1950] * 60,
-            'close': [1949] * 60,
-            'volume': [1000000] * 60,
-        }, index=times)
-        
+
+        df = pd.DataFrame(
+            {
+                "open": [1950] * 60,
+                "high": [1948] * 60,  # High is below low!
+                "low": [1950] * 60,
+                "close": [1949] * 60,
+                "volume": [1000000] * 60,
+            },
+            index=times,
+        )
+
         # RSI crosses 70, then 40
-        df['rsi'] = [30] * 20 + [71] * 15 + [39] * 25
-        
+        df["rsi"] = [30] * 20 + [71] * 15 + [39] * 25
+
         setup = detector.detect_short_setup(df)
-        
+
         # Should reject invalid Fib range
         assert setup is None
 
     def test_short_pattern_empty_dataframe(self, detector):
         """SHORT pattern with empty DataFrame raises ValueError."""
-        df = pd.DataFrame(columns=['open', 'high', 'low', 'close', 'volume', 'rsi'])
-        
+        df = pd.DataFrame(columns=["open", "high", "low", "close", "volume", "rsi"])
+
         with pytest.raises(ValueError, match="DataFrame must have 'rsi' column"):
             detector.detect_short_setup(df)
 
     def test_short_pattern_missing_rsi_column(self, detector):
         """SHORT pattern with missing RSI column raises ValueError."""
         times = pd.date_range(start="2025-01-01", periods=10, freq="1h", tz="UTC")
-        df = pd.DataFrame({
-            'open': [1950] * 10,
-            'high': [1952] * 10,
-            'low': [1948] * 10,
-            'close': [1950] * 10,
-            'volume': [1000000] * 10,
-        }, index=times)
-        
+        df = pd.DataFrame(
+            {
+                "open": [1950] * 10,
+                "high": [1952] * 10,
+                "low": [1948] * 10,
+                "close": [1950] * 10,
+                "volume": [1000000] * 10,
+            },
+            index=times,
+        )
+
         with pytest.raises(ValueError, match="DataFrame must have 'rsi' column"):
             detector.detect_short_setup(df)
 
     def test_short_pattern_too_few_bars(self, detector):
         """SHORT pattern with <2 bars returns None."""
-        df = pd.DataFrame({
-            'rsi': [50],
-        }, index=pd.date_range("2025-01-01", periods=1, freq="1h", tz="UTC"))
-        
+        df = pd.DataFrame(
+            {
+                "rsi": [50],
+            },
+            index=pd.date_range("2025-01-01", periods=1, freq="1h", tz="UTC"),
+        )
+
         result = detector.detect_short_setup(df)
         assert result is None
 
@@ -1150,20 +1167,23 @@ class TestPatternDetectorComprehensive:
         """LONG pattern incomplete: RSI < 40 but never rises to >= 70."""
         times = pd.date_range(start="2025-01-01", periods=120, freq="1h", tz="UTC")
         closes = [1950 - i * 1 for i in range(120)]
-        
-        df = pd.DataFrame({
-            'open': closes,
-            'high': [c + 2 for c in closes],
-            'low': [c - 2 for c in closes],
-            'close': closes,
-            'volume': [1000000] * 120,
-        }, index=times)
-        
+
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": [c + 2 for c in closes],
+                "low": [c - 2 for c in closes],
+                "close": closes,
+                "volume": [1000000] * 120,
+            },
+            index=times,
+        )
+
         # RSI drops below 40 but stays low (never rises to 70)
-        df['rsi'] = [70] * 50 + [29 - (i * 0.1 % 20) for i in range(70)]
-        
+        df["rsi"] = [70] * 50 + [29 - (i * 0.1 % 20) for i in range(70)]
+
         setup = detector.detect_long_setup(df)
-        
+
         # Should return None (pattern incomplete)
         assert setup is None
 
@@ -1171,67 +1191,76 @@ class TestPatternDetectorComprehensive:
         """LONG pattern timeout: RSI rise happens after 100-hour window expires."""
         times = pd.date_range(start="2025-01-01", periods=200, freq="1h", tz="UTC")
         closes = [1950] * 200
-        
-        df = pd.DataFrame({
-            'open': closes,
-            'high': [1952] * 200,
-            'low': [1948] * 200,
-            'close': closes,
-            'volume': [1000000] * 200,
-        }, index=times)
-        
+
+        df = pd.DataFrame(
+            {
+                "open": closes,
+                "high": [1952] * 200,
+                "low": [1948] * 200,
+                "close": closes,
+                "volume": [1000000] * 200,
+            },
+            index=times,
+        )
+
         # RSI: drops below 40 at hour 50, rises to 70+ at hour 155 (>100 hour window from drop at 50)
         rsi_data = [70] * 50 + [39] * 105 + [71] * 45
-        df['rsi'] = rsi_data
-        
+        df["rsi"] = rsi_data
+
         setup = detector.detect_long_setup(df)
-        
+
         # Should timeout (>100 hours between drop and rise to 70)
         assert setup is None
 
     def test_long_pattern_valid_complete(self, detector):
         """LONG pattern complete and valid: RSI < 40, then RSI >= 70."""
         times = pd.date_range(start="2025-01-01", periods=60, freq="1h", tz="UTC")
-        
+
         # Prices: low during RSI < 40, high during RSI >= 70
         prices = [1950] * 20 + [1945] * 15 + [1955] * 25
-        
-        df = pd.DataFrame({
-            'open': prices,
-            'high': [p + 2 for p in prices],
-            'low': [p - 2 for p in prices],
-            'close': prices,
-            'volume': [1000000] * 60,
-        }, index=times)
-        
+
+        df = pd.DataFrame(
+            {
+                "open": prices,
+                "high": [p + 2 for p in prices],
+                "low": [p - 2 for p in prices],
+                "close": prices,
+                "volume": [1000000] * 60,
+            },
+            index=times,
+        )
+
         # RSI: high → drops below 40 → rises above 70
-        df['rsi'] = [70] * 20 + [39] * 15 + [71] * 25
-        
+        df["rsi"] = [70] * 20 + [39] * 15 + [71] * 25
+
         setup = detector.detect_long_setup(df)
-        
+
         # Should detect LONG setup
         assert setup is not None
-        assert setup['type'] == 'long'
-        assert setup['entry'] > 1945  # Above low
-        assert setup['stop_loss'] < 1945  # Below low
+        assert setup["type"] == "long"
+        assert setup["entry"] > 1945  # Above low
+        assert setup["stop_loss"] < 1945  # Below low
 
     def test_long_pattern_invalid_price_low_not_lower(self, detector):
         """LONG pattern invalid: price_low >= price_high."""
         times = pd.date_range(start="2025-01-01", periods=60, freq="1h", tz="UTC")
-        
-        df = pd.DataFrame({
-            'open': [1950] * 60,
-            'high': [1950] * 60,
-            'low': [1952] * 60,  # Low is above high!
-            'close': [1950] * 60,
-            'volume': [1000000] * 60,
-        }, index=times)
-        
+
+        df = pd.DataFrame(
+            {
+                "open": [1950] * 60,
+                "high": [1950] * 60,
+                "low": [1952] * 60,  # Low is above high!
+                "close": [1950] * 60,
+                "volume": [1000000] * 60,
+            },
+            index=times,
+        )
+
         # RSI drops below 40, rises above 70
-        df['rsi'] = [70] * 20 + [39] * 15 + [71] * 25
-        
+        df["rsi"] = [70] * 20 + [39] * 15 + [71] * 25
+
         setup = detector.detect_long_setup(df)
-        
+
         # Should reject invalid Fib range
         assert setup is None
 
@@ -1249,15 +1278,15 @@ class TestEngineErrorHandling:
     async def test_generate_signal_invalid_dataframe_empty(self, engine):
         """Generate signal with empty DataFrame raises ValueError."""
         df = pd.DataFrame()
-        
+
         with pytest.raises(ValueError, match="missing required columns"):
             await engine.generate_signal(df, "GOLD", datetime.now())
 
     @pytest.mark.asyncio
     async def test_generate_signal_missing_ohlc_columns(self, engine):
         """Generate signal with missing OHLC columns raises ValueError."""
-        df = pd.DataFrame({'only_close': [1950]})
-        
+        df = pd.DataFrame({"only_close": [1950]})
+
         with pytest.raises(ValueError, match="missing required columns"):
             await engine.generate_signal(df, "GOLD", datetime.now())
 
@@ -1265,33 +1294,37 @@ class TestEngineErrorHandling:
     async def test_generate_signal_invalid_instrument_empty(self, engine):
         """Generate signal with empty instrument name raises ValueError."""
         # Create sufficient data (>30 candles)
-        df = pd.DataFrame({
-            'open': [1950] * 50,
-            'high': [1952] * 50,
-            'low': [1948] * 50,
-            'close': [1950] * 50,
-            'volume': [1000000] * 50,
-        })
-        
+        df = pd.DataFrame(
+            {
+                "open": [1950] * 50,
+                "high": [1952] * 50,
+                "low": [1948] * 50,
+                "close": [1950] * 50,
+                "volume": [1000000] * 50,
+            }
+        )
+
         with pytest.raises(ValueError, match="Invalid instrument"):
             await engine.generate_signal(df, "", datetime.now())
 
     @pytest.mark.asyncio
     async def test_generate_signal_market_closed(self, engine):
         """Generate signal when market is closed returns None."""
-        df = pd.DataFrame({
-            'open': [1950] * 100,
-            'high': [1952] * 100,
-            'low': [1948] * 100,
-            'close': [1950] * 100,
-            'volume': [1000000] * 100,
-        })
-        
+        df = pd.DataFrame(
+            {
+                "open": [1950] * 100,
+                "high": [1952] * 100,
+                "low": [1948] * 100,
+                "close": [1950] * 100,
+                "volume": [1000000] * 100,
+            }
+        )
+
         # Market calendar returns False (closed)
         engine.market_calendar.is_market_open = MagicMock(return_value=False)
-        
+
         result = await engine.generate_signal(df, "GOLD", datetime.now())
-        
+
         assert result is None
 
     @pytest.mark.asyncio
@@ -1300,36 +1333,38 @@ class TestEngineErrorHandling:
         engine.market_calendar.is_market_open = MagicMock(
             side_effect=Exception("Calendar service down")
         )
-        
+
         result = await engine._check_market_hours("GOLD", datetime.now())
-        
+
         # Should fail open
         assert result is True
 
     def test_validate_dataframe_with_nans(self, engine):
         """Validate DataFrame with NaN values raises error."""
-        df = pd.DataFrame({
-            'open': [np.nan] + [1950] * 49,
-            'high': [1952] * 50,
-            'low': [1948] * 50,
-            'close': [1950] * 50,
-            'volume': [1000000] * 50,
-        })
-        
+        df = pd.DataFrame(
+            {
+                "open": [np.nan] + [1950] * 49,
+                "high": [1952] * 50,
+                "low": [1948] * 50,
+                "close": [1950] * 50,
+                "volume": [1000000] * 50,
+            }
+        )
+
         with pytest.raises(ValueError, match="contains NaN"):
             engine._validate_dataframe(df)
 
     def test_rate_limit_tracking_multiple_instruments(self, engine):
         """Rate limiting tracks signals separately per instrument."""
         now = datetime.now()
-        
+
         engine._record_signal_time("GOLD")
         engine._record_signal_time("GOLD")
         engine._record_signal_time("EURUSD")
-        
+
         # GOLD has 2 signals, should not be rate limited at 5/hour
         assert not engine._is_rate_limited("GOLD")
-        
+
         # EURUSD has 1 signal, should not be rate limited
         assert not engine._is_rate_limited("EURUSD")
 
@@ -1350,7 +1385,7 @@ class TestSchemaValidation:
             reason="fib_rsi_pattern",
             payload={"rsi": 35, "pattern": "long"},
         )
-        
+
         assert signal.instrument == "GOLD"
         assert signal.side == "buy"
         assert signal.entry_price == 1950.00
@@ -1381,7 +1416,7 @@ class TestSchemaValidation:
             timestamp=datetime.now(),
             reason="fib_rsi_pattern",
         )
-        
+
         # Should not raise
         signal.validate_price_relationships()
 
@@ -1397,7 +1432,7 @@ class TestSchemaValidation:
             timestamp=datetime.now(),
             reason="fib_rsi_pattern",
         )
-        
+
         with pytest.raises(ValueError, match="must be"):
             signal.validate_price_relationships()
 
@@ -1413,7 +1448,7 @@ class TestSchemaValidation:
             timestamp=datetime.now(),
             reason="fib_rsi_pattern",
         )
-        
+
         # Should not raise
         signal.validate_price_relationships()
 
@@ -1429,14 +1464,14 @@ class TestSchemaValidation:
             timestamp=datetime.now(),
             reason="fib_rsi_pattern",
         )
-        
+
         with pytest.raises(ValueError, match="must be"):
             signal.validate_price_relationships()
 
     def test_execution_plan_initialization(self):
         """ExecutionPlan initializes with valid data."""
         from backend.app.strategy.fib_rsi.schema import ExecutionPlan
-        
+
         signal = SignalCandidate(
             instrument="GOLD",
             side="buy",
@@ -1447,7 +1482,7 @@ class TestSchemaValidation:
             timestamp=datetime.now(),
             reason="fib_rsi_pattern",
         )
-        
+
         plan = ExecutionPlan(
             signal=signal,
             position_size=1.0,
@@ -1455,14 +1490,14 @@ class TestSchemaValidation:
             reward_amount=200.0,
             risk_reward_ratio=2.0,
         )
-        
+
         assert plan.position_size == 1.0
         assert plan.risk_reward_ratio == 2.0
 
     def test_execution_plan_invalid_rr_ratio_raises(self):
         """ExecutionPlan rejects invalid RR ratio."""
         from backend.app.strategy.fib_rsi.schema import ExecutionPlan
-        
+
         signal = SignalCandidate(
             instrument="GOLD",
             side="buy",
@@ -1473,7 +1508,7 @@ class TestSchemaValidation:
             timestamp=datetime.now(),
             reason="fib_rsi_pattern",
         )
-        
+
         with pytest.raises(ValueError):
             ExecutionPlan(
                 signal=signal,

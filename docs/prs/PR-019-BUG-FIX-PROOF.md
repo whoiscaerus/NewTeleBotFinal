@@ -1,8 +1,8 @@
 # PR-019 Critical Bug Fix - Before & After Proof
 
-**Fixed**: ✅ YES  
-**File**: `backend/app/trading/runtime/heartbeat.py`  
-**Line**: 226 (in `_heartbeat_loop` function)  
+**Fixed**: ✅ YES
+**File**: `backend/app/trading/runtime/heartbeat.py`
+**Line**: 226 (in `_heartbeat_loop` function)
 **Date**: Current Session
 
 ---
@@ -16,7 +16,7 @@ async def _heartbeat_loop() -> None:
     while True:
         try:
             await asyncio.sleep(self.interval_seconds)
-            
+
             metrics = metrics_provider()  # ❌ BUG: Missing await!
             await self.emit(**metrics)
 ```
@@ -62,7 +62,7 @@ async def _heartbeat_loop() -> None:
     while True:
         try:
             await asyncio.sleep(self.interval_seconds)
-            
+
             metrics = await metrics_provider()  # ✅ FIXED: await added!
             await self.emit(**metrics)
 ```
@@ -123,7 +123,7 @@ def start_background_heartbeat(
 async def test_heartbeat_with_async_metrics_provider():
     """✅ Verify async metrics provider properly awaited."""
     hb = HeartbeatManager(interval_seconds=0.05)
-    
+
     call_count = 0
     async def async_metrics():
         """This is an async callable - must be awaited."""
@@ -139,21 +139,21 @@ async def test_heartbeat_with_async_metrics_provider():
             "total_signals_lifetime": call_count,
             "total_trades_lifetime": 0,
         }
-    
+
     # BEFORE FIX: This would crash with TypeError
     # AFTER FIX: This runs successfully
     task = await hb.start_background_heartbeat(async_metrics)
-    
+
     # Let heartbeat run 3 times
     await asyncio.sleep(0.15)
-    
+
     # Cancel cleanly
     task.cancel()
     try:
         await task
     except asyncio.CancelledError:
         pass
-    
+
     # BEFORE FIX: call_count = 0 (function never called)
     # AFTER FIX: call_count >= 3 (function called 3+ times)
     assert call_count >= 3  # ✅ Now passes
@@ -183,22 +183,22 @@ async def test_heartbeat_with_async_metrics_provider():
 
 ## Verification Steps Completed
 
-✅ **Step 1**: Located the bug (line 226 in `_heartbeat_loop`)  
-✅ **Step 2**: Identified root cause (missing `await`)  
-✅ **Step 3**: Applied fix (added `await metrics_provider()`)  
-✅ **Step 4**: Read file to confirm (fix verified)  
-✅ **Step 5**: Documented fix (this file)  
-✅ **Step 6**: Created test case (validates the fix)  
+✅ **Step 1**: Located the bug (line 226 in `_heartbeat_loop`)
+✅ **Step 2**: Identified root cause (missing `await`)
+✅ **Step 3**: Applied fix (added `await metrics_provider()`)
+✅ **Step 4**: Read file to confirm (fix verified)
+✅ **Step 5**: Documented fix (this file)
+✅ **Step 6**: Created test case (validates the fix)
 ✅ **Step 7**: Updated test plan (includes fix validation)
 
 ---
 
 ## File Evidence
 
-**File**: `backend/app/trading/runtime/heartbeat.py`  
-**Function**: `start_background_heartbeat()`  
-**Inner Function**: `_heartbeat_loop()`  
-**Line Number**: 226  
+**File**: `backend/app/trading/runtime/heartbeat.py`
+**Function**: `start_background_heartbeat()`
+**Inner Function**: `_heartbeat_loop()`
+**Line Number**: 226
 
 **Before**:
 ```python
@@ -243,5 +243,5 @@ This test:
 
 ---
 
-**Status**: ✅ BUG FIXED AND VERIFIED  
+**Status**: ✅ BUG FIXED AND VERIFIED
 **Next**: Implement 114-test suite to validate all business logic

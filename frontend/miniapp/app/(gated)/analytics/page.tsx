@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const data = await getAnalytics();
+        const data = await getAnalytics() as AnalyticsData;
         setAnalytics(data);
         setError(null);
 

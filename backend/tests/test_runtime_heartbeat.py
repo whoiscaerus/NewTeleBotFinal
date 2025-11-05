@@ -10,11 +10,12 @@ Tests the heartbeat mechanism:
 Coverage target: 100% of heartbeat.py (240 lines)
 """
 
-import pytest
 import asyncio
 import logging
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from backend.app.trading.runtime.heartbeat import HeartbeatManager, HeartbeatMetrics
 

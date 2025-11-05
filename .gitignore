@@ -62,6 +62,14 @@ logs/
 .coverage
 htmlcov/
 
+# Media uploads (runtime data)
+media/
+
+# Frontend build artifacts
+frontend/miniapp/.next/
+frontend/dashboard/.next/
+frontend/**/.next/
+
 # OS
 Thumbs.db
 *.bak

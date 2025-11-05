@@ -7,27 +7,25 @@ Comprehensive tests targeting missed lines and business logic gaps in:
 This file ensures FULL WORKING BUSINESS LOGIC is tested, not just code paths.
 """
 
-import asyncio
 import logging
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import UTC, datetime
+
+import pytest
 
 from backend.app.core.retry import (
-    with_retry,
-    retry_async,
-    calculate_backoff_delay,
     RetryExhaustedError,
+    calculate_backoff_delay,
+    retry_async,
+    with_retry,
 )
 from backend.app.ops.alerts import (
-    OpsAlertService,
     AlertConfigError,
+    OpsAlertService,
+    _get_alert_service,
     send_owner_alert,
     send_signal_delivery_error,
-    _get_alert_service,
 )
-
 
 # ============================================================================
 # RETRY.PY COVERAGE GAPS
@@ -262,9 +260,7 @@ class TestAlertsTimeoutException:
             # Make post raise TimeoutException
             import httpx
 
-            mock_client.post.side_effect = httpx.TimeoutException(
-                "Request timed out"
-            )
+            mock_client.post.side_effect = httpx.TimeoutException("Request timed out")
             mock_client_class.return_value = mock_client
 
             result = await service.send("Test timeout")
@@ -467,7 +463,7 @@ class TestRetryAlertCompleteFlow:
     @pytest.mark.asyncio
     async def test_signal_post_retry_then_alert_on_failure(self):
         """Complete flow: signal post fails → retry exhausts → alert sends.
-        
+
         This is the actual business logic: when posting a signal to broker fails
         repeatedly, ops team gets alerted via Telegram.
         """

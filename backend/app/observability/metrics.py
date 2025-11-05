@@ -278,6 +278,27 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Mini App Approvals metrics (PR-27)
+        self.miniapp_approvals_viewed_total = Counter(
+            "miniapp_approvals_viewed_total",
+            "Total times approvals console was viewed",
+            registry=self.registry,
+        )
+
+        self.miniapp_approval_actions_total = Counter(
+            "miniapp_approval_actions_total",
+            "Total approval actions (approve/reject) from mini app",
+            ["decision"],  # approve, reject
+            registry=self.registry,
+        )
+
+        self.miniapp_approval_latency_seconds = Histogram(
+            "miniapp_approval_latency_seconds",
+            "Approval action latency from click to backend response",
+            buckets=(0.01, 0.05, 0.1, 0.5, 1.0),
+            registry=self.registry,
+        )
+
         logger.info("Metrics collector initialized")
 
     def record_http_request(
@@ -467,6 +488,78 @@ class MetricsCollector:
         self.telegram_payments_total.labels(result=result).inc()
         if amount > 0:
             self.telegram_payment_value_total.labels(currency=currency).inc(amount)
+
+    def record_telegram_invoice_created(
+        self, product_id: str, tier_level: int, amount_gbp: float
+    ):
+        """Record Telegram invoice creation (PR-034).
+
+        Args:
+            product_id: Product being purchased
+            tier_level: Product tier level
+            amount_gbp: Amount in GBP
+        """
+        # Log invoice creation
+        pass
+
+    def record_telegram_pre_checkout(
+        self, product_id: str, tier_level: int, amount_gbp: float, result: str
+    ):
+        """Record Telegram pre-checkout validation (PR-034).
+
+        Args:
+            product_id: Product being purchased
+            tier_level: Product tier level
+            amount_gbp: Amount in GBP
+            result: Validation result (passed, failed)
+        """
+        # Log pre-checkout validation
+        pass
+
+    def record_telegram_payment_by_product(
+        self, product_id: str, tier_level: int, amount_cents: int
+    ):
+        """Record Telegram payment by product (PR-034).
+
+        Args:
+            product_id: Product purchased
+            tier_level: Product tier level
+            amount_cents: Amount in cents
+        """
+        # Log payment by product
+        pass
+
+    def record_telegram_shop_view(self, user_id: str):
+        """Record shop view event (PR-034).
+
+        Args:
+            user_id: User viewing shop
+        """
+        # Log shop view
+        pass
+
+    def record_telegram_buy_initiated(self, product_id: str, tier_level: int):
+        """Record buy command initiated (PR-034).
+
+        Args:
+            product_id: Product being purchased
+            tier_level: Product tier level
+        """
+        # Log buy command
+        pass
+
+    def record_telegram_payment_initiated(
+        self, payment_method: str, product_id: str, tier_level: int
+    ):
+        """Record payment initiation (PR-034).
+
+        Args:
+            payment_method: Payment method (stripe, stars, etc.)
+            product_id: Product being purchased
+            tier_level: Product tier level
+        """
+        # Log payment initiation
+        pass
 
     def record_miniapp_session_created(self):
         """Record Mini App session created via initData exchange (PR-035)."""

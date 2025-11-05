@@ -19,16 +19,15 @@ from uuid import uuid4
 import jwt
 import pytest
 from fastapi import status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.models import User, UserRole
-from backend.app.auth.service import AuthService
 from backend.app.auth.jwt_handler import JWTHandler
-from backend.app.auth.utils import create_access_token, decode_token, hash_password, verify_password
-from backend.app.core.settings import settings
+from backend.app.auth.models import UserRole
+from backend.app.auth.service import AuthService
+from backend.app.auth.utils import create_access_token, decode_token
 from backend.app.core.logging import get_logger
+from backend.app.core.settings import settings
 
 logger = get_logger(__name__)
 
@@ -148,7 +147,9 @@ class TestEndpointIntegration:
         """✅ GET /me with valid token returns user profile (id, email, role)."""
         # Create and login user
         service = AuthService(db_session)
-        user = await service.create_user("profile@example.com", "ProfileP@ss123", role="admin")
+        user = await service.create_user(
+            "profile@example.com", "ProfileP@ss123", role="admin"
+        )
         token = service.mint_jwt(user)
 
         # Get profile
@@ -246,7 +247,7 @@ class TestTokenLifecycle:
     ):
         """✅ Multiple mint_jwt() calls for same user generate different tokens (diff timestamps)."""
         import asyncio
-        
+
         service = AuthService(db_session)
         user = await service.create_user("multilogin@example.com", "MultiP@ss123")
 
@@ -300,7 +301,10 @@ class TestTokenLifecycle:
 
         # Decode with audience validation
         decoded = jwt.decode(
-            token, settings.security.jwt_secret_key, algorithms=["HS256"], audience="miniapp"
+            token,
+            settings.security.jwt_secret_key,
+            algorithms=["HS256"],
+            audience="miniapp",
         )
         assert decoded.get("aud") == "miniapp"
 
@@ -409,9 +413,7 @@ class TestThrottleAndRateLimiting:
             assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_register_rate_limit_429_after_10_requests(
-        self, client: AsyncClient
-    ):
+    async def test_register_rate_limit_429_after_10_requests(self, client: AsyncClient):
         """✅ POST /register rate limit returns 429 after 10 requests/min."""
         # Make 11 registration requests
         for i in range(11):
@@ -575,9 +577,7 @@ class TestErrorEdgeCases:
             assert not verify_password("wrong", hashed)
 
     @pytest.mark.asyncio
-    async def test_create_user_null_optional_fields(
-        self, db_session: AsyncSession
-    ):
+    async def test_create_user_null_optional_fields(self, db_session: AsyncSession):
         """✅ Optional fields (telegram_user_id, last_login_at) allow None."""
         service = AuthService(db_session)
         user = await service.create_user("optional@example.com", "P@ss123")
@@ -634,9 +634,7 @@ class TestRBACEnforcement:
     async def test_rbac_admin_role_hierarchy(self, db_session: AsyncSession):
         """✅ Admin role is in middle of hierarchy."""
         service = AuthService(db_session)
-        admin = await service.create_user(
-            "admin@example.com", "P@ss123", role="admin"
-        )
+        admin = await service.create_user("admin@example.com", "P@ss123", role="admin")
 
         assert admin.role == UserRole.ADMIN
         assert admin.role.value == "admin"
@@ -724,9 +722,7 @@ class TestConcurrencyAndRaceConditions:
         assert len(set(tokens)) == 100
 
     @pytest.mark.asyncio
-    async def test_concurrent_user_retrieval_by_id(
-        self, db_session: AsyncSession
-    ):
+    async def test_concurrent_user_retrieval_by_id(self, db_session: AsyncSession):
         """✅ Concurrent get_user_by_id() calls are thread-safe."""
         import asyncio
 
@@ -753,7 +749,6 @@ class TestJWTSecurity:
 
     def test_token_validation_fails_with_wrong_secret_key(self):
         """✅ Token generated with one key fails validation with different key."""
-        from backend.app.auth.jwt_handler import JWTHandler
 
         # Create token with settings key
         token = create_access_token(subject="user123", role="user")
@@ -774,9 +769,7 @@ class TestJWTSecurity:
             "iat": datetime.now(UTC),
             "extra_claim": "extra_value",  # Unknown claim
         }
-        token = jwt.encode(
-            payload, settings.security.jwt_secret_key, algorithm="HS256"
-        )
+        token = jwt.encode(payload, settings.security.jwt_secret_key, algorithm="HS256")
 
         # Should decode successfully, ignoring extra claim
         decoded = jwt.decode(
@@ -801,7 +794,9 @@ class TestJWTSecurity:
             # If library allows it, try to decode
             # This should raise or be rejected
             with pytest.raises(ValueError):
-                jwt.decode(token, "", algorithms=["HS256"])  # Decode with different algo
+                jwt.decode(
+                    token, "", algorithms=["HS256"]
+                )  # Decode with different algo
         except Exception:
             # If library prevents 'none' algorithm altogether, that's even better
             pass

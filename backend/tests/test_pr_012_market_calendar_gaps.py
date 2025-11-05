@@ -10,14 +10,13 @@ All tests use REAL pytz timezone handling and datetime logic.
 Tests validate BUSINESS LOGIC, not implementation details.
 """
 
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 
 import pytest
 import pytz
 
-from backend.app.trading.time.market_calendar import MarketCalendar, MarketSession
-from backend.app.trading.time.tz import to_market_tz, to_utc, SYMBOL_TO_TIMEZONE
-
+from backend.app.trading.time.market_calendar import MarketCalendar
+from backend.app.trading.time.tz import SYMBOL_TO_TIMEZONE, to_market_tz, to_utc
 
 # ============================================================================
 # FIXTURES

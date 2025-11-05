@@ -86,7 +86,7 @@ Issue #1: CircuitBreaker Error Signature (IMPLEMENTATION BUG - CRITICAL)
   Location:     backend/app/trading/mt5/circuit_breaker.py
   Severity:     Critical
   Type:         Implementation bug (NOT a test workaround)
-  
+
   Problem:
     CircuitBreaker.call() raised MT5CircuitBreakerOpen with wrong signature
     - Expected: (message, failure_count, max_failures, reset_after_seconds)
@@ -96,7 +96,7 @@ Issue #1: CircuitBreaker Error Signature (IMPLEMENTATION BUG - CRITICAL)
   Fix Applied:
     Updated error raise to include all required arguments:
     - failure_count
-    - failure_threshold  
+    - failure_threshold
     - retry_in (calculated from timeout)
 
   Status: ✅ FIXED (in implementation)
@@ -270,7 +270,7 @@ PR-011: MT5 Session Manager
   ✅ Exponential backoff reduces load on MT5 terminal
   ✅ Async lock ensures thread-safe access
   ✅ Health monitoring provides visibility
-  
+
   Value: Robustness, reliability, monitoring
 
 PR-012: Market Calendar
@@ -279,7 +279,7 @@ PR-012: Market Calendar
   ✅ Supports 20+ trading symbols globally
   ✅ Provides next-open times for pending signals
   ✅ High-frequency checks validated for performance
-  
+
   Value: Safety, accuracy, global support
 
 ═══════════════════════════════════════════════════════════════════════════════

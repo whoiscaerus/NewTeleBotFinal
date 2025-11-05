@@ -27,12 +27,26 @@ from typing import Any, cast
 from uuid import uuid4
 
 import redis
-from stripe.error import SignatureVerificationError
 
 from backend.app.audit.models import AuditLog
 from backend.app.billing.entitlements.models import EntitlementType, UserEntitlement
 from backend.app.billing.security import WebhookSecurityValidator
 from backend.app.billing.stripe.models import StripeEvent
+
+# Handle different stripe library versions
+try:
+    from stripe.error import SignatureVerificationError
+except ImportError:
+    try:
+        from stripe import SignatureVerificationError
+    except ImportError:
+        # Fallback: define our own for compatibility
+        class SignatureVerificationError(Exception):
+            """Stripe signature verification failed."""
+
+            pass
+
+
 from backend.app.observability.metrics import get_metrics, metrics
 
 logger = logging.getLogger(__name__)
@@ -191,17 +205,19 @@ class StripeWebhookHandler:
                 user_id = result.get("user_id")
                 plan_code = result.get("plan_code")
                 customer_id = result.get("customer_id")
+                event_id = event.get("id")  # Get event ID from webhook
 
                 # Update entitlements (call to PR-028)
                 await self._activate_entitlements(user_id, plan_code)
 
-                # Log to database
+                # Log to database (with event_id for tracking)
+                metadata_with_event = {**result, "stripe_event_id": event_id}
                 await self._log_payment_event(
                     user_id=user_id,
                     event_type="checkout_completed",
                     plan_code=plan_code,
                     customer_id=customer_id,
-                    metadata=result,
+                    metadata=metadata_with_event,
                 )
 
                 self.logger.info(
@@ -238,15 +254,17 @@ class StripeWebhookHandler:
                 customer_id = result.get("customer_id")
                 invoice_id = result.get("invoice_id")
                 amount = result.get("amount")
+                event_id = event.get("id")  # Get event ID from webhook
 
-                # Log to database
+                # Log to database (with event_id for tracking)
+                metadata_with_event = {**result, "stripe_event_id": event_id}
                 await self._log_payment_event(
                     user_id=None,  # Could look up from customer_id in real impl
                     event_type="invoice_payment_succeeded",
                     customer_id=customer_id,
                     invoice_id=invoice_id,
                     amount=amount,
-                    metadata=result,
+                    metadata=metadata_with_event,
                 )
 
                 self.logger.info(
@@ -289,14 +307,16 @@ class StripeWebhookHandler:
             if result["status"] == "payment_failed":
                 customer_id = result.get("customer_id")
                 invoice_id = result.get("invoice_id")
+                event_id = event.get("id")  # Get event ID from webhook
 
-                # Log to database
+                # Log to database (with event_id for tracking)
+                metadata_with_event = {**result, "stripe_event_id": event_id}
                 await self._log_payment_event(
                     user_id=None,
                     event_type="invoice_payment_failed",
                     customer_id=customer_id,
                     invoice_id=invoice_id,
-                    metadata=result,
+                    metadata=metadata_with_event,
                 )
 
                 # Send alert (in real implementation)

@@ -3,8 +3,8 @@
 Validates all configuration rules for HMAC client setup.
 """
 
-import os
 import pytest
+
 from backend.app.trading.outbound.config import OutboundConfig
 
 
@@ -62,7 +62,9 @@ class TestOutboundConfigValidation:
 
     def test_validate_raises_on_short_producer_secret(self):
         """Test validation rejects producer_secret less than 16 bytes."""
-        with pytest.raises(ValueError, match="producer_secret must be at least 16 bytes"):
+        with pytest.raises(
+            ValueError, match="producer_secret must be at least 16 bytes"
+        ):
             config = OutboundConfig(
                 enabled=True,
                 producer_id="mt5-trader-1",
@@ -320,7 +322,9 @@ class TestOutboundConfigFromEnv:
         monkeypatch.setenv("OUTBOUND_SERVER_URL", "https://api.example.com")
         monkeypatch.setenv("OUTBOUND_TIMEOUT_SECONDS", "not-a-number")
 
-        with pytest.raises(ValueError, match="OUTBOUND_TIMEOUT_SECONDS must be a float"):
+        with pytest.raises(
+            ValueError, match="OUTBOUND_TIMEOUT_SECONDS must be a float"
+        ):
             OutboundConfig.from_env()
 
     def test_from_env_raises_on_invalid_body_size_format(self, monkeypatch):
@@ -331,7 +335,9 @@ class TestOutboundConfigFromEnv:
         monkeypatch.setenv("OUTBOUND_SERVER_URL", "https://api.example.com")
         monkeypatch.setenv("OUTBOUND_MAX_BODY_SIZE", "not-an-integer")
 
-        with pytest.raises(ValueError, match="OUTBOUND_MAX_BODY_SIZE must be an integer"):
+        with pytest.raises(
+            ValueError, match="OUTBOUND_MAX_BODY_SIZE must be an integer"
+        ):
             OutboundConfig.from_env()
 
 

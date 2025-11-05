@@ -22,7 +22,7 @@ Command: .venv/Scripts/python.exe -m pytest backend/tests/test_signals_service.p
 ✅ Payload defaults
 ✅ Multiple users
 
-### Deduplication (5 tests)  
+### Deduplication (5 tests)
 ✅ Duplicate external_id rejected (409)
 ✅ Duplicate instrument/time/version rejected (409)
 ✅ Different version allowed
@@ -175,7 +175,7 @@ Command: .venv/Scripts/python.exe -m pytest backend/tests/test_signals_service.p
 
 ## Next Steps
 
-✅ PR-021 testing complete  
-→ Ready for code review  
-→ Ready for merge to main  
+✅ PR-021 testing complete
+→ Ready for code review
+→ Ready for merge to main
 → Ready for deployment

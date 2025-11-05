@@ -8,13 +8,14 @@ Tests all error handling scenarios:
 - Unexpected exception handling
 """
 
-import asyncio
 import json
 import logging
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+
 from backend.app.strategy.fib_rsi.schema import SignalCandidate
 from backend.app.trading.outbound.client import HmacClient
 from backend.app.trading.outbound.config import OutboundConfig
@@ -43,7 +44,8 @@ def valid_config():
 @pytest.fixture
 def valid_signal():
     """Valid SignalCandidate for testing."""
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     return SignalCandidate(
         instrument="GOLD",
         side="buy",
@@ -51,7 +53,7 @@ def valid_signal():
         stop_loss=1940.0,
         take_profit=1965.0,
         confidence=0.85,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         reason="rsi_oversold_fib_support",
         payload={"rsi": 75},
     )
@@ -63,7 +65,8 @@ class TestSignalValidation:
     @pytest.mark.asyncio
     async def test_validate_signal_empty_instrument(self, valid_config, logger):
         """Test validation rejects empty instrument."""
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
         signal = SignalCandidate(
             instrument="GL",  # Changed from empty to valid (min 2 chars)
@@ -72,7 +75,7 @@ class TestSignalValidation:
             stop_loss=1940.0,
             take_profit=1965.0,
             confidence=0.85,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             reason="test",
             payload={},
         )
@@ -186,7 +189,9 @@ class TestSignalValidation:
             client._validate_signal(signal)
 
     @pytest.mark.asyncio
-    async def test_validate_signal_accepts_boundary_confidence_zero(self, valid_config, logger):
+    async def test_validate_signal_accepts_boundary_confidence_zero(
+        self, valid_config, logger
+    ):
         """Test validation accepts confidence = 0.0."""
         client = HmacClient(valid_config, logger)
         signal = SignalCandidate(
@@ -203,7 +208,9 @@ class TestSignalValidation:
         client._validate_signal(signal)
 
     @pytest.mark.asyncio
-    async def test_validate_signal_accepts_boundary_confidence_one(self, valid_config, logger):
+    async def test_validate_signal_accepts_boundary_confidence_one(
+        self, valid_config, logger
+    ):
         """Test validation accepts confidence = 1.0."""
         client = HmacClient(valid_config, logger)
         signal = SignalCandidate(
@@ -242,7 +249,9 @@ class TestBodySizeValidation:
             await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_body_near_max_size(self, valid_config, valid_signal, logger):
+    async def test_post_signal_body_near_max_size(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal accepts body near max_body_size."""
         with patch.object(HmacClient, "_post_to_server", new_callable=AsyncMock):
             with patch.object(HmacClient, "_build_signature", return_value="sig"):
@@ -260,7 +269,9 @@ class TestHttpErrorHandling:
     """Tests for HTTP error responses."""
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_400_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_400_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles HTTP 400 (Bad Request)."""
         client = HmacClient(valid_config, logger)
 
@@ -273,7 +284,9 @@ class TestHttpErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_401_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_401_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles HTTP 401 (Unauthorized)."""
         client = HmacClient(valid_config, logger)
 
@@ -286,7 +299,9 @@ class TestHttpErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_403_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_403_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles HTTP 403 (Forbidden)."""
         client = HmacClient(valid_config, logger)
 
@@ -299,7 +314,9 @@ class TestHttpErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_404_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_404_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles HTTP 404 (Not Found)."""
         client = HmacClient(valid_config, logger)
 
@@ -312,7 +329,9 @@ class TestHttpErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_500_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_500_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles HTTP 500 (Internal Server Error)."""
         client = HmacClient(valid_config, logger)
 
@@ -325,7 +344,9 @@ class TestHttpErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_502_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_502_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles HTTP 502 (Bad Gateway)."""
         client = HmacClient(valid_config, logger)
 
@@ -338,7 +359,9 @@ class TestHttpErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_503_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_503_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles HTTP 503 (Service Unavailable)."""
         client = HmacClient(valid_config, logger)
 
@@ -355,7 +378,9 @@ class TestNetworkErrorHandling:
     """Tests for network error handling."""
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_timeout_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_timeout_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles httpx.TimeoutException."""
         client = HmacClient(valid_config, logger)
 
@@ -368,7 +393,9 @@ class TestNetworkErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_connection_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_connection_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles httpx.ConnectError."""
         client = HmacClient(valid_config, logger)
 
@@ -381,7 +408,9 @@ class TestNetworkErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_read_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_read_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles httpx.ReadError."""
         client = HmacClient(valid_config, logger)
 
@@ -394,7 +423,9 @@ class TestNetworkErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_write_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_write_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles httpx.WriteError."""
         client = HmacClient(valid_config, logger)
 
@@ -407,7 +438,9 @@ class TestNetworkErrorHandling:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_generic_http_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_generic_http_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles generic httpx.HTTPError."""
         client = HmacClient(valid_config, logger)
 
@@ -424,22 +457,24 @@ class TestUnexpectedErrors:
     """Tests for unexpected/unexpected error handling."""
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_json_decode_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_json_decode_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles malformed JSON response."""
         client = HmacClient(valid_config, logger)
 
         mock_response = MagicMock()
         mock_response.status_code = 201
-        mock_response.json.side_effect = json.JSONDecodeError(
-            "Expecting value", "", 0
-        )
+        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
 
         with patch.object(HmacClient, "_post_to_server", return_value=mock_response):
             with pytest.raises(OutboundClientError, match="Unexpected error"):
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_handles_generic_exception(self, valid_config, valid_signal, logger):
+    async def test_post_signal_handles_generic_exception(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal handles unexpected exceptions."""
         client = HmacClient(valid_config, logger)
 
@@ -452,15 +487,15 @@ class TestUnexpectedErrors:
                 await client.post_signal(valid_signal)
 
     @pytest.mark.asyncio
-    async def test_post_signal_preserves_outbound_client_error(self, valid_config, valid_signal, logger):
+    async def test_post_signal_preserves_outbound_client_error(
+        self, valid_config, valid_signal, logger
+    ):
         """Test post_signal re-raises OutboundClientError without wrapping."""
         client = HmacClient(valid_config, logger)
 
         original_error = OutboundClientError("Original error")
 
-        with patch.object(
-            HmacClient, "_post_to_server", side_effect=original_error
-        ):
+        with patch.object(HmacClient, "_post_to_server", side_effect=original_error):
             with pytest.raises(OutboundClientError, match="Original error"):
                 await client.post_signal(valid_signal)
 
@@ -475,7 +510,9 @@ class TestHeaderGeneration:
         """Test post_signal includes all required headers."""
         client = HmacClient(valid_config, logger)
 
-        with patch.object(HmacClient, "_post_to_server", new_callable=AsyncMock) as mock_post:
+        with patch.object(
+            HmacClient, "_post_to_server", new_callable=AsyncMock
+        ) as mock_post:
             mock_response = MagicMock()
             mock_response.status_code = 201
             mock_response.json.return_value = {"status": "ingested"}
