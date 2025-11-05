@@ -15,8 +15,8 @@ from backend.app.alerts.service import (
     AlertUpdate,
     PriceAlertService,
 )
+from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.models import User
-from backend.app.core.auth import get_current_user
 from backend.app.core.db import get_db
 from backend.app.core.errors import ValidationError
 
@@ -236,18 +236,30 @@ async def update_alert(
     try:
         logger.info(f"Updating alert {alert_id} for user {current_user.id}")
 
-        # Get the alert to verify ownership
-        alert = await alert_service.get_alert(
-            db=db, alert_id=alert_id, user_id=current_user.id
+        # Validate input
+        if request.operator is not None:
+            if request.operator not in ("above", "below"):
+                raise ValidationError("Operator must be 'above' or 'below'")
+
+        if request.price_level is not None:
+            if request.price_level <= 0 or request.price_level >= 1_000_000:
+                raise ValidationError("Price level must be between 0 and 1,000,000")
+
+        # Update in database
+        alert = await alert_service.update_alert(
+            db=db,
+            alert_id=alert_id,
+            user_id=current_user.id,
+            operator=request.operator,
+            price_level=request.price_level,
+            is_active=request.is_active,
         )
 
         if not alert:
             logger.warning(f"Alert not found: {alert_id}")
             raise HTTPException(status_code=404, detail="Alert not found")
 
-        # For now, update is simple (could extend with db update if needed)
-        # This is a placeholder for future updates
-        # Note: Full update implementation would require updating service methods
+        logger.info(f"Alert updated: {alert_id}")
 
         return AlertOut(
             alert_id=alert["alert_id"],

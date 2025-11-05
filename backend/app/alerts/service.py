@@ -340,6 +340,63 @@ class PriceAlertService:
         logger.info(f"Alert deleted: {alert_id}")
         return True
 
+    async def update_alert(
+        self,
+        db: AsyncSession,
+        alert_id: str,
+        user_id: str,
+        operator: str | None = None,
+        price_level: float | None = None,
+        is_active: bool | None = None,
+    ) -> dict | None:
+        """
+        Update alert fields.
+
+        Args:
+            db: Async database session
+            alert_id: Alert identifier
+            user_id: User identifier (for ownership check)
+            operator: New operator ("above" or "below")
+            price_level: New price level
+            is_active: New active status
+
+        Returns:
+            Updated alert dict, or None if not found
+        """
+        result = await db.execute(
+            select(PriceAlert).where(
+                and_(PriceAlert.id == alert_id, PriceAlert.user_id == user_id)
+            )
+        )
+        alert = result.scalar()
+
+        if not alert:
+            logger.warning(f"Alert not found: {alert_id} for user {user_id}")
+            return None
+
+        if operator is not None:
+            alert.operator = operator
+        if price_level is not None:
+            alert.price_level = price_level
+        if is_active is not None:
+            alert.is_active = is_active
+
+        await db.commit()
+        await db.refresh(alert)
+
+        logger.info(f"Alert updated: {alert_id}")
+
+        return {
+            "alert_id": alert.id,
+            "user_id": alert.user_id,
+            "symbol": alert.symbol,
+            "operator": alert.operator,
+            "price_level": alert.price_level,
+            "is_active": alert.is_active,
+            "last_triggered": alert.last_triggered_at,
+            "created_at": alert.created_at,
+        }
+
     async def evaluate_alerts(
         self, db: AsyncSession, current_prices: dict[str, float]
     ) -> list[dict]:

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.accounts.routes import router as accounts_router
 from backend.app.affiliates.routes import router as affiliates_router
+from backend.app.alerts.routes import router as alerts_router
 from backend.app.analytics.routes import router as analytics_router
 from backend.app.approvals.routes import router as approvals_router
 from backend.app.auth.routes import router as auth_router
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(auth_router)
+    app.include_router(alerts_router)
     app.include_router(analytics_router)
     app.include_router(accounts_router)
     app.include_router(billing_router)
