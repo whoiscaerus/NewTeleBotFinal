@@ -48,6 +48,11 @@ class CopyTradeSettings(Base):
     consent_version = Column(String(50), default="1.0")  # Versioned consent text
     consent_accepted_at = Column(DateTime)
 
+    # PR-048/049: User tier for fixed risk allocation
+    tier = Column(
+        String(20), default="standard", index=True
+    )  # standard (3%), premium (5%), elite (7%)
+
     # PR-046 Risk Control Fields
     max_leverage = Column(Float, default=5.0)  # Max leverage per trade (1x-10x)
     max_per_trade_risk_percent = Column(
@@ -73,6 +78,7 @@ class CopyTradeSettings(Base):
     __table_args__ = (
         Index("ix_copy_enabled_user", "enabled", "user_id"),
         Index("ix_copy_paused_user", "is_paused", "user_id"),
+        Index("ix_copy_tier", "tier"),  # PR-048: Index on tier for risk allocation
     )
 
 
@@ -272,7 +278,7 @@ class CopyTradingService:
         from sqlalchemy.future import select
 
         stmt = select(CopyTradeSettings).where(
-            (CopyTradeSettings.user_id == user_id) & (CopyTradeSettings.enabled == True)
+            (CopyTradeSettings.user_id == user_id) & (CopyTradeSettings.enabled.is_(True))
         )
         result = await db.execute(stmt)
         settings = result.scalar_one_or_none()

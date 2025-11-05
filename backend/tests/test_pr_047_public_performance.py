@@ -547,7 +547,7 @@ class TestPerformanceEndpoints:
     ):
         """Test GET /api/v1/public/performance/summary returns metrics."""
         response = await client.get(
-            "/api/v1/public/performance/summary?delay_minutes=0"
+            "/api/v1/public/performance/summary?delay_minutes=1"
         )
 
         if response.status_code != 200:
@@ -577,7 +577,7 @@ class TestPerformanceEndpoints:
         trades_for_equity_curve: list[Trade],
     ):
         """Test GET /api/v1/public/performance/equity returns data points."""
-        response = await client.get("/api/v1/public/performance/equity?delay_minutes=0")
+        response = await client.get("/api/v1/public/performance/equity?delay_minutes=1")
 
         assert response.status_code == 200
         data = response.json()
@@ -598,12 +598,13 @@ class TestPerformanceEndpoints:
 
     @pytest.mark.asyncio
     async def test_summary_invalid_delay_returns_400(self, client: AsyncClient):
-        """Test that invalid delay parameter returns 400."""
+        """Test that invalid delay parameter returns 422 (validation error)."""
         response = await client.get(
             "/api/v1/public/performance/summary?delay_minutes=-10"
         )
 
-        assert response.status_code == 400
+        # FastAPI returns 422 for Pydantic validation errors
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_equity_invalid_delay_returns_400(self, client: AsyncClient):

@@ -307,8 +307,6 @@ async def get_performance_summary(
         400 Bad Request: If delay_minutes < 1 or invalid date range
         500 Internal Server Error: If database query fails
     """
-    db_session = await get_db()
-
     try:
         # Validate delay parameter
         _validate_delay(delay_minutes)
@@ -325,7 +323,7 @@ async def get_performance_summary(
         )
 
         trades = await _get_closed_trades_with_delay(
-            db_session, delay_minutes, from_date, to_date
+            db, delay_minutes, from_date, to_date
         )
 
         # Calculate metrics
@@ -406,8 +404,6 @@ async def get_equity_curve(
         400 Bad Request: If invalid parameters
         500 Internal Server Error: If database query fails
     """
-    db_session = await get_db()
-
     try:
         # Validate delay parameter
         _validate_delay(delay_minutes)
@@ -424,7 +420,7 @@ async def get_equity_curve(
 
         # Fetch closed trades with delay enforcement
         trades = await _get_closed_trades_with_delay(
-            db_session, delay_minutes, from_date, to_date
+            db, delay_minutes, from_date, to_date
         )
 
         # Build equity curve
