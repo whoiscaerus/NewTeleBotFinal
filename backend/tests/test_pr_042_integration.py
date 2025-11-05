@@ -16,6 +16,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from cryptography.exceptions import InvalidTag
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.approvals.models import Approval, ApprovalDecision
@@ -272,9 +273,7 @@ async def test_tampering_with_ciphertext_detected(
     tampered_bytes[0] ^= 0xFF
     tampered_ciphertext_b64 = base64.b64encode(bytes(tampered_bytes)).decode()
 
-    # Decryption should fail
-    from cryptography.hazmat.primitives.ciphers.aead import InvalidTag
-
+    # Decryption should fail - raises InvalidTag from cryptography
     with pytest.raises(InvalidTag):
         envelope.decrypt_signal(device.id, tampered_ciphertext_b64, nonce_b64, aad)
 
@@ -298,9 +297,7 @@ async def test_tampering_with_nonce_detected(
     tampered_nonce_bytes = bytes([nonce_bytes[0] ^ 0xFF]) + nonce_bytes[1:]
     tampered_nonce_b64 = base64.b64encode(tampered_nonce_bytes).decode()
 
-    # Decryption should fail
-    from cryptography.hazmat.primitives.ciphers.aead import InvalidTag
-
+    # Decryption should fail - raises InvalidTag from cryptography
     with pytest.raises(InvalidTag):
         envelope.decrypt_signal(device.id, ciphertext_b64, tampered_nonce_b64, aad)
 
