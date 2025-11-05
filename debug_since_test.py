@@ -49,7 +49,6 @@ async def test_since_parsing():
     # When FastAPI gets ?since=2024-01-01T12:00:00+00:00
     # It should parse it as datetime object automatically
 
-
     # Simulate a query parameter that FastAPI would parse
     query_since_value = "2024-01-01T12:00:00+00:00"
     print(f"Query parameter value: {query_since_value}")

@@ -14,7 +14,7 @@ Tests focus on REAL business logic validation:
 
 import asyncio
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -179,9 +179,7 @@ class TestCircuitBreaker:
 
         # Manually trigger circuit breaker
         fetcher.circuit_breaker_open = True
-        fetcher.circuit_breaker_until = datetime.now(UTC) + timedelta(
-            minutes=5
-        )
+        fetcher.circuit_breaker_until = datetime.now(UTC) + timedelta(minutes=5)
 
         assert fetcher.circuit_breaker_open is True
 
@@ -189,9 +187,7 @@ class TestCircuitBreaker:
         """Circuit breaker blocks new requests when open."""
         fetcher = RateFetcher()
         fetcher.circuit_breaker_open = True
-        fetcher.circuit_breaker_until = datetime.now(UTC) + timedelta(
-            minutes=5
-        )
+        fetcher.circuit_breaker_until = datetime.now(UTC) + timedelta(minutes=5)
 
         # Check should return True (open)
         is_open = fetcher._is_circuit_breaker_open()
@@ -202,9 +198,7 @@ class TestCircuitBreaker:
         fetcher = RateFetcher()
         fetcher.circuit_breaker_open = True
         # Set expiry to past
-        fetcher.circuit_breaker_until = datetime.now(UTC) - timedelta(
-            seconds=1
-        )
+        fetcher.circuit_breaker_until = datetime.now(UTC) - timedelta(seconds=1)
 
         # Check should reset breaker
         is_open = fetcher._is_circuit_breaker_open()

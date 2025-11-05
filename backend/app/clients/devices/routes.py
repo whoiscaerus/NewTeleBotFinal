@@ -15,6 +15,7 @@ from backend.app.clients.devices.schema import (
 from backend.app.clients.service import DeviceService
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
+from backend.app.observability.metrics import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,9 @@ async def register_device(
             f"Device registered: {current_user.id} - {request.device_name}",
             extra={"user_id": current_user.id, "device_name": request.device_name},
         )
+
+        # Record telemetry
+        metrics.record_miniapp_device_register()
 
         # Return device with secrets (shown once)
         device_dict = {
@@ -216,6 +220,9 @@ async def revoke_device(
             f"Device revoked: {current_user.id}",
             extra={"user_id": current_user.id, "device_id": device_id},
         )
+
+        # Record telemetry
+        metrics.record_miniapp_device_revoke()
 
     except APIError:
         raise

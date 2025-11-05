@@ -14,7 +14,7 @@ Tests use REAL implementations with injected dependencies (not mocks of HTTP lay
 
 import asyncio
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -285,9 +285,7 @@ class TestFXRateFetching:
     async def test_fetch_gbp_usd_circuit_breaker_blocks_requests(self, rate_fetcher):
         """Circuit breaker blocks requests when open."""
         rate_fetcher.circuit_breaker_open = True
-        rate_fetcher.circuit_breaker_until = datetime.now(UTC) + timedelta(
-            minutes=5
-        )
+        rate_fetcher.circuit_breaker_until = datetime.now(UTC) + timedelta(minutes=5)
 
         # Should have fallback or raise
         with pytest.raises(RuntimeError):
@@ -299,9 +297,7 @@ class TestFXRateFetching:
     ):
         """Circuit breaker resets after window expires."""
         rate_fetcher.circuit_breaker_open = True
-        rate_fetcher.circuit_breaker_until = datetime.now(UTC) - timedelta(
-            seconds=1
-        )
+        rate_fetcher.circuit_breaker_until = datetime.now(UTC) - timedelta(seconds=1)
 
         # Check should reset breaker
         is_open = rate_fetcher._is_circuit_breaker_open()
@@ -640,9 +636,9 @@ class TestIntegration:
     ):
         """Circuit breaker stops repeated failed requests."""
         rate_fetcher_with_session.circuit_breaker_open = True
-        rate_fetcher_with_session.circuit_breaker_until = datetime.now(
-            UTC
-        ) + timedelta(minutes=5)
+        rate_fetcher_with_session.circuit_breaker_until = datetime.now(UTC) + timedelta(
+            minutes=5
+        )
 
         # Request should fail fast without trying API
         with pytest.raises(RuntimeError):

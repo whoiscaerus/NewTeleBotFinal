@@ -299,6 +299,19 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Device registry metrics (PR-039)
+        self.miniapp_device_register_total = Counter(
+            "miniapp_device_register_total",
+            "Total device registrations",
+            registry=self.registry,
+        )
+
+        self.miniapp_device_revoke_total = Counter(
+            "miniapp_device_revoke_total",
+            "Total device revocations",
+            registry=self.registry,
+        )
+
         logger.info("Metrics collector initialized")
 
     def record_http_request(
@@ -572,6 +585,20 @@ class MetricsCollector:
             latency_seconds: Exchange duration in seconds
         """
         self.miniapp_exchange_latency_seconds.observe(latency_seconds)
+
+    def record_miniapp_device_register(self):
+        """Record device registration (PR-039).
+
+        Increments counter on successful device registration.
+        """
+        self.miniapp_device_register_total.inc()
+
+    def record_miniapp_device_revoke(self):
+        """Record device revocation (PR-039).
+
+        Increments counter on successful device revocation.
+        """
+        self.miniapp_device_revoke_total.inc()
 
     def set_redis_connected(self, connected: bool):
         """Set Redis connection status.

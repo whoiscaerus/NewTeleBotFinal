@@ -15,7 +15,7 @@ import asyncio
 import logging
 import os
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 import aiohttp
@@ -261,9 +261,7 @@ class RateFetcher:
             # Open circuit breaker after 5 consecutive failures
             if self.consecutive_failures >= 5:
                 self.circuit_breaker_open = True
-                self.circuit_breaker_until = datetime.now(UTC) + timedelta(
-                    minutes=5
-                )
+                self.circuit_breaker_until = datetime.now(UTC) + timedelta(minutes=5)
                 logger.error("Circuit breaker opened after 5 consecutive failures")
 
             # Fall back to last known rate
@@ -397,9 +395,7 @@ class RateFetcher:
             # Open circuit breaker
             if self.consecutive_failures >= 5:
                 self.circuit_breaker_open = True
-                self.circuit_breaker_until = datetime.now(UTC) + timedelta(
-                    minutes=5
-                )
+                self.circuit_breaker_until = datetime.now(UTC) + timedelta(minutes=5)
                 logger.error("Circuit breaker opened")
 
             # Fall back to last known rates
