@@ -1,6 +1,6 @@
 # PR-039: Comprehensive Device Testing - FINAL RESULTS ✅
 
-**Date**: November 5, 2025  
+**Date**: November 5, 2025
 **Status**: ✅ **ALL TESTS PASSING (26/26)**
 
 ---
@@ -203,17 +203,17 @@ async def test_register_device_success(client, auth_headers, db_session):
         json={"device_name": "TestDevice"},
         headers=auth_headers,
     )
-    
+
     # Validate real response
     assert response.status_code == 201
     data = response.json()
-    
+
     # Query real database
     device = await db_session.execute(
         select(Device).filter_by(id=data["id"])
     )
     device_record = device.scalar_one_or_none()
-    
+
     # Validate real data
     assert device_record.device_name == "TestDevice"
     assert device_record.is_active is True

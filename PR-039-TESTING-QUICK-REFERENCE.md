@@ -4,7 +4,7 @@
 
 **MISSION**: Replace PR-039's 100% fake test suite (20 empty stubs, 36% coverage) with real, production-quality tests
 
-**DELIVERED**: 
+**DELIVERED**:
 - ✅ 26 comprehensive tests (844 lines of code)
 - ✅ 6/7 registration tests PASSING immediately
 - ✅ 100% real implementations (API calls, DB validation, error handling)
@@ -62,17 +62,17 @@ async def test_register_device_success(self, client, db_session, test_user, auth
     response = await client.post("/api/v1/devices/register",
         json={"device_name": "TestEA-Production"},
         headers=auth_headers)
-    
+
     # 2. VALIDATE RESPONSE
     assert response.status_code == 201
     data = response.json()
     assert "id" in data and "secret" in data
-    
+
     # 3. CHECK DATABASE
     result = await db_session.execute(
         select(Device).where(Device.id == data["id"]))
     device = result.scalar_one()
-    
+
     # 4. VALIDATE BUSINESS LOGIC
     assert device.is_active is True
     assert device.hmac_key_hash != data["secret"]  # Hashed!
@@ -149,10 +149,10 @@ Coverage total: ~75-85%
 async def test_user(db_session):
     """Create User + Client records (BOTH required!)"""
     user_id = str(uuid4())
-    
+
     user = User(id=user_id, email="test@example.com", ...)
     client = Client(id=user_id, email="test@example.com", ...)
-    
+
     db_session.add(user)
     db_session.add(client)
     await db_session.commit()
@@ -171,17 +171,17 @@ def auth_headers(test_user, jwt_handler):
 ```python
 async def test_xxx(self, client, db_session, test_user, auth_headers):
     # 1. SETUP: Fixtures provided automatically
-    
+
     # 2. ACT: Call API or service method
     response = await client.post("/api/v1/devices/register", ...)
-    
+
     # 3. ASSERT: Validate response
     assert response.status_code == 201
-    
+
     # 4. VERIFY: Check database state
     device = await db_session.execute(select(Device).where(...))
     assert device is not None
-    
+
     # 5. CLEANUP: Auto-rollback (fixture cleanup)
 ```
 
@@ -213,7 +213,7 @@ class TestDeviceListing:
         # List devices
         # Verify: 3 devices returned, no secrets exposed
         pass
-    
+
     async def test_list_devices_only_own(self, client, auth_headers):
         # User A registers device
         # User B tries to list
