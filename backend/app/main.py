@@ -3,6 +3,7 @@
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.accounts.routes import router as accounts_router
 from backend.app.affiliates.routes import router as affiliates_router
 from backend.app.analytics.routes import router as analytics_router
 from backend.app.approvals.routes import router as approvals_router
@@ -49,6 +50,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(analytics_router, tags=["analytics"])
+app.include_router(accounts_router, tags=["accounts"])
 app.include_router(affiliates_router, prefix="/api/v1/affiliates", tags=["affiliates"])
 app.include_router(approvals_router, prefix="/api/v1", tags=["approvals"])
 app.include_router(performance_router, tags=["public"])

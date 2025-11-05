@@ -210,7 +210,7 @@ class AccountLinkingService:
         """Get user's primary account."""
         result = await self.db.execute(
             select(AccountLink).where(
-                (AccountLink.user_id == user_id) & (AccountLink.is_primary is True)
+                (AccountLink.user_id == user_id) & (AccountLink.is_primary.is_(True))
             )
         )
         return result.scalar()
@@ -241,7 +241,8 @@ class AccountLinkingService:
             # Unset previous primary
             await self.db.execute(
                 select(AccountLink).where(
-                    (AccountLink.user_id == user_id) & (AccountLink.is_primary is True)
+                    (AccountLink.user_id == user_id)
+                    & (AccountLink.is_primary.is_(True))
                 )
             )
             for row in (

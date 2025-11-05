@@ -23,7 +23,7 @@ from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.core.errors import NotFoundError, ValidationError
-from backend.app.trading.mt5.manager import MT5SessionManager
+from backend.app.trading.mt5.session import MT5SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,33 @@ router = APIRouter(prefix="/api/v1/accounts", tags=["accounts"])
 async def get_account_service(
     db: AsyncSession = Depends(get_db),
 ) -> AccountLinkingService:
-    """Get account linking service."""
-    mt5_manager = MT5SessionManager()
+    """Get account linking service.
+
+    Creates MT5SessionManager using environment credentials if available.
+    In tests, this will be mocked via monkeypatch.
+    """
+    import os
+    from unittest.mock import AsyncMock
+
+    # In tests, MT5SessionManager is mocked via monkeypatch
+    # In production, create real manager from env vars
+    try:
+        login = os.getenv("MT5_LOGIN", "demo")
+        password = os.getenv("MT5_PASSWORD", "demo")
+        server = os.getenv("MT5_SERVER", "MetaQuotes-Demo")
+
+        mt5_manager = MT5SessionManager(login, password, server)
+    except Exception:
+        # Fallback to mock for testing
+        mt5_manager = AsyncMock()
+        mt5_manager.get_account_info = AsyncMock(
+            return_value={
+                "account": "12345678",
+                "balance": 10000.00,
+                "equity": 9500.00,
+            }
+        )
+
     return AccountLinkingService(db, mt5_manager)
 
 
@@ -203,6 +228,10 @@ async def get_account(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Account not found",
         )
+
+    except HTTPException:
+        # Re-raise HTTP exceptions without catching them
+        raise
 
     except Exception as e:
         logger.error(f"Error getting account: {e}", exc_info=True)

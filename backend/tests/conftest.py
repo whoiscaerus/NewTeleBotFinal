@@ -247,8 +247,36 @@ async def client(db_session: AsyncSession, monkeypatch):
 
     app.dependency_overrides[get_device_auth] = mock_get_device_auth
 
+    # Create a shared mock MT5 manager that tests can configure
+    from unittest.mock import AsyncMock
+
+    shared_mock_mt5 = AsyncMock()
+    shared_mock_mt5.get_account_info = AsyncMock(
+        return_value={
+            "account": "12345678",
+            "balance": 10000.00,
+            "equity": 9500.00,
+        }
+    )
+    shared_mock_mt5.get_positions = AsyncMock(return_value=[])
+
+    # Override get_account_service to use shared mock MT5 manager
+    from backend.app.accounts.routes import get_account_service
+    from backend.app.accounts.service import AccountLinkingService
+
+    async def override_get_account_service():
+        """Override to use shared mock MT5 manager."""
+        return AccountLinkingService(db_session, shared_mock_mt5)
+
+    app.dependency_overrides[get_account_service] = override_get_account_service
+
+    # Store shared mock on the app for tests to access
+    app._test_shared_mock_mt5 = shared_mock_mt5
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Also attach to client for easy access
+        client._test_shared_mock_mt5 = shared_mock_mt5
         yield client
 
     app.dependency_overrides.clear()
