@@ -152,9 +152,9 @@ class CopyTradingService:
         """Initialize copy-trading service."""
         pass
 
-    def enable_copy_trading(
+    async def enable_copy_trading(
         self,
-        db: Session,
+        db,
         user_id: str,
         consent_version: str = "1.0",
         risk_multiplier: float = 1.0,
@@ -163,7 +163,7 @@ class CopyTradingService:
         Enable copy-trading for user.
 
         Args:
-            db: Database session
+            db: Database session (async)
             user_id: User identifier
             consent_version: Consent document version (must be current)
             risk_multiplier: Trade size multiplier (1.0 = normal, 0.5 = half-size)
@@ -171,7 +171,11 @@ class CopyTradingService:
         Returns:
             Copy-trading settings
         """
-        settings = db.query(CopyTradeSettings).filter_by(user_id=user_id).first()
+        from sqlalchemy.future import select
+
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
+        result = await db.execute(stmt)
+        settings = result.scalar_one_or_none()
 
         if not settings:
             settings = CopyTradeSettings(
@@ -191,7 +195,7 @@ class CopyTradingService:
             settings.consent_accepted_at = datetime.utcnow()
             settings.started_at = datetime.utcnow()
 
-        db.commit()
+        await db.commit()
 
         return {
             "user_id": user_id,
@@ -200,38 +204,46 @@ class CopyTradingService:
             "markup_percent": self.MARKUP_PERCENT,
         }
 
-    def disable_copy_trading(self, db: Session, user_id: str) -> dict:
+    async def disable_copy_trading(self, db, user_id: str) -> dict:
         """
         Disable copy-trading for user.
 
         Args:
-            db: Database session
+            db: Database session (async)
             user_id: User identifier
 
         Returns:
             Confirmation
         """
-        settings = db.query(CopyTradeSettings).filter_by(user_id=user_id).first()
+        from sqlalchemy.future import select
+
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
+        result = await db.execute(stmt)
+        settings = result.scalar_one_or_none()
 
         if settings:
             settings.enabled = False
             settings.ended_at = datetime.utcnow()
-            db.commit()
+            await db.commit()
 
         return {"user_id": user_id, "enabled": False}
 
-    def get_copy_settings(self, db: Session, user_id: str) -> dict | None:
+    async def get_copy_settings(self, db, user_id: str) -> dict | None:
         """
         Get copy-trading settings for user.
 
         Args:
-            db: Database session
+            db: Database session (async)
             user_id: User identifier
 
         Returns:
             Settings dict or None
         """
-        settings = db.query(CopyTradeSettings).filter_by(user_id=user_id).first()
+        from sqlalchemy.future import select
+
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
+        result = await db.execute(stmt)
+        settings = result.scalar_one_or_none()
 
         if not settings:
             return None
@@ -246,20 +258,24 @@ class CopyTradingService:
             "markup_percent": self.MARKUP_PERCENT,
         }
 
-    def can_copy_execute(self, db: Session, user_id: str) -> tuple[bool, str]:
+    async def can_copy_execute(self, db, user_id: str) -> tuple[bool, str]:
         """
         Check if user can copy-execute trade (risk checks).
 
         Args:
-            db: Database session
+            db: Database session (async)
             user_id: User identifier
 
         Returns:
             Tuple of (can_execute: bool, reason: str)
         """
-        settings = (
-            db.query(CopyTradeSettings).filter_by(user_id=user_id, enabled=True).first()
+        from sqlalchemy.future import select
+
+        stmt = select(CopyTradeSettings).where(
+            (CopyTradeSettings.user_id == user_id) & (CopyTradeSettings.enabled == True)
         )
+        result = await db.execute(stmt)
+        settings = result.scalar_one_or_none()
 
         if not settings:
             return False, "Copy-trading not enabled"
@@ -277,9 +293,9 @@ class CopyTradingService:
 
         return True, "OK"
 
-    def execute_copy_trade(
+    async def execute_copy_trade(
         self,
-        db: Session,
+        db,
         user_id: str,
         signal_id: str,
         signal_volume: float,
@@ -289,7 +305,7 @@ class CopyTradingService:
         Execute trade in copy-trading mode (auto-approve).
 
         Args:
-            db: Database session
+            db: Database session (async)
             user_id: User identifier
             signal_id: Signal identifier
             signal_volume: Original signal volume
@@ -298,13 +314,17 @@ class CopyTradingService:
         Returns:
             Execution record
         """
-        settings = db.query(CopyTradeSettings).filter_by(user_id=user_id).first()
+        from sqlalchemy.future import select
+
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
+        result = await db.execute(stmt)
+        settings = result.scalar_one_or_none()
 
         if not settings or not settings.enabled:
             return {"error": "Copy-trading not enabled"}
 
         # Can execute?
-        can_exec, reason = self.can_copy_execute(db, user_id)
+        can_exec, reason = await self.can_copy_execute(db, user_id)
         if not can_exec:
             return {"error": reason}
 
@@ -329,7 +349,7 @@ class CopyTradingService:
         # Increment daily counter
         settings.trades_today += 1
 
-        db.commit()
+        await db.commit()
 
         return {
             "execution_id": execution.id,
