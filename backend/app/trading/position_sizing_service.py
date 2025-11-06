@@ -207,7 +207,6 @@ class PositionSizingService:
                 user_id=user_id,
                 setup_id=setup["setup_id"],
                 account_state=account_state,
-                
                 allocated_risk_percent=allocated_risk_percent,
                 allocated_risk_amount=allocated_risk_amount,
                 positions=positions,
@@ -229,7 +228,6 @@ class PositionSizingService:
                     "total_margin_required": margin_result["total_margin_required"],
                     "margin_available": margin_result["margin_available"],
                     "margin_after": margin_result["margin_after_execution"],
-                    
                     "allocated_risk_percent": allocated_risk_percent,
                     "allocated_risk_amount": allocated_risk_amount,
                     "account_balance": account_state.balance,

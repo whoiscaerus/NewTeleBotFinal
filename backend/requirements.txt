@@ -43,3 +43,6 @@ python-telegram-bot==20.0
 # Code Quality
 black==23.12.1
 ruff==0.1.11
+
+# Analytics & Charts (PR-055)
+matplotlib==3.8.2

@@ -4335,7 +4335,7 @@ Synchronize MT5 account state (balance, equity, margin, leverage) from EA device
 
 ## Business Context & Why
 
-**Problem**: 
+**Problem**:
 - Copy-trading was executing trades without validation of available margin
 - Users could receive signals that would blow their accounts (over-leveraged)
 - No centralized control over risk percentage across all clients

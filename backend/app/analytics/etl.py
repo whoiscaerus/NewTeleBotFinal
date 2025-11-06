@@ -10,7 +10,6 @@ Provides idempotent ETL functions to:
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import and_, func, select

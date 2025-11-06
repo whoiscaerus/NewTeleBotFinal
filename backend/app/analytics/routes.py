@@ -868,3 +868,96 @@ async def export_json(
             extra={"user_id": current_user.id},
         )
         raise HTTPException(status_code=500, detail="Failed to export JSON")
+
+
+@router.get("/export/png", summary="Export equity chart as PNG")
+async def export_png(
+    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export equity curve chart as PNG image.
+
+    Renders equity curve with matplotlib. Returns downloadable PNG file.
+
+    Args:
+        start_date: Start date (YYYY-MM-DD). Defaults to 90 days ago.
+        end_date: End date (YYYY-MM-DD). Defaults to today.
+        current_user: Authenticated user (JWT required)
+        db: Database session
+
+    Returns:
+        StreamingResponse: PNG image file download
+
+    Raises:
+        401: Authentication required
+        404: No equity data found for period
+        500: Chart rendering error
+
+    Example:
+        GET /api/v1/analytics/export/png?start_date=2025-01-01&end_date=2025-01-31
+        Authorization: Bearer <jwt_token>
+
+        Response:
+        - Content-Type: image/png
+        - Content-Disposition: attachment; filename=equity_chart_2025-01-01_to_2025-01-31.png
+    """
+    try:
+        # Default to last 90 days
+        if not start_date or not end_date:
+            end_date = date.today()
+            start_date = end_date - timedelta(days=90)
+
+        logger.info(
+            f"Exporting PNG chart for user {current_user.id}: {start_date} to {end_date}",
+            extra={
+                "user_id": current_user.id,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+            },
+        )
+
+        # Get equity data
+        engine = EquityEngine(db)
+        equity_data = await engine.compute_equity_series(
+            user_id=current_user.id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        if not equity_data or not equity_data.points:
+            raise ValueError("No equity data found for export")
+
+        # Render chart
+        from backend.app.analytics.chart_renderer import ChartRenderer
+
+        renderer = ChartRenderer(dpi=150, figsize=(12, 6))
+        png_bytes = renderer.render_equity_chart(
+            equity_data, title=f"Equity Curve: {start_date} to {end_date}"
+        )
+
+        # Telemetry
+        logger.info(
+            "analytics_exports_total{type=png}",
+            extra={"type": "png", "user_id": current_user.id, "bytes": len(png_bytes)},
+        )
+
+        return StreamingResponse(
+            iter([png_bytes]),
+            media_type="image/png",
+            headers={
+                "Content-Disposition": f"attachment; filename=equity_chart_{start_date}_to_{end_date}.png"
+            },
+        )
+
+    except ValueError as e:
+        logger.warning(f"PNG export error: {e}", extra={"user_id": current_user.id})
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(
+            f"Error exporting PNG: {e}",
+            exc_info=True,
+            extra={"user_id": current_user.id},
+        )
+        raise HTTPException(status_code=500, detail="Failed to export PNG")
