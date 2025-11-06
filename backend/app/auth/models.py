@@ -54,7 +54,7 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships
-    # NOTE: AccountLink (PR-043), Endorsement (PR-024), and UserTrustScore (PR-024) are implemented
+    # NOTE: AccountLink (PR-043), Endorsement (PR-024), UserTrustScore (PR-024), and UserPreferences (PR-059) are implemented
 
     account_links: Mapped[list] = relationship(
         "AccountLink",
@@ -78,6 +78,13 @@ class User(Base):
     )
     trust_score: Mapped[object] = relationship(
         "UserTrustScore", back_populates="user", uselist=False, lazy="select"
+    )
+    preferences: Mapped[object] = relationship(
+        "UserPreferences",
+        back_populates="user",
+        uselist=False,
+        lazy="select",
+        cascade="all, delete-orphan",
     )
 
     def __init__(self, **kwargs):

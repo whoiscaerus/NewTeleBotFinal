@@ -1,7 +1,7 @@
 """User models."""
 
 from sqlalchemy import Column, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
@@ -15,3 +15,6 @@ class User(Base):
     email = Column(String, nullable=False, unique=True)
     username = Column(String)
     status = Column(String, default="active")
+
+    # Relationships
+    preferences = relationship("UserPreferences", back_populates="user", uselist=False, cascade="all, delete-orphan")

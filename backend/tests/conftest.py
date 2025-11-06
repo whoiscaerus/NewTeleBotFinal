@@ -47,6 +47,7 @@ from backend.app.audit.models import AuditLog  # noqa: F401, E402
 # Import all models so they're registered with Base.metadata
 from backend.app.auth.models import User  # noqa: F401, E402
 from backend.app.billing.stripe.models import StripeEvent  # noqa: F401, E402
+from backend.app.prefs.models import UserPreferences  # noqa: F401, E402
 from backend.app.trading.store.models import (  # noqa: F401, E402
     EquityPoint,
     Position,
