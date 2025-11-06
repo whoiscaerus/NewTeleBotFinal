@@ -1,0 +1,80 @@
+groups:
+  - name: api_health
+    interval: 30s
+    rules:
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket[5m])) by (le, route)) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API latency detected on {{ $labels.route }}"
+          description: "p95 latency is {{ $value | humanizeDuration }} for route {{ $labels.route }}, exceeding 1 second threshold"
+          runbook_url: "https://docs.example.com/runbooks/alerts#highApiLatency"
+
+      - alert: CriticalAPILatency
+        expr: histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket[5m])) by (le, route)) > 5.0
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "CRITICAL API latency on {{ $labels.route }}"
+          description: "p95 latency is {{ $value | humanizeDuration }} for route {{ $labels.route }}, exceeding 5 second critical threshold"
+          runbook_url: "https://docs.example.com/runbooks/alerts#highApiLatency"
+
+      - alert: HighErrorRate
+        expr: sum(rate(errors_total[5m])) by (endpoint) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High error rate on {{ $labels.endpoint }}"
+          description: "Error rate is {{ $value | humanize }} errors/sec on endpoint {{ $labels.endpoint }}"
+          runbook_url: "https://docs.example.com/runbooks/alerts#highErrorRate"
+
+      - alert: CriticalErrorRate
+        expr: sum(rate(errors_total[5m])) by (endpoint) > 1.0
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "CRITICAL error rate on {{ $labels.endpoint }}"
+          description: "Error rate is {{ $value | humanize }} errors/sec on endpoint {{ $labels.endpoint }}, exceeding 1 error/sec"
+          runbook_url: "https://docs.example.com/runbooks/alerts#highErrorRate"
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: db_connection_pool_size > 90
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database connection pool size is {{ $value }}, approaching maximum capacity"
+          runbook_url: "https://docs.example.com/runbooks/alerts#databaseConnectionPool"
+
+      - alert: RedisDisconnected
+        expr: redis_connected == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis disconnected"
+          description: "Redis connection is down, caching and session management will fail"
+          runbook_url: "https://docs.example.com/runbooks/alerts#redisDisconnected"
+
+      - alert: HighRateLimitRejections
+        expr: sum(rate(ratelimit_block_total[5m])) by (route) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: ratelimit
+        annotations:
+          summary: "High rate limit rejections on {{ $labels.route }}"
+          description: "Rate limit rejections are {{ $value | humanize }}/sec on route {{ $labels.route }}, may indicate abuse or misconfigured limits"
+          runbook_url: "https://docs.example.com/runbooks/alerts#highRateLimitRejections"

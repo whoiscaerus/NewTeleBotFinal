@@ -1,0 +1,124 @@
+groups:
+  - name: business_health
+    interval: 30s
+    rules:
+      - alert: SignalIngestionStopped
+        expr: rate(signals_ingested_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+          component: signals
+        annotations:
+          summary: "Signal ingestion has stopped"
+          description: "No trading signals have been ingested in the last 10 minutes, check signal generation service"
+          runbook_url: "https://docs.example.com/runbooks/alerts#signalIngestionStopped"
+
+      - alert: LowSignalIngestionRate
+        expr: rate(signals_ingested_total[5m]) < 0.01
+        for: 15m
+        labels:
+          severity: warning
+          component: signals
+        annotations:
+          summary: "Low signal ingestion rate"
+          description: "Signal ingestion rate is {{ $value | humanize }} signals/sec, below expected threshold of 0.01/sec"
+          runbook_url: "https://docs.example.com/runbooks/alerts#signalIngestionStopped"
+
+      - alert: HighApprovalRejectionRate
+        expr: sum(rate(approvals_total{result="rejected"}[5m])) / sum(rate(approvals_total[5m])) > 0.7
+        for: 10m
+        labels:
+          severity: warning
+          component: approvals
+        annotations:
+          summary: "High approval rejection rate"
+          description: "{{ $value | humanizePercentage }} of approvals are being rejected, may indicate poor signal quality or user dissatisfaction"
+          runbook_url: "https://docs.example.com/runbooks/alerts#highApprovalRejectionRate"
+
+      - alert: PaymentWebhookFailures
+        expr: rate(billing_webhook_replay_block_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: billing
+        annotations:
+          summary: "Payment webhook replay attacks detected"
+          description: "Webhook replay attack rate is {{ $value | humanize }}/sec, indicates potential security issue or webhook misconfiguration"
+          runbook_url: "https://docs.example.com/runbooks/alerts#paymentWebhookFailures"
+
+      - alert: HighPaymentFailureRate
+        expr: sum(rate(billing_payments_total{status="failed"}[5m])) / sum(rate(billing_payments_total[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: critical
+          component: billing
+        annotations:
+          summary: "High payment failure rate"
+          description: "{{ $value | humanizePercentage }} of payments are failing, check Stripe integration and payment processing"
+          runbook_url: "https://docs.example.com/runbooks/alerts#paymentWebhookFailures"
+
+      - alert: NoCheckoutsStarted
+        expr: rate(billing_checkout_started_total[1h]) == 0
+        for: 1h
+        labels:
+          severity: warning
+          component: billing
+        annotations:
+          summary: "No checkout sessions started in 1 hour"
+          description: "No Stripe checkout sessions have been initiated in the last hour, may indicate funnel drop-off or billing integration issue"
+          runbook_url: "https://docs.example.com/runbooks/alerts#noCheckoutsStarted"
+
+      - alert: EAPollErrors
+        expr: rate(ea_errors_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: ea
+        annotations:
+          summary: "High EA poll error rate"
+          description: "EA error rate is {{ $value | humanize }} errors/sec, check device registration, HMAC validation, and nonce cache"
+          runbook_url: "https://docs.example.com/runbooks/alerts#eaPollErrors"
+
+      - alert: CriticalEAPollErrors
+        expr: rate(ea_errors_total[5m]) > 5.0
+        for: 2m
+        labels:
+          severity: critical
+          component: ea
+        annotations:
+          summary: "CRITICAL EA poll error rate"
+          description: "EA error rate is {{ $value | humanize }} errors/sec, EA integration is severely degraded"
+          runbook_url: "https://docs.example.com/runbooks/alerts#eaPollErrors"
+
+      - alert: NoEARequests
+        expr: rate(ea_requests_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          component: ea
+        annotations:
+          summary: "No EA API requests in 10 minutes"
+          description: "No EA poll or ack requests received in last 10 minutes, check if EAs are running"
+          runbook_url: "https://docs.example.com/runbooks/alerts#noEARequests"
+
+      - alert: HighMiniAppLatency
+        expr: histogram_quantile(0.95, sum(rate(miniapp_approval_latency_seconds_bucket[5m])) by (le)) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          component: miniapp
+        annotations:
+          summary: "High Mini App approval latency"
+          description: "p95 Mini App approval latency is {{ $value | humanizeDuration }}, exceeding 2 second threshold, user experience degraded"
+          runbook_url: "https://docs.example.com/runbooks/alerts#highMiniAppLatency"
+
+      - alert: HighWebhookInvalidSignatures
+        expr: rate(billing_webhook_invalid_sig_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "High rate of invalid webhook signatures"
+          description: "Invalid webhook signature rate is {{ $value | humanize }}/sec, indicates potential attack or Stripe webhook secret misconfiguration"
+          runbook_url: "https://docs.example.com/runbooks/alerts#paymentWebhookFailures"
