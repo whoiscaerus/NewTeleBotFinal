@@ -69,7 +69,7 @@ class AnalyticsETL:
         self.logger = logger
 
     async def get_or_create_dim_symbol(
-        self, symbol: str, asset_class: Optional[str] = None
+        self, symbol: str, asset_class: str | None = None
     ) -> DimSymbol:
         """Get or create dimension record for symbol.
 
@@ -122,7 +122,6 @@ class AnalyticsETL:
         # Calculate date metadata
         temp_date = datetime.combine(target_date, datetime.min.time())
         day_of_week = temp_date.weekday()  # 0=Monday, 6=Sunday
-        day_of_year = temp_date.timetuple().tm_yday
         week_of_year = temp_date.isocalendar()[1]
         month = target_date.month
         year = target_date.year
@@ -147,7 +146,7 @@ class AnalyticsETL:
         )
         return dim_day
 
-    async def load_trades(self, user_id: str, since: Optional[datetime] = None) -> int:
+    async def load_trades(self, user_id: str, since: datetime | None = None) -> int:
         """Load trades from source into trades_fact.
 
         Idempotent: checks for duplicates before inserting.
@@ -168,7 +167,7 @@ class AnalyticsETL:
             source_trades_query = select(Trade).where(
                 and_(
                     Trade.user_id == user_id,
-                    Trade.status == "closed",  # Only closed trades
+                    Trade.status == "CLOSED",  # Only closed trades
                 )
             )
 
@@ -185,17 +184,17 @@ class AnalyticsETL:
             for source_trade in source_trades:
                 # Check if already loaded
                 existing = await self.db.execute(
-                    select(TradesFact).where(TradesFact.id == source_trade.id)
+                    select(TradesFact).where(TradesFact.id == source_trade.trade_id)
                 )
                 if existing.scalars().first():
                     self.logger.debug(
-                        f"Trade {source_trade.id} already loaded, skipping"
+                        f"Trade {source_trade.trade_id} already loaded, skipping"
                     )
                     continue
 
                 # Get or create dimension records
                 dim_symbol = await self.get_or_create_dim_symbol(
-                    symbol=source_trade.instrument,
+                    symbol=source_trade.symbol,
                     asset_class="forex",  # Default assumption
                 )
                 entry_dim_day = await self.get_or_create_dim_day(
@@ -206,7 +205,7 @@ class AnalyticsETL:
                 )
 
                 # Calculate trade metrics
-                side = 0 if source_trade.side.lower() == "buy" else 1
+                side = 0 if source_trade.trade_type.lower() == "buy" else 1
                 price_diff = source_trade.exit_price - source_trade.entry_price
                 if side == 1:  # Sell
                     price_diff = -price_diff
@@ -258,7 +257,7 @@ class AnalyticsETL:
 
                 # Create fact record
                 fact_record = TradesFact(
-                    id=source_trade.id,
+                    id=source_trade.trade_id,
                     user_id=user_id,
                     symbol_id=dim_symbol.id,
                     entry_date_id=entry_dim_day.id,
@@ -309,7 +308,7 @@ class AnalyticsETL:
 
     async def build_daily_rollups(
         self, user_id: str, target_date: date
-    ) -> Optional[DailyRollups]:
+    ) -> DailyRollups | None:
         """Build daily rollups for a user and date.
 
         Idempotent: deletes and rebuilds if exists.
