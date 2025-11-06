@@ -12,10 +12,8 @@ Calculates incremental position sizes for trade setups respecting:
 import logging
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.copytrading.service import CopyTradeSettings
 from backend.app.trading.mt5_models import TradeSetupRiskLog, UserMT5Account
 from backend.app.trading.mt5_sync_service import MT5AccountSyncService
 
@@ -38,7 +36,7 @@ GLOBAL_RISK_CONFIG = {
 class PositionSizingService:
     """
     Calculate position sizes for multi-entry trade setups.
-    
+
     Enforces fixed risk management:
     - Global fixed risk percentage (default 3%, owner can change)
     - Applies to ALL users equally
@@ -46,7 +44,8 @@ class PositionSizingService:
     - Incremental position sizing (3 entries per setup)
     - Total stop loss validation
     - Margin requirement validation
-    """    @staticmethod
+    """ @ staticmethod
+
     async def calculate_setup_position_sizes(
         db: AsyncSession,
         user_id: str,
@@ -208,7 +207,7 @@ class PositionSizingService:
                 user_id=user_id,
                 setup_id=setup["setup_id"],
                 account_state=account_state,
-                user_tier=user_tier,
+                
                 allocated_risk_percent=allocated_risk_percent,
                 allocated_risk_amount=allocated_risk_amount,
                 positions=positions,
@@ -230,7 +229,7 @@ class PositionSizingService:
                     "total_margin_required": margin_result["total_margin_required"],
                     "margin_available": margin_result["margin_available"],
                     "margin_after": margin_result["margin_after_execution"],
-                    "user_tier": user_tier,
+                    
                     "allocated_risk_percent": allocated_risk_percent,
                     "allocated_risk_amount": allocated_risk_amount,
                     "account_balance": account_state.balance,
@@ -246,7 +245,7 @@ class PositionSizingService:
             validation_status = "rejected_risk"
             rejection_reason = (
                 f"Total SL {total_sl_percent:.2f}% exceeds allocated risk budget "
-                f"{allocated_risk_percent}% for {user_tier} tier"
+                f"{allocated_risk_percent}% for global risk"
             )
 
         # Step 7: Validate margin availability

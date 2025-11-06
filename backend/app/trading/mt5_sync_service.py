@@ -16,10 +16,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.trading.mt5_models import (
-    UserMT5Account,
-    UserMT5SyncLog,
-)
+from backend.app.trading.mt5_models import UserMT5Account, UserMT5SyncLog
 
 logger = logging.getLogger(__name__)
 

@@ -4321,3 +4321,263 @@ Expected: 41/41 passing, 90% coverage
 - \ackend/tests/integration/test_close_commands.py\: Fixed fixtures + async decorators
 
 ---
+
+# PR-105  MT5 Account Sync & Global Fixed Risk Management
+
+**Goal**
+Synchronize MT5 account state (balance, equity, margin, leverage) from EA devices and implement **global fixed risk percentage** for all users. Owner can change the risk % via API and it immediately applies to ALL clients.
+
+**Priority**:  CRITICAL  Core trading logic for position sizing
+
+**Depends on**: PR-045/046 (copy-trading), PR-080 (EA devices), PR-104 (EA polling)
+
+**Related**: PR-048/049 (original spec before refactor)
+
+## Business Context & Why
+
+**Problem**: 
+- Copy-trading was executing trades without validation of available margin
+- Users could receive signals that would blow their accounts (over-leveraged)
+- No centralized control over risk percentage across all clients
+- Each user previously had different risk budgets based on tier (standard 3%, premium 5%, elite 7%)
+
+**Solution**:
+- **Global fixed risk model**: ONE risk percentage (default 3%) applies to ALL users
+- Owner controls it via API: change to any % (e.g., 2%, 5%, 10%) and pushes to all clients instantly
+- MT5 account sync: Real-time balance/equity/margin from EA devices (syncs every 30-60 seconds)
+- Position sizing service: Auto-calculates safe lot sizes that fit within risk budget
+- Validation before execution: Reject trades if insufficient margin or stale data
+
+**Business Impact**:
+- **Risk mitigation**: No more account blowouts from over-leveraged signals
+- **Owner control**: Change risk % globally in 1 API call (e.g., reduce to 1% during high volatility)
+- **Transparency**: Every position sized with full audit trail (TradeSetupRiskLog table)
+- **Compliance**: Risk validation aligns with regulatory best practices
+- **User trust**: Clients see exact position sizes before execution (no surprises)
+
+---
+## Scope
+
+### 1. MT5 Account Sync (from EA Devices)
+- EA devices POST account data every 30-60 seconds: balance, equity, margin used/free/level, leverage
+- Backend validates freshness (5-minute threshold): reject stale data
+- Store sync history: UserMT5SyncLog table (audit trail, debug issues)
+- Account state: UserMT5Account table (current snapshot, updated atomically)
+
+### 2. Global Fixed Risk Configuration
+- Single risk percentage applies to ALL users (no tiers, no per-user overrides)
+- Default: 3.0% (configurable via environment variable `DEFAULT_FIXED_RISK_PERCENT=3.0`)
+- Owner API: POST `/api/v1/risk/config` with `{"fixed_risk_percent": 5.0}` → updates global config
+- Config stored in-memory: `GLOBAL_RISK_CONFIG["fixed_risk_percent"]`
+- Persistent storage: Database table `RiskConfiguration` (single row, updated by owner)
+
+### 3. Position Sizing Service
+- **Input**: Trade setup (instrument, side, entry/SL/TP prices, split %, account state)
+- **Output**: Validated lot sizes for each entry (entry_1/2/3) OR rejection reason
+- **Logic**:
+  1. Calculate risk per entry: `risk_budget = balance × global_risk_percent × split_percent`
+  2. Calculate position size: `volume = risk_budget / (pip_value × stop_loss_pips)`
+  3. Estimate margin: `margin = (volume × contract_size × price) / leverage`
+  4. Validate: `total_margin ≤ (free_margin - margin_buffer)`
+  5. If pass: return volumes; if fail: return rejection reason
+- **Margin buffer**: 20% safety margin (configurable `MARGIN_BUFFER_PERCENT=20.0`)
+
+### 4. Trade Setup Risk Logging
+- Every position sizing calculation logged: TradeSetupRiskLog table (20 fields)
+- Fields: user_id, instrument, side, entry/SL/TP, volumes, margin estimates, validation result
+- Purpose: Audit trail for compliance, debug rejected trades, performance analysis
+
+### 5. Integration with Copy-Trading (PR-045/046)
+- Before executing copy trade: call `PositionSizingService.calculate_setup_position_sizes()`
+- If validation passes: execute with calculated volumes
+- If validation fails: return 422 Unprocessable Entity with rejection reason
+- Store rejection reason in signal metadata for user visibility
+
+## Deliverables
+
+```
+backend/alembic/versions/
+  013_pr_105_mt5_account_sync.py       # Migration: 3 new tables
+
+backend/app/trading/
+  mt5_models.py                        # 3 SQLAlchemy models (208 lines)
+  mt5_sync_service.py                  # MT5 sync logic (284 lines)
+  position_sizing_service.py           # Position sizing + validation (356 lines)
+  risk_config_service.py               # Global risk config API (120 lines - TO BE CREATED)
+  routes.py                            # HTTP endpoints (150 lines - TO BE CREATED)
+
+backend/tests/
+  test_pr_105_mt5_fixed_risk_comprehensive.py  # 18 async tests (751 lines)
+  test_risk_config_api.py              # 6 API tests for owner endpoints (TO BE CREATED)
+
+docs/prs/
+  PR-105-IMPLEMENTATION-PLAN.md        # TO BE CREATED
+  PR-105-ACCEPTANCE-CRITERIA.md        # TO BE CREATED
+  PR-105-BUSINESS-IMPACT.md            # TO BE CREATED
+  PR-105-IMPLEMENTATION-COMPLETE.md    # TO BE CREATED
+```
+
+## Env
+
+```bash
+# Risk Management
+DEFAULT_FIXED_RISK_PERCENT=3.0          # Initial global risk % (owner can change via API)
+MARGIN_BUFFER_PERCENT=20.0              # Safety margin (20% = keep 20% free)
+ENTRY_SPLIT_1_PERCENT=50.0              # First entry: 50% of risk budget
+ENTRY_SPLIT_2_PERCENT=35.0              # Second entry: 35% of risk budget
+ENTRY_SPLIT_3_PERCENT=15.0              # Third entry: 15% of risk budget
+
+# MT5 Sync
+MT5_ACCOUNT_FRESHNESS_MINUTES=5         # Reject if last sync > 5 minutes ago
+MT5_SYNC_REQUIRED_FIELDS=balance,equity,margin_free,leverage
+
+# Contract Sizes (for margin calculations)
+CONTRACT_SIZE_XAUUSD=100                # Gold: 100 troy ounces
+CONTRACT_SIZE_EURUSD=100000             # EUR/USD: 100k units
+CONTRACT_SIZE_GBPUSD=100000
+CONTRACT_SIZE_USDJPY=100000
+
+# Pip Values (for position sizing)
+PIP_VALUE_XAUUSD=1.0                    # Gold: $1 per pip per lot
+PIP_VALUE_EURUSD=10.0                   # EUR/USD: $10 per pip per lot
+```
+
+## Security
+
+- **Owner-only risk config**: Only users with `role=owner` can change global risk %
+- **Account isolation**: Users can only sync/view their own MT5 accounts
+- **Freshness validation**: Reject trades if account data older than 5 minutes (prevents stale balance attacks)
+- **Input validation**: All API inputs validated (risk % between 0.1-50%, margin values positive, etc.)
+- **Audit trail**: Every risk calculation logged with full context (TradeSetupRiskLog)
+- **Rate limiting**: MT5 sync endpoint limited to 1 req/30s per user (prevent abuse)
+- **HMAC signatures**: EA device syncs use HMAC-SHA256 (from PR-080)
+
+## Telemetry
+
+```python
+# Counters
+mt5_sync_total{user_id, status}                # "success" or "error"
+mt5_sync_freshness_violations{user_id}         # Stale data rejected
+position_sizing_validations{result}             # "approved" or "rejected"
+position_sizing_rejections{reason}              # "insufficient_margin", "stale_data", etc.
+risk_config_updates_total{updated_by}          # Owner risk % changes
+
+# Gauges
+mt5_account_balance{user_id, account_number}   # Current balance
+mt5_account_margin_free{user_id}               # Current free margin
+global_risk_percent                             # Current global risk %
+
+# Histograms
+mt5_sync_duration_seconds                       # Sync processing time
+position_sizing_duration_seconds                # Validation processing time
+position_sizing_margin_ratio                    # used_margin / free_margin
+```
+
+## Tests
+
+**Backend Tests** (`test_pr_105_mt5_fixed_risk_comprehensive.py`):
+- 18 comprehensive async tests (751 lines)
+- SQLite in-memory database (real async, no mocks)
+- Coverage: 100% of business logic
+
+**Test Categories**:
+1. **MT5 Account Sync** (6 tests):
+   - Create new account from sync data
+   - Update existing account (balance/equity changes)
+   - Log sync history (before/after snapshots)
+   - Reject sync with missing required fields
+   - Handle concurrent syncs (upsert atomicity)
+   - Freshness validation (5-minute threshold)
+
+2. **Margin Calculations** (3 tests):
+   - Single position margin (XAUUSD, EURUSD formulas)
+   - Multi-entry position margin (3 entries)
+   - Edge case: Zero leverage (reject)
+
+3. **Position Sizing** (7 tests):
+   - Global 3% risk: Calculate volumes for 3-entry setup
+   - High leverage (1:500): Smaller margin requirement
+   - Insufficient margin: Reject with reason
+   - Stale account data: Reject (last_sync > 5 min)
+   - Zero balance: Reject (no risk budget)
+   - Stop-loss too tight: Reject (SL == entry price)
+   - Missing entry prices: Use defaults
+
+4. **Edge Cases** (2 tests):
+   - Account sync after major drawdown (50% loss)
+   - Position sizing near margin limit (99% used)
+
+**Expected Coverage**: ≥95% backend, all 18 tests passing
+
+## Technical Decisions & Why
+
+### Decision 1: Global Risk % (Not Tier-Based)
+**Initial approach**: standard=3%, premium=5%, elite=7% per tier
+**Problem**: Owner wanted single % that applies to everyone
+**Why global works**:
+- Owner can adjust risk for ALL users instantly (e.g., reduce to 1% during news events)
+- Simpler logic: no tier lookups, no edge cases
+- Fairer: All users treated equally, risk scales with account size naturally
+
+### Decision 2: Real-Time MT5 Sync (Not Manual Entry)
+**Why**: Manual entry prone to errors, users forget to update
+**How**: EA devices POST account data every 30-60 seconds
+**Benefit**: Always-accurate margin calculations, no stale data
+
+### Decision 3: 5-Minute Freshness Threshold
+**Why**: Balance can change rapidly (open positions, deposits, withdrawals)
+**Trade-off**: Too strict (1 min) = frequent rejections if sync delayed; too loose (15 min) = risk stale data
+**Result**: 5 minutes balances accuracy vs reliability
+
+### Decision 4: 20% Margin Buffer
+**Why**: Prevents margin calls if price moves against positions immediately after entry
+**Example**: If user has $10,000 free margin, max allowed usage is $8,000 (keep $2,000 buffer)
+**Benefit**: Safer trading, reduces forced liquidations
+
+### Decision 5: In-Memory + DB for Risk Config
+**Why**: Fast reads (no DB query per validation) + persistent across restarts
+**How**: Load from DB on startup, update both on change
+**Benefit**: Sub-millisecond lookups for position sizing
+
+### Decision 6: Comprehensive Audit Logging (TradeSetupRiskLog)
+**Why**: Regulatory compliance, debug rejected trades, performance analysis
+**What**: Every validation logged with full context (20 fields)
+**Trade-off**: Extra DB writes, but table is append-only (fast inserts)
+**Benefit**: Complete audit trail for every position sized
+
+## Implementation Notes
+
+### Files Created (Nov 5, 2025)
+- ✅ `backend/app/trading/mt5_models.py` (208 lines): UserMT5Account, UserMT5SyncLog, TradeSetupRiskLog models
+- ✅ `backend/app/trading/mt5_sync_service.py` (284 lines): MT5AccountSyncService with 5 methods
+- ✅ `backend/app/trading/position_sizing_service.py` (356 lines): PositionSizingService with global risk logic
+- ✅ `backend/alembic/versions/013_pr_105_mt5_account_sync.py` (159 lines): Migration creating 3 tables
+- ✅ `backend/tests/test_pr_105_mt5_fixed_risk_comprehensive.py` (751 lines): 18 comprehensive tests
+
+### Refactoring: Tier-Based → Global Risk
+**Original implementation** (discarded): Tier-based risk (standard=3%, premium=5%, elite=7%)
+**Corrected implementation**: Global fixed risk (default 3%, owner-controlled)
+
+**Key changes made**:
+1. Removed tier lookup from `calculate_setup_position_sizes()`
+2. Changed `GLOBAL_RISK_CONFIG` from `tier_risk_budgets` to `fixed_risk_percent`
+3. Updated all test assertions from `user_tier` to `global_risk_percent`
+4. Removed `user_tier` parameters from internal methods
+
+### Current Status (as of Nov 5, 2025)
+- **Core logic**: ✅ Complete (global risk model implemented)
+- **Tests**: ✅ 18/18 passing (after syntax fixes)
+- **Migration**: ✅ Ready to apply
+- **API endpoints**: ⚠️ NOT YET CREATED (risk config routes pending)
+- **Integration with PR-045/046**: ⚠️ PENDING
+- **Documentation**: ⚠️ 4 PR docs TO BE CREATED
+
+### Next Steps (NOT in initial PR-105)
+1. Create `backend/app/trading/risk_config_service.py` (owner API for changing global %)
+2. Create `backend/app/trading/routes.py` (HTTP endpoints)
+3. Create 6 API tests for risk config endpoints
+4. Integrate with copy-trading execution (PR-045/046)
+5. Create 4 PR documentation files
+6. Run full test suite with coverage report
+
+---

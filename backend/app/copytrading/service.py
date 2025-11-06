@@ -278,7 +278,8 @@ class CopyTradingService:
         from sqlalchemy.future import select
 
         stmt = select(CopyTradeSettings).where(
-            (CopyTradeSettings.user_id == user_id) & (CopyTradeSettings.enabled.is_(True))
+            (CopyTradeSettings.user_id == user_id)
+            & (CopyTradeSettings.enabled.is_(True))
         )
         result = await db.execute(stmt)
         settings = result.scalar_one_or_none()
