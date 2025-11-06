@@ -5,7 +5,7 @@ $content = Get-Content -Path "backend\tests\test_pr_051_etl_comprehensive.py" -R
 $pattern = '(?s)(Trade\([^)]*?)(\s+volume=)'
 $replacement = '$1' + "`r`n            stop_loss=Decimal(`"1940.00`"),`r`n            take_profit=Decimal(`"1970.00`")," + '$2'
 
-# First pass: add before volume if stop_loss not present  
+# First pass: add before volume if stop_loss not present
 $content = $content -replace $pattern, {
     param($match)
     if ($match.Value -match 'stop_loss') {

@@ -13,6 +13,7 @@ from backend.app.clients.devices.routes import router as devices_router
 from backend.app.clients.exec.routes import router as exec_router
 from backend.app.core.settings import get_settings
 from backend.app.ea.routes_admin import router as ea_admin_router
+from backend.app.exports.routes import router as exports_router
 from backend.app.polling.routes import router as polling_v2_router
 from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
@@ -64,6 +65,7 @@ app.include_router(signals_router, prefix="/api/v1", tags=["signals"])
 app.include_router(devices_router, prefix="/api/v1", tags=["devices"])
 app.include_router(exec_router, prefix="/api/v1", tags=["execution"])
 app.include_router(ea_admin_router, tags=["executions"])
+app.include_router(exports_router, prefix="/api/v1", tags=["exports"])
 app.include_router(trust_router, tags=["trust"])
 
 

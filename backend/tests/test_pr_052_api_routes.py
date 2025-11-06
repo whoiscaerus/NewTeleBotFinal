@@ -14,15 +14,15 @@ Validates:
 - Business logic correctness
 """
 
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.analytics.models import DimSymbol, DimDay, TradesFact
+from backend.app.analytics.models import DimDay, DimSymbol, TradesFact
 from backend.app.auth.models import User
-
 
 pytestmark = pytest.mark.asyncio
 
@@ -33,7 +33,7 @@ class TestEquityRoutes:
     async def test_equity_endpoint_requires_auth(self, client: AsyncClient):
         """Test equity endpoint requires JWT authentication."""
         response = await client.get("/api/v1/analytics/equity")
-        
+
         assert response.status_code == 401
         assert "detail" in response.json()
 
@@ -117,7 +117,7 @@ class TestEquityRoutes:
         # Validate points
         points = data["points"]
         assert len(points) == 5  # 5 days (including gaps)
-        
+
         # Each point should have required fields
         for point in points:
             assert "date" in point
@@ -187,11 +187,11 @@ class TestEquityRoutes:
 
         assert response.status_code == 200
         data = response.json()
-        
+
         # Should only include days 3-7 (5 days)
         assert data["days_in_period"] == 5
         assert len(data["points"]) == 5
-        
+
         # First point should be 2025-01-03
         assert data["points"][0]["date"] == "2025-01-03"
         # Last point should be 2025-01-07
@@ -262,7 +262,7 @@ class TestEquityRoutes:
 
         assert response.status_code == 200
         data = response.json()
-        
+
         # Initial equity should match custom balance
         assert data["initial_equity"] == 50000
         # Final equity should be initial + net_pnl
@@ -275,7 +275,7 @@ class TestDrawdownRoutes:
     async def test_drawdown_endpoint_requires_auth(self, client: AsyncClient):
         """Test drawdown endpoint requires JWT authentication."""
         response = await client.get("/api/v1/analytics/drawdown")
-        
+
         assert response.status_code == 401
         assert "detail" in response.json()
 
@@ -308,8 +308,14 @@ class TestDrawdownRoutes:
             days.append(dim_day)
 
         # Create trades: +100, +50, -80, -20, +150 (creates drawdown)
-        pnls = [Decimal("100"), Decimal("50"), Decimal("-80"), Decimal("-20"), Decimal("150")]
-        
+        pnls = [
+            Decimal("100"),
+            Decimal("50"),
+            Decimal("-80"),
+            Decimal("-20"),
+            Decimal("150"),
+        ]
+
         for i, pnl in enumerate(pnls):
             trade = TradesFact(
                 user_id=test_user.id,
@@ -443,7 +449,7 @@ class TestDrawdownRoutes:
         pnls = [Decimal("100")] * 10
         pnls[4] = Decimal("-50")  # Drawdown on day 5
         pnls[5] = Decimal("-30")  # Continues drawdown
-        
+
         for i, pnl in enumerate(pnls):
             trade = TradesFact(
                 user_id=test_user.id,
@@ -591,6 +597,7 @@ class TestEdgeCases:
 
         # Make multiple concurrent requests
         import asyncio
+
         tasks = [
             client.get("/api/v1/analytics/equity", headers=auth_headers)
             for _ in range(5)

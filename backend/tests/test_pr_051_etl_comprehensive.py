@@ -9,7 +9,7 @@ Coverage gaps identified:
 - etl.py lines 525-611: build_equity_curve() method
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -19,12 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.analytics.etl import AnalyticsETL
-from backend.app.analytics.models import (
-    DimDay,
-    DimSymbol,
-    EquityCurve,
-    TradesFact,
-)
+from backend.app.analytics.models import DimDay, DimSymbol, EquityCurve, TradesFact
 from backend.app.auth.models import User
 from backend.app.trading.store.models import Trade
 
@@ -472,7 +467,9 @@ class TestBuildEquityCurveComprehensive:
         await db_session.commit()
 
         # Build equity curve
-        count = await etl.build_equity_curve(test_user.id, initial_balance=Decimal("10000"))
+        count = await etl.build_equity_curve(
+            test_user.id, initial_balance=Decimal("10000")
+        )
 
         assert count == 3
 
@@ -569,7 +566,10 @@ class TestBuildEquityCurveComprehensive:
         day2 = await etl.get_or_create_dim_day(date(2025, 1, 2))
 
         # Create trades: up then down
-        for exit_day_id, pnl in [(day1.id, Decimal("1000")), (day2.id, Decimal("-500"))]:
+        for exit_day_id, pnl in [
+            (day1.id, Decimal("1000")),
+            (day2.id, Decimal("-500")),
+        ]:
             trade = TradesFact(
                 id=str(uuid4()),
                 user_id=test_user.id,

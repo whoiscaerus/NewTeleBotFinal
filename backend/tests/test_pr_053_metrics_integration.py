@@ -10,18 +10,17 @@ Tests the full workflow:
 Validates business logic with real database integration (not mocks).
 """
 
-import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy.ext.asyncio import AsyncSession
+import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.analytics.metrics import PerformanceMetrics
-from backend.app.analytics.models import EquityCurve, TradesFact, DimSymbol, DimDay
+from backend.app.analytics.models import DimDay, DimSymbol, EquityCurve, TradesFact
 from backend.app.auth.models import User
-
 
 # ============================================================================
 # INTEGRATION TESTS: get_daily_returns()
@@ -52,7 +51,7 @@ class TestGetDailyReturnsIntegration:
             # Track peak equity
             if equity > peak_so_far:
                 peak_so_far = equity
-            
+
             snapshot = EquityCurve(
                 id=str(uuid4()),
                 user_id=test_user.id,
@@ -315,7 +314,9 @@ class TestGetMetricsForWindowIntegration:
         assert result["win_rate"] == Decimal("66.67")  # 2 wins / 3 trades ≈ 66.67%
 
         # Total return: (10017 - 10009) / 10009 * 100 ≈ 0.08%
-        expected_return = (Decimal("10017") - Decimal("10009")) / Decimal("10009") * Decimal("100")
+        expected_return = (
+            (Decimal("10017") - Decimal("10009")) / Decimal("10009") * Decimal("100")
+        )
         assert abs(result["total_return_percent"] - expected_return) < Decimal("0.01")
 
         # Max drawdown: 1.10%
@@ -439,8 +440,20 @@ class TestGetAllWindowMetricsIntegration:
         # Create at least one trade per window
         symbol = DimSymbol(id=1, symbol="GOLD", asset_class="commodity")
         day1 = DimDay(id=1, date=base_date, day_of_week=1, month=1, year=2024)
-        day2 = DimDay(id=2, date=base_date + timedelta(days=100), day_of_week=1, month=4, year=2024)
-        day3 = DimDay(id=3, date=base_date + timedelta(days=300), day_of_week=1, month=10, year=2024)
+        day2 = DimDay(
+            id=2,
+            date=base_date + timedelta(days=100),
+            day_of_week=1,
+            month=4,
+            year=2024,
+        )
+        day3 = DimDay(
+            id=3,
+            date=base_date + timedelta(days=300),
+            day_of_week=1,
+            month=10,
+            year=2024,
+        )
         db_session.add_all([symbol, day1, day2, day3])
 
         trades = []
@@ -567,9 +580,7 @@ class TestGetAllWindowMetricsIntegration:
 class TestMetricsAPIRoutes:
     """Test /analytics/metrics API endpoints."""
 
-    async def test_metrics_endpoint_requires_auth(
-        self, client: AsyncClient
-    ):
+    async def test_metrics_endpoint_requires_auth(self, client: AsyncClient):
         """Test /analytics/metrics requires authentication."""
         response = await client.get("/api/v1/analytics/metrics?window=90")
 
@@ -577,13 +588,29 @@ class TestMetricsAPIRoutes:
         assert "detail" in response.json()
 
     async def test_metrics_endpoint_returns_metrics(
-        self, client: AsyncClient, auth_headers: dict, test_user: User, db_session: AsyncSession
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_user: User,
+        db_session: AsyncSession,
     ):
         """Test /analytics/metrics returns complete metrics."""
         # Setup: Create complete data
         symbol = DimSymbol(id=1, symbol="GOLD", asset_class="commodity")
-        day1 = DimDay(id=1, date=date.today() - timedelta(days=5), day_of_week=1, month=1, year=2025)
-        day2 = DimDay(id=2, date=date.today() - timedelta(days=4), day_of_week=2, month=1, year=2025)
+        day1 = DimDay(
+            id=1,
+            date=date.today() - timedelta(days=5),
+            day_of_week=1,
+            month=1,
+            year=2025,
+        )
+        day2 = DimDay(
+            id=2,
+            date=date.today() - timedelta(days=4),
+            day_of_week=2,
+            month=1,
+            year=2025,
+        )
         db_session.add_all([symbol, day1, day2])
 
         # Create trade
@@ -628,8 +655,7 @@ class TestMetricsAPIRoutes:
 
         # Test
         response = await client.get(
-            "/api/v1/analytics/metrics?window=7",
-            headers=auth_headers
+            "/api/v1/analytics/metrics?window=7", headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -658,20 +684,29 @@ class TestMetricsAPIRoutes:
     ):
         """Test /analytics/metrics returns 404 when no trades exist."""
         response = await client.get(
-            "/api/v1/analytics/metrics?window=30",
-            headers=auth_headers
+            "/api/v1/analytics/metrics?window=30", headers=auth_headers
         )
 
         assert response.status_code == 404
         assert "detail" in response.json()
 
     async def test_metrics_endpoint_respects_window_param(
-        self, client: AsyncClient, auth_headers: dict, test_user: User, db_session: AsyncSession
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_user: User,
+        db_session: AsyncSession,
     ):
         """Test /analytics/metrics respects window parameter."""
         # Setup minimal data
         symbol = DimSymbol(id=1, symbol="GOLD", asset_class="commodity")
-        day1 = DimDay(id=1, date=date.today() - timedelta(days=10), day_of_week=1, month=1, year=2025)
+        day1 = DimDay(
+            id=1,
+            date=date.today() - timedelta(days=10),
+            day_of_week=1,
+            month=1,
+            year=2025,
+        )
         db_session.add_all([symbol, day1])
 
         trade = TradesFact(
@@ -715,8 +750,7 @@ class TestMetricsAPIRoutes:
 
         # Test with custom window
         response = await client.get(
-            "/api/v1/analytics/metrics?window=10",
-            headers=auth_headers
+            "/api/v1/analytics/metrics?window=10", headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -724,12 +758,22 @@ class TestMetricsAPIRoutes:
         assert data["period_days"] == 10
 
     async def test_metrics_all_windows_endpoint(
-        self, client: AsyncClient, auth_headers: dict, test_user: User, db_session: AsyncSession
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        test_user: User,
+        db_session: AsyncSession,
     ):
         """Test /analytics/metrics/all-windows returns multiple windows."""
         # Setup: Create enough data for at least 30d window
         symbol = DimSymbol(id=1, symbol="GOLD", asset_class="commodity")
-        day1 = DimDay(id=1, date=date.today() - timedelta(days=35), day_of_week=1, month=1, year=2025)
+        day1 = DimDay(
+            id=1,
+            date=date.today() - timedelta(days=35),
+            day_of_week=1,
+            month=1,
+            year=2025,
+        )
         db_session.add_all([symbol, day1])
 
         trade = TradesFact(
@@ -773,8 +817,7 @@ class TestMetricsAPIRoutes:
 
         # Test
         response = await client.get(
-            "/api/v1/analytics/metrics/all-windows",
-            headers=auth_headers
+            "/api/v1/analytics/metrics/all-windows", headers=auth_headers
         )
 
         assert response.status_code == 200
