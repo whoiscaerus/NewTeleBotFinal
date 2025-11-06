@@ -194,12 +194,11 @@ class RevenueService:
         """
         try:
             # Query all cohorts from past N months
+            from dateutil.relativedelta import relativedelta
+
             today = date.today()
-            start_date = date(
-                today.year - (today.month - months_back - 1) // 12,
-                (today.month - months_back - 1) % 12 + 1,
-                1,
-            )
+            # Go back N months from current month
+            start_date = today - relativedelta(months=months_back)
 
             stmt = (
                 select(SubscriptionCohort)
