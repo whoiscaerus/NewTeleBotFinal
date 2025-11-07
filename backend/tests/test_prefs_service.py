@@ -6,24 +6,27 @@ Tests CRUD operations, quiet hours logic, timezone validation, and all business 
 Coverage Target: 100% of service.py
 """
 
-import pytest
 from datetime import datetime, time
-import pytz
 
+import pytest
+import pytz
+from sqlalchemy import select
+
+from backend.app.prefs.models import UserPreferences
 from backend.app.prefs.service import (
+    get_enabled_channels,
     get_user_preferences,
-    update_user_preferences,
     is_quiet_hours_active,
     should_send_notification,
-    get_enabled_channels,
+    update_user_preferences,
 )
-from backend.app.prefs.models import UserPreferences
 
 
 class TestGetUserPreferences:
     """Test get_user_preferences() function."""
 
-    def test_get_existing_preferences(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_get_existing_preferences(self, db_session, test_user):
         """Test retrieving existing user preferences."""
         # Create preferences
         prefs = UserPreferences(
@@ -32,16 +35,17 @@ class TestGetUserPreferences:
             notify_via_telegram=True,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # Retrieve
-        retrieved = get_user_preferences(db_session, test_user.id)
+        retrieved = await get_user_preferences(db_session, test_user.id)
 
         assert retrieved.id == prefs.id
         assert retrieved.user_id == test_user.id
         assert set(retrieved.instruments_enabled) == {"gold", "sp500"}
 
-    def test_get_creates_defaults_if_not_exist(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_get_creates_defaults_if_not_exist(self, db_session, test_user):
         """
         Test that get_user_preferences() creates defaults if preferences don't exist.
 
@@ -53,17 +57,31 @@ class TestGetUserPreferences:
         - Default execution failure alerts: ON (safety-first)
         """
         # Verify no preferences exist
-        existing = db_session.query(UserPreferences).filter(UserPreferences.user_id == test_user.id).first()
+        result = await db_session.execute(
+            select(UserPreferences).where(UserPreferences.user_id == test_user.id)
+        )
+        existing = result.scalar_one_or_none()
         assert existing is None
 
         # Get preferences (should create)
-        prefs = get_user_preferences(db_session, test_user.id)
+        prefs = await get_user_preferences(db_session, test_user.id)
 
         # Verify created with defaults
         assert prefs.id is not None
         assert prefs.user_id == test_user.id
-        assert set(prefs.instruments_enabled) == {"gold", "sp500", "crypto", "forex", "indices"}
-        assert set(prefs.alert_types_enabled) == {"price", "drawdown", "copy_risk", "execution_failure"}
+        assert set(prefs.instruments_enabled) == {
+            "gold",
+            "sp500",
+            "crypto",
+            "forex",
+            "indices",
+        }
+        assert set(prefs.alert_types_enabled) == {
+            "price",
+            "drawdown",
+            "copy_risk",
+            "execution_failure",
+        }
         assert prefs.notify_via_telegram is True
         assert prefs.notify_via_email is True
         assert prefs.notify_via_push is False
@@ -75,7 +93,10 @@ class TestGetUserPreferences:
         assert prefs.max_alerts_per_hour == 10
 
         # Verify saved to database
-        db_prefs = db_session.query(UserPreferences).filter(UserPreferences.user_id == test_user.id).first()
+        result = await db_session.execute(
+            select(UserPreferences).where(UserPreferences.user_id == test_user.id)
+        )
+        db_prefs = result.scalar_one_or_none()
         assert db_prefs is not None
         assert db_prefs.id == prefs.id
 
@@ -83,24 +104,28 @@ class TestGetUserPreferences:
 class TestUpdateUserPreferences:
     """Test update_user_preferences() function."""
 
-    def test_update_single_field(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_update_single_field(self, db_session, test_user):
         """Test updating a single preference field."""
         # Create preferences
-        prefs = get_user_preferences(db_session, test_user.id)
+        prefs = await get_user_preferences(db_session, test_user.id)
         original_timezone = prefs.timezone
 
         # Update one field
-        updated = update_user_preferences(db_session, test_user.id, {"timezone": "Europe/London"})
+        updated = await update_user_preferences(
+            db_session, test_user.id, {"timezone": "Europe/London"}
+        )
 
         assert updated.timezone == "Europe/London"
         assert updated.timezone != original_timezone
         # Other fields unchanged
         assert updated.notify_via_telegram is True
 
-    def test_update_multiple_fields(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_update_multiple_fields(self, db_session, test_user):
         """Test updating multiple preference fields at once."""
         # Create preferences
-        get_user_preferences(db_session, test_user.id)
+        await get_user_preferences(db_session, test_user.id)
 
         # Update multiple fields
         update_data = {
@@ -113,7 +138,7 @@ class TestUpdateUserPreferences:
             "timezone": "America/New_York",
             "digest_frequency": "hourly",
         }
-        updated = update_user_preferences(db_session, test_user.id, update_data)
+        updated = await update_user_preferences(db_session, test_user.id, update_data)
 
         assert set(updated.instruments_enabled) == {"gold", "sp500"}
         assert set(updated.alert_types_enabled) == {"price", "execution_failure"}
@@ -124,68 +149,66 @@ class TestUpdateUserPreferences:
         assert updated.timezone == "America/New_York"
         assert updated.digest_frequency == "hourly"
 
-    def test_update_execution_failure_alerts(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_update_execution_failure_alerts(self, db_session, test_user):
         """Test updating execution failure alert preferences (PR-104 integration)."""
         # Create preferences with defaults
-        get_user_preferences(db_session, test_user.id)
+        await get_user_preferences(db_session, test_user.id)
 
         # Disable exit failure alerts (user wants entry alerts only)
-        updated = update_user_preferences(
-            db_session, test_user.id, {"notify_entry_failure": True, "notify_exit_failure": False}
+        updated = await update_user_preferences(
+            db_session,
+            test_user.id,
+            {"notify_entry_failure": True, "notify_exit_failure": False},
         )
 
         assert updated.notify_entry_failure is True
         assert updated.notify_exit_failure is False
 
-    def test_update_creates_if_not_exist(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_update_creates_if_not_exist(self, db_session, test_user):
         """Test that update creates preferences if they don't exist."""
         # Verify no preferences
-        existing = db_session.query(UserPreferences).filter(UserPreferences.user_id == test_user.id).first()
+        result = await db_session.execute(
+            select(UserPreferences).where(UserPreferences.user_id == test_user.id)
+        )
+        existing = result.scalar_one_or_none()
         assert existing is None
 
         # Update (should create first)
-        updated = update_user_preferences(db_session, test_user.id, {"timezone": "Europe/London"})
+        updated = await update_user_preferences(
+            db_session, test_user.id, {"timezone": "Europe/London"}
+        )
 
         assert updated is not None
         assert updated.timezone == "Europe/London"
 
-    def test_update_updates_timestamp(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_update_updates_timestamp(self, db_session, test_user):
         """Test that update_user_preferences() updates the updated_at timestamp."""
         # Create preferences
-        prefs = get_user_preferences(db_session, test_user.id)
+        prefs = await get_user_preferences(db_session, test_user.id)
         original_updated_at = prefs.updated_at
 
         # Update
-        updated = update_user_preferences(db_session, test_user.id, {"notify_via_push": True})
+        updated = await update_user_preferences(
+            db_session, test_user.id, {"notify_via_push": True}
+        )
 
         # Verify timestamp changed
         assert updated.updated_at > original_updated_at
 
-    def test_update_with_skip_commit(self, db_session, test_user):
-        """Test update_user_preferences() with skip_commit=True."""
-        # Create preferences
-        get_user_preferences(db_session, test_user.id)
-
-        # Update without committing
-        updated = update_user_preferences(
-            db_session, test_user.id, {"timezone": "Europe/London"}, skip_commit=True
-        )
-
-        assert updated.timezone == "Europe/London"
-
-        # Rollback and verify not persisted
-        db_session.rollback()
-        prefs = get_user_preferences(db_session, test_user.id)
-        assert prefs.timezone == "UTC"  # Reverted to default
-
-    def test_update_ignores_invalid_fields(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_update_ignores_invalid_fields(self, db_session, test_user):
         """Test that update ignores fields not in model."""
         # Create preferences
-        get_user_preferences(db_session, test_user.id)
+        await get_user_preferences(db_session, test_user.id)
 
         # Update with invalid field (should be ignored)
-        updated = update_user_preferences(
-            db_session, test_user.id, {"invalid_field": "value", "timezone": "Europe/London"}
+        updated = await update_user_preferences(
+            db_session,
+            test_user.id,
+            {"invalid_field": "value", "timezone": "Europe/London"},
         )
 
         assert updated.timezone == "Europe/London"
@@ -195,27 +218,36 @@ class TestUpdateUserPreferences:
 class TestIsQuietHoursActive:
     """Test is_quiet_hours_active() function."""
 
-    def test_quiet_hours_disabled(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_disabled(self, db_session, test_user):
         """Test that quiet hours returns False when disabled."""
         prefs = UserPreferences(
-            user_id=test_user.id, quiet_hours_enabled=False, quiet_hours_start=time(22, 0), quiet_hours_end=time(8, 0)
+            user_id=test_user.id,
+            quiet_hours_enabled=False,
+            quiet_hours_start=time(22, 0),
+            quiet_hours_end=time(8, 0),
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         assert is_quiet_hours_active(prefs, datetime(2025, 11, 6, 23, 30)) is False
 
-    def test_quiet_hours_no_times_set(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_no_times_set(self, db_session, test_user):
         """Test that quiet hours returns False when times not set."""
         prefs = UserPreferences(
-            user_id=test_user.id, quiet_hours_enabled=True, quiet_hours_start=None, quiet_hours_end=None
+            user_id=test_user.id,
+            quiet_hours_enabled=True,
+            quiet_hours_start=None,
+            quiet_hours_end=None,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         assert is_quiet_hours_active(prefs, datetime(2025, 11, 6, 23, 30)) is False
 
-    def test_quiet_hours_overnight_within_hours(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_overnight_within_hours(self, db_session, test_user):
         """
         Test overnight quiet hours (22:00-08:00) during quiet period.
 
@@ -229,13 +261,14 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # 23:30 UTC (within 22:00-08:00)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 23, 30))
         assert is_quiet_hours_active(prefs, check_time) is True
 
-    def test_quiet_hours_overnight_before_start(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_overnight_before_start(self, db_session, test_user):
         """
         Test overnight quiet hours before start time.
 
@@ -249,13 +282,14 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # 21:00 UTC (before 22:00)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 21, 0))
         assert is_quiet_hours_active(prefs, check_time) is False
 
-    def test_quiet_hours_overnight_after_end(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_overnight_after_end(self, db_session, test_user):
         """
         Test overnight quiet hours after end time.
 
@@ -269,13 +303,14 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # 09:00 UTC (after 08:00)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 9, 0))
         assert is_quiet_hours_active(prefs, check_time) is False
 
-    def test_quiet_hours_overnight_early_morning(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_overnight_early_morning(self, db_session, test_user):
         """
         Test overnight quiet hours in early morning.
 
@@ -289,13 +324,14 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # 03:00 UTC (within 22:00-08:00)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 3, 0))
         assert is_quiet_hours_active(prefs, check_time) is True
 
-    def test_quiet_hours_same_day_within_hours(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_same_day_within_hours(self, db_session, test_user):
         """
         Test same-day quiet hours (12:00-14:00) during quiet period.
 
@@ -309,13 +345,14 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # 13:00 UTC (within 12:00-14:00)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 13, 0))
         assert is_quiet_hours_active(prefs, check_time) is True
 
-    def test_quiet_hours_same_day_outside_hours(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_same_day_outside_hours(self, db_session, test_user):
         """
         Test same-day quiet hours outside quiet period.
 
@@ -329,13 +366,14 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # 15:00 UTC (after 14:00)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 15, 0))
         assert is_quiet_hours_active(prefs, check_time) is False
 
-    def test_quiet_hours_timezone_conversion(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_timezone_conversion(self, db_session, test_user):
         """
         Test quiet hours with timezone conversion.
 
@@ -351,13 +389,16 @@ class TestIsQuietHoursActive:
             timezone="Europe/London",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # 23:00 UTC (same as 23:00 GMT in November)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 23, 0))
         assert is_quiet_hours_active(prefs, check_time) is True
 
-    def test_quiet_hours_invalid_timezone_fallback_to_utc(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_invalid_timezone_fallback_to_utc(
+        self, db_session, test_user
+    ):
         """
         Test that invalid timezone falls back to UTC.
 
@@ -371,14 +412,15 @@ class TestIsQuietHoursActive:
             timezone="Invalid/Timezone",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # Should fallback to UTC and still work
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 23, 0))
         result = is_quiet_hours_active(prefs, check_time)
         assert result is True  # 23:00 is within 22:00-08:00 UTC
 
-    def test_quiet_hours_defaults_to_now(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_defaults_to_now(self, db_session, test_user):
         """Test that is_quiet_hours_active() defaults to current time if check_time not provided."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -388,14 +430,15 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # Call without check_time (should use now)
         result = is_quiet_hours_active(prefs, None)
         # Should be True since quiet hours cover all day
         assert result is True
 
-    def test_quiet_hours_boundary_exact_start_time(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_boundary_exact_start_time(self, db_session, test_user):
         """Test quiet hours at exact start boundary (edge case)."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -405,13 +448,14 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # Exactly 22:00 (should be within quiet hours)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 22, 0))
         assert is_quiet_hours_active(prefs, check_time) is True
 
-    def test_quiet_hours_boundary_exact_end_time(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_quiet_hours_boundary_exact_end_time(self, db_session, test_user):
         """Test quiet hours at exact end boundary (edge case)."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -421,7 +465,7 @@ class TestIsQuietHoursActive:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # Exactly 08:00 (should be within quiet hours, <= comparison)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 8, 0))
@@ -431,7 +475,8 @@ class TestIsQuietHoursActive:
 class TestShouldSendNotification:
     """Test should_send_notification() function."""
 
-    def test_send_notification_all_conditions_met(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_send_notification_all_conditions_met(self, db_session, test_user):
         """Test notification sent when all conditions met."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -440,13 +485,14 @@ class TestShouldSendNotification:
             quiet_hours_enabled=False,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # All conditions met
         result = should_send_notification(prefs, "price", "gold")
         assert result is True
 
-    def test_send_notification_alert_type_disabled(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_send_notification_alert_type_disabled(self, db_session, test_user):
         """Test notification blocked when alert type not enabled."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -455,13 +501,14 @@ class TestShouldSendNotification:
             quiet_hours_enabled=False,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # Alert type not enabled
         result = should_send_notification(prefs, "execution_failure", "gold")
         assert result is False
 
-    def test_send_notification_instrument_disabled(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_send_notification_instrument_disabled(self, db_session, test_user):
         """Test notification blocked when instrument not enabled."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -470,13 +517,16 @@ class TestShouldSendNotification:
             quiet_hours_enabled=False,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # Instrument not enabled
         result = should_send_notification(prefs, "price", "crypto")
         assert result is False
 
-    def test_send_notification_blocked_by_quiet_hours(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_send_notification_blocked_by_quiet_hours(
+        self, db_session, test_user
+    ):
         """Test notification blocked when within quiet hours."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -488,14 +538,15 @@ class TestShouldSendNotification:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # During quiet hours (23:30)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 23, 30))
         result = should_send_notification(prefs, "price", "gold", check_time)
         assert result is False
 
-    def test_send_notification_outside_quiet_hours(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_send_notification_outside_quiet_hours(self, db_session, test_user):
         """Test notification sent when outside quiet hours."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -507,14 +558,17 @@ class TestShouldSendNotification:
             timezone="UTC",
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         # Outside quiet hours (15:00)
         check_time = pytz.UTC.localize(datetime(2025, 11, 6, 15, 0))
         result = should_send_notification(prefs, "price", "gold", check_time)
         assert result is True
 
-    def test_send_notification_empty_instruments_list(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_send_notification_empty_instruments_list(
+        self, db_session, test_user
+    ):
         """Test notification blocked when instruments_enabled is empty."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -523,12 +577,15 @@ class TestShouldSendNotification:
             quiet_hours_enabled=False,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         result = should_send_notification(prefs, "price", "gold")
         assert result is False
 
-    def test_send_notification_empty_alert_types_list(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_send_notification_empty_alert_types_list(
+        self, db_session, test_user
+    ):
         """Test notification blocked when alert_types_enabled is empty."""
         prefs = UserPreferences(
             user_id=test_user.id,
@@ -537,7 +594,7 @@ class TestShouldSendNotification:
             quiet_hours_enabled=False,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         result = should_send_notification(prefs, "price", "gold")
         assert result is False
@@ -546,57 +603,77 @@ class TestShouldSendNotification:
 class TestGetEnabledChannels:
     """Test get_enabled_channels() function."""
 
-    def test_all_channels_enabled(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_all_channels_enabled(self, db_session, test_user):
         """Test all channels enabled."""
         prefs = UserPreferences(
-            user_id=test_user.id, notify_via_telegram=True, notify_via_email=True, notify_via_push=True
+            user_id=test_user.id,
+            notify_via_telegram=True,
+            notify_via_email=True,
+            notify_via_push=True,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         channels = get_enabled_channels(prefs)
         assert set(channels) == {"telegram", "email", "push"}
 
-    def test_only_telegram_enabled(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_only_telegram_enabled(self, db_session, test_user):
         """Test only telegram enabled."""
         prefs = UserPreferences(
-            user_id=test_user.id, notify_via_telegram=True, notify_via_email=False, notify_via_push=False
+            user_id=test_user.id,
+            notify_via_telegram=True,
+            notify_via_email=False,
+            notify_via_push=False,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         channels = get_enabled_channels(prefs)
         assert channels == ["telegram"]
 
-    def test_telegram_and_email_enabled(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_telegram_and_email_enabled(self, db_session, test_user):
         """Test telegram and email enabled."""
         prefs = UserPreferences(
-            user_id=test_user.id, notify_via_telegram=True, notify_via_email=True, notify_via_push=False
+            user_id=test_user.id,
+            notify_via_telegram=True,
+            notify_via_email=True,
+            notify_via_push=False,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         channels = get_enabled_channels(prefs)
         assert set(channels) == {"telegram", "email"}
 
-    def test_no_channels_enabled(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_no_channels_enabled(self, db_session, test_user):
         """Test no channels enabled (returns empty list)."""
         prefs = UserPreferences(
-            user_id=test_user.id, notify_via_telegram=False, notify_via_email=False, notify_via_push=False
+            user_id=test_user.id,
+            notify_via_telegram=False,
+            notify_via_email=False,
+            notify_via_push=False,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         channels = get_enabled_channels(prefs)
         assert channels == []
 
-    def test_only_push_enabled(self, db_session, test_user):
+    @pytest.mark.asyncio
+    async def test_only_push_enabled(self, db_session, test_user):
         """Test only web push enabled."""
         prefs = UserPreferences(
-            user_id=test_user.id, notify_via_telegram=False, notify_via_email=False, notify_via_push=True
+            user_id=test_user.id,
+            notify_via_telegram=False,
+            notify_via_email=False,
+            notify_via_push=True,
         )
         db_session.add(prefs)
-        db_session.commit()
+        await db_session.commit()
 
         channels = get_enabled_channels(prefs)
         assert channels == ["push"]

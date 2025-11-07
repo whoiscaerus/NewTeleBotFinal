@@ -13,12 +13,13 @@ from datetime import datetime
 from typing import Optional
 
 import pytz
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.prefs.models import UserPreferences
 
 
-def get_user_preferences(db: Session, user_id: int) -> UserPreferences:
+async def get_user_preferences(db: AsyncSession, user_id: str) -> UserPreferences:
     """
     Get user preferences, creating defaults if not exist.
 
@@ -38,7 +39,10 @@ def get_user_preferences(db: Session, user_id: int) -> UserPreferences:
     - Default: no quiet hours
     - Default: immediate digest
     """
-    prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user_id).first()
+    result = await db.execute(
+        select(UserPreferences).where(UserPreferences.user_id == user_id)
+    )
+    prefs = result.scalar_one_or_none()
 
     if not prefs:
         prefs = UserPreferences(
@@ -58,14 +62,14 @@ def get_user_preferences(db: Session, user_id: int) -> UserPreferences:
             max_alerts_per_hour=10,
         )
         db.add(prefs)
-        db.commit()
-        db.refresh(prefs)
+        await db.commit()
+        await db.refresh(prefs)
 
     return prefs
 
 
-def update_user_preferences(
-    db: Session, user_id: int, update_data: dict, skip_commit: bool = False
+async def update_user_preferences(
+    db: AsyncSession, user_id: str, update_data: dict, skip_commit: bool = False
 ) -> UserPreferences:
     """
     Update user preferences.
@@ -86,7 +90,7 @@ def update_user_preferences(
     - Updates updated_at timestamp
     - Audit log written by route handler (PR-008)
     """
-    prefs = get_user_preferences(db, user_id)
+    prefs = await get_user_preferences(db, user_id)
 
     # Update only fields present in update_data
     for field, value in update_data.items():
@@ -97,14 +101,14 @@ def update_user_preferences(
     prefs.updated_at = datetime.utcnow()
 
     if not skip_commit:
-        db.commit()
-        db.refresh(prefs)
+        await db.commit()
+        await db.refresh(prefs)
 
     return prefs
 
 
 def is_quiet_hours_active(
-    prefs: UserPreferences, check_time: Optional[datetime] = None
+    prefs: UserPreferences, check_time: datetime | None = None
 ) -> bool:
     """
     Check if current time is within user's quiet hours (do not disturb).
@@ -169,7 +173,7 @@ def should_send_notification(
     prefs: UserPreferences,
     alert_type: str,
     instrument: str,
-    check_time: Optional[datetime] = None,
+    check_time: datetime | None = None,
 ) -> bool:
     """
     Determine if notification should be sent based on user preferences.
