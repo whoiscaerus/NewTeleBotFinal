@@ -16,6 +16,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from backend.app.ai.guardrails import AIGuardrails
 from backend.app.ai.indexer import RAGIndexer
@@ -272,9 +273,9 @@ class AIAssistant:
             ValueError: If session not found or not owned by user
         """
         result = await db.execute(
-            select(ChatSession).where(
-                ChatSession.id == session_id, ChatSession.user_id == user_id
-            )
+            select(ChatSession)
+            .where(ChatSession.id == session_id, ChatSession.user_id == user_id)
+            .options(selectinload(ChatSession.messages))
         )
         session = result.scalar_one_or_none()
 
@@ -368,10 +369,13 @@ class AIAssistant:
         )
         total = count_result.scalar() or 0
 
-        # Get paginated sessions
+        # Get paginated sessions with message counts
+        from sqlalchemy.orm import selectinload
+
         result = await db.execute(
             select(ChatSession)
             .where(ChatSession.user_id == user_id)
+            .options(selectinload(ChatSession.messages))
             .order_by(desc(ChatSession.updated_at))
             .limit(limit)
             .offset(skip)
