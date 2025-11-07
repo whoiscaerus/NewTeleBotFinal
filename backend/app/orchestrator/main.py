@@ -23,6 +23,8 @@ from backend.app.core.errors import (
 )
 from backend.app.core.middleware import RequestIDMiddleware
 from backend.app.ea.routes import router as ea_router
+from backend.app.kb.routes import router as kb_router
+from backend.app.messaging.routes import router as messaging_router
 from backend.app.miniapp.auth_bridge import router as miniapp_router
 from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
@@ -84,6 +86,8 @@ def create_app() -> FastAPI:
     app.include_router(devices_router)
     app.include_router(ea_router)
     app.include_router(exec_router)
+    app.include_router(messaging_router)
+    app.include_router(kb_router)
     app.include_router(performance_router)
     app.include_router(revenue_router)
     app.include_router(trust_index_router)

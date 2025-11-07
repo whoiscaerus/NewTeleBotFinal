@@ -2,8 +2,8 @@
 
 ## ✅ IMPLEMENTATION STATUS: FULLY COMPLETE
 
-**Date**: January 30, 2025  
-**PR**: PR-055 - Client Analytics UI (Mini App) - CSV/JSON/PNG Export  
+**Date**: January 30, 2025
+**PR**: PR-055 - Client Analytics UI (Mini App) - CSV/JSON/PNG Export
 **Status**: **100% IMPLEMENTED** (Was incomplete, now fixed)
 
 ---
@@ -50,12 +50,12 @@
 class ChartRenderer:
     def __init__(self, dpi: int = 150, figsize: tuple[int, int] = (12, 6)):
         """Initialize chart renderer with Agg backend (server-safe)."""
-        
+
     def render_equity_chart(
         self, equity_data: EquitySeriesOut, title: Optional[str] = None
     ) -> bytes:
         """Render equity curve as PNG bytes.
-        
+
         - Plots equity over time with date formatting
         - Adds initial equity reference line
         - Includes summary annotation (return %, drawdown, days)
@@ -212,8 +212,8 @@ In production with real data, coverage would be ≥90%.
 ### Export Endpoints (3 total - all complete):
 
 #### 1. CSV Export ✅ COMPLETE
-**Endpoint**: `GET /api/v1/analytics/export/csv`  
-**Lines**: 626-730 in routes.py  
+**Endpoint**: `GET /api/v1/analytics/export/csv`
+**Lines**: 626-730 in routes.py
 **Status**: Fully implemented (existing)
 
 **Features**:
@@ -223,8 +223,8 @@ In production with real data, coverage would be ≥90%.
 - StreamingResponse with Content-Disposition filename
 
 #### 2. JSON Export ✅ COMPLETE
-**Endpoint**: `GET /api/v1/analytics/export/json`  
-**Lines**: 742-871 in routes.py  
+**Endpoint**: `GET /api/v1/analytics/export/json`
+**Lines**: 742-871 in routes.py
 **Status**: Fully implemented (existing)
 
 **Features**:
@@ -234,8 +234,8 @@ In production with real data, coverage would be ≥90%.
 - Graceful handling of metrics calculation failures
 
 #### 3. PNG Export ✅ COMPLETE (NEW)
-**Endpoint**: `GET /api/v1/analytics/export/png`  
-**Lines**: 873-967 in routes.py  
+**Endpoint**: `GET /api/v1/analytics/export/png`
+**Lines**: 873-967 in routes.py
 **Status**: **NOW IMPLEMENTED** (was missing)
 
 **Features**:
@@ -275,12 +275,12 @@ Author: Frank Cummings
 Date:   Thu Jan 30 2025
 
     feat(analytics): Complete PR-055 with PNG export + improved tests
-    
+
     - Added chart_renderer.py with matplotlib-based rendering
     - Implemented GET /export/png endpoint
     - Rewrote tests for production-quality validation
     - Added matplotlib==3.8.2 dependency
-    
+
     18/18 tests passing
     PR-055 now FULLY IMPLEMENTED per specification
 ```
@@ -330,7 +330,7 @@ PR-055 is **PRODUCTION READY**. To verify in production:
    curl -H "Authorization: Bearer <token>" \
         "http://localhost:8000/api/v1/analytics/export/png" \
         -o equity_chart.png
-   
+
    # Verify PNG signature:
    file equity_chart.png
    # Expected: equity_chart.png: PNG image data, ...
@@ -355,15 +355,15 @@ PR-055 is **PRODUCTION READY**. To verify in production:
 
 **PR-055: Client Analytics UI (Mini App) - CSV/JSON/PNG Export**
 
-✅ **100% IMPLEMENTED**  
-✅ **18/18 Tests Passing**  
-✅ **All Acceptance Criteria Met**  
-✅ **Production Ready**  
+✅ **100% IMPLEMENTED**
+✅ **18/18 Tests Passing**
+✅ **All Acceptance Criteria Met**
+✅ **Production Ready**
 ✅ **Pushed to GitHub**
 
-**Completion Date**: January 30, 2025  
-**Implementation Time**: ~2 hours (discovery + implementation + testing)  
-**Critical Gap Fixed**: PNG export endpoint now exists  
+**Completion Date**: January 30, 2025
+**Implementation Time**: ~2 hours (discovery + implementation + testing)
+**Critical Gap Fixed**: PNG export endpoint now exists
 **Test Quality**: Improved from status-code-only to full business logic validation
 
 ---

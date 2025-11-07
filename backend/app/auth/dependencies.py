@@ -7,7 +7,7 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.models import User
+from backend.app.auth.models import User, UserRole
 from backend.app.auth.utils import decode_token
 from backend.app.core.db import get_db
 from backend.app.core.logging import get_logger
@@ -86,5 +86,31 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token") from e
 
 
+async def require_owner(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Verify current user has owner role.
+
+    Args:
+        current_user: Current authenticated user
+
+    Returns:
+        User: Current user if owner
+
+    Raises:
+        HTTPException: 403 if user is not owner
+
+    Example:
+        >>> user = await require_owner(current_user=owner_user)
+        >>> assert user.role == UserRole.OWNER
+    """
+    if current_user.role != UserRole.OWNER:
+        raise HTTPException(
+            status_code=403,
+            detail="This operation requires owner privileges",
+        )
+    return current_user
+
+
 # Export for use in other modules
-__all__ = ["get_current_user", "get_bearer_token"]
+__all__ = ["get_current_user", "get_bearer_token", "require_owner"]

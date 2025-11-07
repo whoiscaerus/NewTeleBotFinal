@@ -1,3 +1,8 @@
+# Documentation - files with potentially sensitive examples
+PR_*_SENDERS_COMPLETE.md
+PR_*_SESSION*.md
+PR_*_QUICK*.md
+
 # Python
 __pycache__/
 *.py[cod]

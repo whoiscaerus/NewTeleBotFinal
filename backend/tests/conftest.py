@@ -526,6 +526,70 @@ async def test_user(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
+async def owner_user(db_session: AsyncSession):
+    """Create an owner user for admin/owner-only tests."""
+    from uuid import uuid4
+
+    from backend.app.auth.models import User, UserRole
+    from backend.app.auth.utils import hash_password
+
+    user = User(
+        id=str(uuid4()),
+        email="owner@example.com",
+        telegram_user_id="111111111",
+        password_hash=hash_password("owner_password"),
+        role=UserRole.OWNER,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def regular_user(db_session: AsyncSession):
+    """Create a regular (non-admin) user for authorization tests."""
+    from uuid import uuid4
+
+    from backend.app.auth.models import User, UserRole
+    from backend.app.auth.utils import hash_password
+
+    user = User(
+        id=str(uuid4()),
+        email="regular@example.com",
+        telegram_user_id="222222222",
+        password_hash=hash_password("regular_password"),
+        role=UserRole.USER,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def owner_auth_headers(owner_user) -> dict:
+    """Create JWT authentication headers for owner user."""
+    from backend.app.auth.utils import create_access_token
+
+    token = create_access_token(
+        subject=owner_user.id, role=owner_user.role, expires_delta=None
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def regular_auth_headers(regular_user) -> dict:
+    """Create JWT authentication headers for regular user."""
+    from backend.app.auth.utils import create_access_token
+
+    token = create_access_token(
+        subject=regular_user.id, role=regular_user.role, expires_delta=None
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
 async def test_client(db_session: AsyncSession):
     """Create a test client for device registration."""
     from uuid import uuid4

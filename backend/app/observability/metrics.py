@@ -94,6 +94,43 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Messaging metrics (PR-060)
+        self.messages_enqueued_total = Counter(
+            "messages_enqueued_total",
+            "Total messages enqueued",
+            ["priority", "channel"],  # transactional/campaign, email/telegram/push
+            registry=self.registry,
+        )
+
+        self.messages_sent_total = Counter(
+            "messages_sent_total",
+            "Total messages sent successfully",
+            ["channel", "type"],  # email/telegram/push, alert/campaign/etc
+            registry=self.registry,
+        )
+
+        self.message_fail_total = Counter(
+            "message_fail_total",
+            "Total message send failures",
+            ["reason", "channel"],  # timeout/bounce/rate_limit, email/telegram/push
+            registry=self.registry,
+        )
+
+        self.message_send_duration_seconds = Histogram(
+            "message_send_duration_seconds",
+            "Message send duration",
+            ["channel"],
+            buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 5.0),
+            registry=self.registry,
+        )
+
+        self.position_failure_alerts_sent_total = Counter(
+            "position_failure_alerts_sent_total",
+            "Total position failure alerts sent (PR-104 integration)",
+            ["type", "channel"],  # entry/sl/tp, email/telegram/push
+            registry=self.registry,
+        )
+
         # Business metrics (placeholders for trading domains)
         self.signals_ingested_total = Counter(
             "signals_ingested_total",
@@ -634,3 +671,11 @@ def get_metrics() -> MetricsCollector:
     if _metrics is None:
         _metrics = MetricsCollector()
     return _metrics
+
+
+# Export messaging metrics for convenient access (PR-060)
+messages_enqueued_total = metrics.messages_enqueued_total
+messages_sent_total = metrics.messages_sent_total
+message_fail_total = metrics.message_fail_total
+message_send_duration_seconds = metrics.message_send_duration_seconds
+position_failure_alerts_sent_total = metrics.position_failure_alerts_sent_total

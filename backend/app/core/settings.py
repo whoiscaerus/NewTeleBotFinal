@@ -89,6 +89,39 @@ class RedisSettings(BaseSettings):
     )
 
 
+class SmtpSettings(BaseSettings):
+    """SMTP email settings (PR-060)."""
+
+    host: str = Field(default="smtp.gmail.com", alias="SMTP_HOST")
+    port: int = Field(default=587, alias="SMTP_PORT")
+    user: str = Field(default="", alias="SMTP_USER")
+    password: str = Field(default="", alias="SMTP_PASSWORD")
+    from_email: str = Field(default="noreply@example.com", alias="SMTP_FROM")
+    use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",
+    )
+
+
+class PushSettings(BaseSettings):
+    """Push notification settings for PWA (PR-060)."""
+
+    vapid_private_key: str = Field(default="", alias="PUSH_VAPID_PRIVATE_KEY")
+    vapid_public_key: str = Field(default="", alias="PUSH_VAPID_PUBLIC_KEY")
+    vapid_email: str = Field(default="admin@example.com", alias="PUSH_VAPID_EMAIL")
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",
+    )
+
+
 class SecuritySettings(BaseSettings):
     """Security settings (JWT, hashing, etc.)."""
 
@@ -237,6 +270,8 @@ class Settings(BaseSettings):
     app: AppSettings = Field(default_factory=AppSettings)
     db: DbSettings = Field(default_factory=DbSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
+    smtp: SmtpSettings = Field(default_factory=SmtpSettings)
+    push: PushSettings = Field(default_factory=PushSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     payments: PaymentSettings = Field(default_factory=PaymentSettings)
     signals: SignalsSettings = Field(default_factory=SignalsSettings)

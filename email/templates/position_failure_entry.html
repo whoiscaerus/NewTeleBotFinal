@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚠️ Manual Trade Entry Required - {{ instrument }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .alert-badge {
+            display: inline-block;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .alert-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .alert-box p {
+            margin: 0;
+            color: #856404;
+            font-weight: 500;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .details-table tr {
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .details-table tr:last-child {
+            border-bottom: none;
+        }
+        .details-table td {
+            padding: 12px 0;
+        }
+        .details-table td:first-child {
+            font-weight: 600;
+            color: #333;
+            width: 40%;
+        }
+        .details-table td:last-child {
+            color: #666;
+        }
+        .error-box {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .error-box strong {
+            color: #721c24;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .error-box p {
+            margin: 0;
+            color: #721c24;
+        }
+        .action-box {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .action-box p {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #ffc107;
+            color: #000;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #ff9800;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .approval-id {
+            font-family: 'Courier New', monospace;
+            background-color: #f5f5f5;
+            padding: 8px 12px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #666;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .details-table td:first-child {
+                width: 35%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>⚠️ Manual Action Required</h2>
+            <div class="alert-badge">Trade Entry Failed</div>
+        </div>
+
+        <div class="content">
+            <div class="alert-box">
+                <p>Your trade entry failed and requires manual execution in your broker platform.</p>
+            </div>
+
+            <table class="details-table">
+                <tr>
+                    <td>Instrument</td>
+                    <td><strong>{{ instrument }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Side</td>
+                    <td>
+                        {% if side == "buy" %}
+                        🟢 <strong>BUY</strong>
+                        {% else %}
+                        🔴 <strong>SELL</strong>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Entry Price</td>
+                    <td>{{ entry_price }}</td>
+                </tr>
+                <tr>
+                    <td>Volume</td>
+                    <td>{{ volume }} lots</td>
+                </tr>
+            </table>
+
+            <div class="error-box">
+                <strong>Error Details</strong>
+                <p>{{ error_reason }}</p>
+            </div>
+
+            <div class="action-box">
+                <p><strong>What to do next?</strong></p>
+                <p>Please execute this trade manually in your broker platform using the details above.</p>
+                <a href="https://yourapp.com/dashboard/approvals/{{ approval_id }}" class="button">View Approval Details</a>
+            </div>
+
+            <div class="approval-id">
+                Approval ID: {{ approval_id }}
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated notification from your trading platform.</p>
+            <p>If you have questions, please contact support.</p>
+            <p>&copy; 2025 Your Trading Platform. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

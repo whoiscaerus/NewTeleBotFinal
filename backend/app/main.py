@@ -14,6 +14,7 @@ from backend.app.clients.exec.routes import router as exec_router
 from backend.app.core.settings import get_settings
 from backend.app.ea.routes_admin import router as ea_admin_router
 from backend.app.exports.routes import router as exports_router
+from backend.app.messaging.routes import router as messaging_router
 from backend.app.polling.routes import router as polling_v2_router
 from backend.app.prefs.routes import router as prefs_router
 from backend.app.public.performance_routes import router as performance_router
@@ -69,6 +70,7 @@ app.include_router(exec_router, prefix="/api/v1", tags=["execution"])
 app.include_router(ea_admin_router, tags=["executions"])
 app.include_router(exports_router, prefix="/api/v1", tags=["exports"])
 app.include_router(trust_router, tags=["trust"])
+app.include_router(messaging_router, tags=["messaging"])
 
 
 @app.get("/")
