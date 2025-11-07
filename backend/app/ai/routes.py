@@ -6,6 +6,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from prometheus_client import Counter, Histogram
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.ai.assistant import AIAssistant
@@ -24,6 +25,31 @@ from backend.app.core.db import get_db
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
+
+# Prometheus metrics for AI operations
+ai_chat_requests_total = Counter(
+    "ai_chat_requests_total",
+    "Total AI chat requests (result: success|blocked|error, escalated: true|false)",
+    ["result", "escalated"]
+)
+
+ai_guard_blocks_total = Counter(
+    "ai_guard_blocks_total",
+    "Total guardrail policy blocks (policy: api_key|pii|financial|trading|config)",
+    ["policy"]
+)
+
+ai_rag_searches_total = Counter(
+    "ai_rag_searches_total",
+    "Total RAG KB searches (hit: true|false)",
+    ["hit"]
+)
+
+ai_response_confidence = Histogram(
+    "ai_response_confidence",
+    "Distribution of AI response confidence scores",
+    buckets=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+)
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
@@ -73,23 +99,30 @@ async def chat(
             if response.requires_escalation
             else ("blocked" if response.blocked_by_policy else "success")
         )
+        escalated = str(response.requires_escalation).lower()
+        ai_chat_requests_total.labels(result=result, escalated=escalated).inc()
+        ai_response_confidence.observe(response.confidence_score)
+        
         logger.info(
             "Chat response generated",
             extra={
                 "user_id": str(current_user.id),
                 "result": result,
                 "confidence": response.confidence_score,
+                "escalated": response.requires_escalation,
             },
         )
 
         return response
 
     except ValueError as e:
+        ai_chat_requests_total.labels(result="error", escalated="false").inc()
         logger.warning(
             f"Chat validation error: {e}", extra={"user_id": str(current_user.id)}
         )
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        ai_chat_requests_total.labels(result="error", escalated="false").inc()
         logger.error(f"Chat error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -106,24 +139,37 @@ async def list_sessions(
 
     Returns paginated list of sessions (most recent first).
     """
-    if limit > 100:
-        limit = 100
+    try:
+        if limit > 100:
+            limit = 100
 
-    sessions, _ = await _assistant.list_user_sessions(
-        db, current_user.id, limit=limit, skip=skip
-    )
-
-    return [
-        ChatSessionOut(
-            id=UUID(s["id"]),
-            title=s["title"],
-            escalated=s["escalated"],
-            message_count=s["message_count"],
-            created_at=s["created_at"],
-            updated_at=s["updated_at"],
+        sessions, _ = await _assistant.list_user_sessions(
+            db, current_user.id, limit=limit, skip=skip
         )
-        for s in sessions
-    ]
+
+        logger.info(
+            "Sessions listed",
+            extra={
+                "user_id": str(current_user.id),
+                "session_count": len(sessions),
+            },
+        )
+
+        return [
+            ChatSessionOut(
+                id=UUID(s["id"]),
+                title=s["title"],
+                escalated=s["escalated"],
+                message_count=s["message_count"],
+                created_at=s["created_at"],
+                updated_at=s["updated_at"],
+            )
+            for s in sessions
+        ]
+
+    except Exception as e:
+        logger.error(f"Error listing sessions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list sessions")
 
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionDetailOut)
@@ -140,6 +186,15 @@ async def get_session(
     try:
         history = await _assistant.get_session_history(db, current_user.id, session_id)
 
+        logger.info(
+            "Session retrieved",
+            extra={
+                "user_id": str(current_user.id),
+                "session_id": str(session_id),
+                "message_count": len(history.get("messages", [])),
+            },
+        )
+
         return ChatSessionDetailOut(
             id=UUID(history["session"]["id"]),
             title=history["session"]["title"],
@@ -151,7 +206,11 @@ async def get_session(
         )
 
     except ValueError as e:
+        logger.error(f"Session not found: {e}")
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error retrieving session: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve session")
 
 
 @router.post("/sessions/{session_id}/escalate", status_code=204)
@@ -170,16 +229,26 @@ async def escalate_session(
         await _assistant.escalate_to_human(
             db, current_user.id, session_id, request.reason
         )
+
+        # Track escalation in telemetry
+        ai_chat_requests_total.labels(result="escalated", escalated="true").inc()
+
         logger.info(
             "Session escalated manually",
             extra={
                 "user_id": str(current_user.id),
                 "session_id": str(session_id),
                 "reason": request.reason,
+                "escalated": True,
             },
         )
+
     except ValueError as e:
+        logger.error(f"Escalation failed - session not found: {e}")
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error escalating session: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to escalate session")
 
 
 # Admin-only endpoints
@@ -199,7 +268,17 @@ async def build_index(
     """
     try:
         count = await _indexer.index_all_published(db)
-        logger.info("Index rebuild triggered", extra={"indexed_count": count})
+
+        # Track successful index build
+        ai_rag_searches_total.labels(hit="true").inc()
+
+        logger.info(
+            "Index rebuild triggered",
+            extra={
+                "admin_id": str(admin_user.id),
+                "indexed_count": count,
+            },
+        )
 
         return {"status": "indexed", "count": count}
 
@@ -218,12 +297,35 @@ async def index_status(
 
     Admin only. Returns indexing progress and stats.
     """
-    status_dict = await _indexer.get_index_status(db)
+    try:
+        status_dict = await _indexer.get_index_status(db)
 
-    return IndexStatusOut(
-        total_articles=status_dict["total_articles"],
-        indexed_articles=status_dict["indexed_articles"],
-        pending_articles=status_dict["pending_articles"],
-        last_indexed_at=status_dict["last_indexed_at"],
-        embedding_model=status_dict["embedding_model"],
-    )
+        # Track index status check
+        indexed_pct = (
+            status_dict["indexed_articles"] / status_dict["total_articles"]
+            if status_dict["total_articles"] > 0
+            else 1.0
+        )
+        ai_response_confidence.observe(indexed_pct)
+
+        logger.info(
+            "Index status retrieved",
+            extra={
+                "admin_id": str(admin_user.id),
+                "total_articles": status_dict["total_articles"],
+                "indexed_articles": status_dict["indexed_articles"],
+                "indexed_pct": indexed_pct,
+            },
+        )
+
+        return IndexStatusOut(
+            total_articles=status_dict["total_articles"],
+            indexed_articles=status_dict["indexed_articles"],
+            pending_articles=status_dict["pending_articles"],
+            last_indexed_at=status_dict["last_indexed_at"],
+            embedding_model=status_dict["embedding_model"],
+        )
+
+    except Exception as e:
+        logger.error(f"Error retrieving index status: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve index status")
