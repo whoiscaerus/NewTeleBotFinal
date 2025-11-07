@@ -184,11 +184,22 @@ class AIAssistant:
                 escalation_reason = None
 
         # 7. Store AI response
+        # Convert citations to dict with string UUIDs for JSON serialization
+        citations_data = [
+            {
+                "article_id": str(c.article_id),
+                "title": c.title,
+                "url": c.url,
+                "excerpt": c.excerpt,
+            }
+            for c in citations
+        ]
+
         assistant_msg = ChatMessage(
             session_id=session.id,
             role=ChatMessageRole.ASSISTANT,
             content=response_text,
-            citations=[c.dict() for c in citations],
+            citations=citations_data,
             blocked_by_policy=escalation_reason if requires_escalation else None,
             confidence_score=0.85 if similar_articles else 0.0,
         )

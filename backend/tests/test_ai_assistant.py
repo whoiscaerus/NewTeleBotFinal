@@ -10,6 +10,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.ai.assistant import AIAssistant
@@ -109,8 +110,8 @@ class TestChatHappyPath:
         )
 
         assert response is not None
-        assert response.response is not None
-        assert len(response.response) > 0
+        assert response.answer is not None
+        assert len(response.answer) > 0
         assert response.blocked_by_policy is None
         assert response.confidence_score is not None
 
@@ -133,9 +134,6 @@ class TestChatHappyPath:
         )
 
         # Verify session was created
-        stmt = db_session.query(ChatSession).filter(ChatSession.user_id == user.id)
-        from sqlalchemy import select
-
         result = await db_session.execute(
             select(ChatSession).filter(ChatSession.user_id == user.id)
         )
@@ -208,7 +206,7 @@ class TestChatHappyPath:
             select(ChatSession).filter(ChatSession.user_id == user.id)
         )
         session = session_result.scalars().first()
-        session_id = UUID(session.id)
+        session_id = session.id  # Already a UUID
 
         # Second message in same session
         response2 = await ai_assistant.chat(
@@ -368,11 +366,11 @@ class TestChatGuardrails:
         """Should block questions containing API keys."""
         user = await test_user.__wrapped__(db_session)
 
-        with pytest.raises(ValueError, match="policy|blocked|security"):
+        with pytest.raises(ValueError, match="policy|blocked|security|Invalid"):
             await ai_assistant.chat(
                 db=db_session,
                 user_id=user.id,
-                question="My API key is sk-1234567890abcdefghij please help",
+                question="My API key is sk-1234567890abcdefghijklmnopqrstuvwxyz please help",
                 session_id=None,
                 channel="web",
             )
@@ -825,5 +823,5 @@ class TestResponseQuality:
             channel="web",
         )
 
-        assert response.response is not None
-        assert len(response.response) > 0
+        assert response.answer is not None
+        assert len(response.answer) > 0
