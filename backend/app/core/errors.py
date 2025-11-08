@@ -38,16 +38,16 @@ class ProblemDetail(BaseModel):
     status: int = Field(..., description="HTTP status code")
     detail: str = Field(..., description="Detailed error message for client")
     instance: str | None = Field(
-        None, description="URI of problematic resource (e.g., /api/v1/users/123)"
+        default=None, description="URI of problematic resource (e.g., /api/v1/users/123)"
     )
     request_id: str | None = Field(
-        None, description="Correlation ID for tracing (from X-Request-Id)"
+        default=None, description="Correlation ID for tracing (from X-Request-Id)"
     )
     timestamp: str | None = Field(
-        None, description="ISO 8601 timestamp when error occurred"
+        default=None, description="ISO 8601 timestamp when error occurred"
     )
     errors: list[dict[str, str]] | None = Field(
-        None, description="Field-level validation errors"
+        default=None, description="Field-level validation errors"
     )
 
     model_config = ConfigDict(

@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
-@rate_limit(max_tokens=10, refill_rate=0.17, window_seconds=60)  # 10/min
+@rate_limit(max_tokens=10, refill_rate=1, window_seconds=60)  # 10 initial, refills at 1/sec
 async def register(
     request: Request,
     user_create: UserCreate,
@@ -76,7 +76,7 @@ async def register(
 
 
 @router.post("/login", response_model=LoginResponse)
-@rate_limit(max_tokens=10, refill_rate=0.17, window_seconds=60)  # 10/min
+@rate_limit(max_tokens=10, refill_rate=1, window_seconds=60)  # 10 initial, refills at 1/sec
 @abuse_throttle(max_failures=5, lockout_seconds=300)  # 5 failures = 5 min lockout
 async def login(
     request: Request,
