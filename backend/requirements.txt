@@ -43,6 +43,16 @@ python-telegram-bot==20.0
 # Code Quality
 black==23.12.1
 ruff==0.1.11
+mypy==1.7.1
+
+# Type Stubs (Development Only - Not Needed in Production)
+types-redis==4.6.0.20241004
+types-requests==2.32.4.20250913
+types-passlib==1.7.7.20250602
+types-aiofiles==25.1.0.20251011
+types-Pillow==10.2.0.20240822
+types-python-dateutil==2.9.0.20251108
+boto3-stubs[s3,sqs,sns]==1.40.64
 
 # Analytics & Charts (PR-055)
 matplotlib==3.8.2
