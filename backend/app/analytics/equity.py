@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -243,7 +243,7 @@ class EquityEngine:
             max_date = min(max_date, end_date)
 
         # Group trades by date
-        trades_by_date = {}
+        trades_by_date: dict[date, list[Any]] = {}
         for trade in trades:
             trade_date = trade.exit_time.date()
             if min_date <= trade_date <= max_date:
@@ -271,7 +271,8 @@ class EquityEngine:
             if current_date in trades_by_date:
                 # Sum PnL for trades on this date
                 daily_pnl = sum(
-                    Decimal(str(t.net_pnl)) for t in trades_by_date[current_date]
+                    (Decimal(str(t.net_pnl)) for t in trades_by_date[current_date]),
+                    Decimal(0)
                 )
                 cumulative_pnl += daily_pnl
                 last_equity = initial_balance + cumulative_pnl

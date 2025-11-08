@@ -226,7 +226,7 @@ class DrawdownAnalyzer:
             )
         )
         result = await self.db.execute(query)
-        snapshots = result.scalars().all()
+        snapshots = list(result.scalars().all())
 
         if not snapshots:
             self.logger.warning(

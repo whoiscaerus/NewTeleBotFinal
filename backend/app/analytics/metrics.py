@@ -15,7 +15,7 @@ Risk-free rate configurable via environment.
 import math
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -202,14 +202,14 @@ class PerformanceMetrics:
         if not trades:
             return Decimal(0)
 
-        winning_pnl = sum(pnl for pnl, is_win in trades if is_win)
-        losing_pnl = sum(pnl for pnl, is_win in trades if not is_win)
+        winning_pnl = sum((pnl for pnl, is_win in trades if is_win), Decimal(0))
+        losing_pnl = sum((pnl for pnl, is_win in trades if not is_win), Decimal(0))
 
         if losing_pnl >= 0:
             # No losses
             return Decimal(999) if winning_pnl > 0 else Decimal(0)
 
-        profit_factor = winning_pnl / abs(losing_pnl)
+        profit_factor = Decimal(winning_pnl) / abs(Decimal(losing_pnl))
 
         return profit_factor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -286,7 +286,7 @@ class PerformanceMetrics:
         self,
         user_id: str,
         window_days: int = 90,
-    ) -> dict[str, Decimal]:
+    ) -> dict[str, Decimal | int]:
         """Get all metrics for a rolling window.
 
         Args:
@@ -381,7 +381,7 @@ class PerformanceMetrics:
     async def get_all_window_metrics(
         self,
         user_id: str,
-    ) -> dict[int, dict[str, Decimal]]:
+    ) -> dict[int, dict[str, Decimal | int]]:
         """Get metrics for all standard windows (30, 90, 365 days).
 
         Args:
@@ -493,7 +493,7 @@ def calculate_calmar_ratio(profits: list[float]) -> float:
     return annual_return / max_dd
 
 
-def calculate_profit_factor(trades: list) -> float:
+def calculate_profit_factor(trades: list[Any]) -> float:
     """Calculate profit factor from trade list.
 
     Gross wins / gross losses.
@@ -507,10 +507,10 @@ def calculate_profit_factor(trades: list) -> float:
     if not trades:
         return 0.0
 
-    gross_wins = sum(t.profit for t in trades if t.profit and t.profit > 0)
-    gross_losses = sum(abs(t.profit) for t in trades if t.profit and t.profit < 0)
+    gross_wins = sum(float(t.profit) for t in trades if t.profit and t.profit > 0)
+    gross_losses = sum(abs(float(t.profit)) for t in trades if t.profit and t.profit < 0)
 
     if gross_losses == 0:
         return 0.0
 
-    return gross_wins / gross_losses
+    return float(gross_wins / gross_losses)
