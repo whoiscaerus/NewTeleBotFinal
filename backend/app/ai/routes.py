@@ -85,7 +85,7 @@ async def chat(
     try:
         response = await _assistant.chat(
             db=db,
-            user_id=current_user.id,
+            user_id=UUID(current_user.id) if isinstance(current_user.id, str) else current_user.id,
             question=request.question,
             session_id=request.session_id,
             channel=request.channel,
@@ -142,7 +142,7 @@ async def list_sessions(
             limit = 100
 
         sessions, _ = await _assistant.list_user_sessions(
-            db, current_user.id, limit=limit, skip=skip
+            db, UUID(current_user.id) if isinstance(current_user.id, str) else current_user.id, limit=limit, skip=skip
         )
 
         logger.info(
@@ -182,7 +182,7 @@ async def get_session(
     Returns all messages with citations and metadata.
     """
     try:
-        history = await _assistant.get_session_history(db, current_user.id, session_id)
+        history = await _assistant.get_session_history(db, UUID(current_user.id) if isinstance(current_user.id, str) else current_user.id, session_id)
 
         logger.info(
             "Session retrieved",
@@ -226,7 +226,7 @@ async def escalate_session(
     """
     try:
         await _assistant.escalate_to_human(
-            db, current_user.id, session_id, request.reason
+            db, UUID(current_user.id) if isinstance(current_user.id, str) else current_user.id, session_id, request.reason
         )
 
         # Create support ticket for escalation
@@ -250,10 +250,10 @@ async def escalate_session(
         # Send owner notification for high-severity tickets
         if ticket.severity == "high" or ticket.severity == "urgent":
             await telegram_owner.send_owner_notification(
-                ticket_id=ticket.id,
+                ticket_id=str(ticket.id),
                 user_id=current_user.id,
-                subject=ticket.subject,
-                severity=ticket.severity,
+                subject=str(ticket.subject),
+                severity=str(ticket.severity),
                 channel="ai_chat",
             )
 

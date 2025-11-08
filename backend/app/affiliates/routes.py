@@ -104,7 +104,7 @@ async def get_stats(
     try:
         service = AffiliateService(db)
         stats = await service.get_stats(current_user.id)
-        return stats
+        return AffiliateStatsOut(**stats)
 
     except HTTPException:
         raise
@@ -129,7 +129,7 @@ async def request_payout(
     """
     try:
         service = AffiliateService(db)
-        payout = await service.request_payout(current_user.id, request.amount)
+        payout = await service.request_payout(current_user.id)
 
         logger.info(
             f"Payout requested: {current_user.id} {request.amount}",
