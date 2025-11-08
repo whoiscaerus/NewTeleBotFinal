@@ -374,6 +374,21 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # PR-071: Strategy Engine Integration metrics
+        self.strategy_runs_total = Counter(
+            "strategy_runs_total",
+            "Total strategy execution runs",
+            ["name"],  # fib_rsi, ppo_gold, etc.
+            registry=self.registry,
+        )
+
+        self.strategy_emit_total = Counter(
+            "strategy_emit_total",
+            "Total signals emitted by strategies",
+            ["name"],  # fib_rsi, ppo_gold, etc.
+            registry=self.registry,
+        )
+
         logger.info("Metrics collector initialized")
 
     def record_http_request(
