@@ -23,10 +23,10 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User
 from backend.app.payments.models import EntitlementRecord, PaymentRecord
 from backend.app.payments.service import StripeService
 from backend.app.subscriptions.models import Subscription, SubscriptionTier
-from backend.app.users.models import User
 
 # ============================================================================
 # Fixtures

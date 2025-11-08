@@ -10,8 +10,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
+from backend.app.auth.models import User
 from backend.app.prefs.models import UserPreferences
-from backend.app.users.models import User
 
 
 class TestGetPreferencesEndpoint:

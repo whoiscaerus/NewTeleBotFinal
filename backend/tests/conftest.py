@@ -29,7 +29,7 @@ if "MetaTrader5" not in sys.modules:
 
 import pytest
 import pytest_asyncio
-from fastapi import Header
+from fastapi import Header, HTTPException
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -179,6 +179,27 @@ async def client(db_session: AsyncSession, monkeypatch):
     monkeypatch.setattr(
         "backend.app.core.decorators.get_rate_limiter", mock_get_rate_limiter
     )
+
+    # Override get_current_user to use mock user from test fixture
+    from backend.app.auth.dependencies import get_current_user
+
+    # Default mock user (will be overridden by fixture-specific users)
+    async def mock_get_current_user():
+        """Mock auth - returns default test user.
+
+        Tests using auth_headers fixture will have their specific user injected
+        by adding the user to the db_session before calling endpoints.
+        """
+        # Return the first user from the database if any
+        from sqlalchemy import select
+
+        result = await db_session.execute(select(User).limit(1))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return user
+
+    app.dependency_overrides[get_current_user] = mock_get_current_user
 
     # Override get_device_auth to bypass signature verification in tests
     from backend.app.clients.devices.models import Device
@@ -539,6 +560,27 @@ async def owner_user(db_session: AsyncSession):
         telegram_user_id="111111111",
         password_hash=hash_password("owner_password"),
         role=UserRole.OWNER,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def admin_user(db_session: AsyncSession):
+    """Create an admin user for admin-only tests."""
+    from uuid import uuid4
+
+    from backend.app.auth.models import User, UserRole
+    from backend.app.auth.utils import hash_password
+
+    user = User(
+        id=str(uuid4()),
+        email="admin@example.com",
+        telegram_user_id="333333333",
+        password_hash=hash_password("admin_password"),
+        role=UserRole.ADMIN,
     )
     db_session.add(user)
     await db_session.commit()

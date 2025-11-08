@@ -30,25 +30,23 @@ logger = logging.getLogger(__name__)
 ai_chat_requests_total = Counter(
     "ai_chat_requests_total",
     "Total AI chat requests (result: success|blocked|error, escalated: true|false)",
-    ["result", "escalated"]
+    ["result", "escalated"],
 )
 
 ai_guard_blocks_total = Counter(
     "ai_guard_blocks_total",
     "Total guardrail policy blocks (policy: api_key|pii|financial|trading|config)",
-    ["policy"]
+    ["policy"],
 )
 
 ai_rag_searches_total = Counter(
-    "ai_rag_searches_total",
-    "Total RAG KB searches (hit: true|false)",
-    ["hit"]
+    "ai_rag_searches_total", "Total RAG KB searches (hit: true|false)", ["hit"]
 )
 
 ai_response_confidence = Histogram(
     "ai_response_confidence",
     "Distribution of AI response confidence scores",
-    buckets=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    buckets=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
 )
 
 
@@ -102,7 +100,7 @@ async def chat(
         escalated = str(response.requires_escalation).lower()
         ai_chat_requests_total.labels(result=result, escalated=escalated).inc()
         ai_response_confidence.observe(response.confidence_score)
-        
+
         logger.info(
             "Chat response generated",
             extra={
@@ -223,21 +221,51 @@ async def escalate_session(
     """
     Manually escalate a chat session to human support.
 
-    Requires reason for escalation.
+    Requires reason for escalation. Automatically creates a support ticket
+    for human triage and response.
     """
     try:
         await _assistant.escalate_to_human(
             db, current_user.id, session_id, request.reason
         )
 
+        # Create support ticket for escalation
+        from backend.app.messaging.integrations import telegram_owner
+        from backend.app.support import service as support_service
+
+        ticket = await support_service.create_ticket(
+            db=db,
+            user_id=current_user.id,
+            subject=f"AI Chat Escalation: {request.reason[:150]}",
+            body=f"AI chat session escalated to human support.\n\nReason: {request.reason}\n\nSession ID: {session_id}",
+            severity="high",  # Manual escalations are high priority
+            channel="ai_chat",
+            context={
+                "session_id": str(session_id),
+                "escalation_reason": request.reason,
+                "escalation_type": "manual",
+            },
+        )
+
+        # Send owner notification for high-severity tickets
+        if ticket.severity == "high" or ticket.severity == "urgent":
+            await telegram_owner.send_owner_notification(
+                ticket_id=ticket.id,
+                user_id=current_user.id,
+                subject=ticket.subject,
+                severity=ticket.severity,
+                channel="ai_chat",
+            )
+
         # Track escalation in telemetry
         ai_chat_requests_total.labels(result="escalated", escalated="true").inc()
 
         logger.info(
-            "Session escalated manually",
+            "Session escalated manually with ticket created",
             extra={
                 "user_id": str(current_user.id),
                 "session_id": str(session_id),
+                "ticket_id": ticket.id,
                 "reason": request.reason,
                 "escalated": True,
             },

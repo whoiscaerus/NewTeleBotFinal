@@ -3,9 +3,8 @@
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, String
-from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from backend.app.core.db import Base
 
 
 class PaymentRecord(Base):

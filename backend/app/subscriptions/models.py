@@ -5,9 +5,8 @@ from decimal import Decimal
 from enum import Enum
 
 from sqlalchemy import Column, DateTime, Numeric, String
-from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from backend.app.core.db import Base
 
 
 class SubscriptionTier(str, Enum):

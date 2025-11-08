@@ -23,6 +23,8 @@ from backend.app.messaging.bus import enqueue_campaign, enqueue_message
 
 templates_file_path = os.path.join(os.path.dirname(__file__), "templates.py")
 spec = importlib.util.spec_from_file_location("templates_module", templates_file_path)
+if spec is None or spec.loader is None:
+    raise ImportError(f"Could not load templates module from {templates_file_path}")
 templates_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(templates_module)
 

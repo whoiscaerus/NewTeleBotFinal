@@ -24,7 +24,7 @@ Example:
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -183,7 +183,7 @@ class HeartbeatManager:
 
     async def start_background_heartbeat(
         self,
-        metrics_provider: Callable[[], dict[str, Any]],
+        metrics_provider: Callable[[], Coroutine[Any, Any, dict[str, Any]]],
     ) -> asyncio.Task[None]:
         """Start background heartbeat task.
 

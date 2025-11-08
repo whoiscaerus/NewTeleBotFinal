@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.accounts.routes import router as accounts_router
 from backend.app.affiliates.routes import router as affiliates_router
+from backend.app.ai.routes import router as ai_router
 from backend.app.alerts.routes import router as alerts_router
 from backend.app.analytics.routes import router as analytics_router
 from backend.app.approvals.routes import router as approvals_router
@@ -30,6 +31,7 @@ from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.revenue.routes import router as revenue_router
 from backend.app.signals.routes import router as signals_router
+from backend.app.support.routes import router as support_router
 from backend.app.telegram.webhook import router as telegram_router
 from backend.app.trading.routes import router as trading_router
 
@@ -75,6 +77,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(auth_router)
+    app.include_router(ai_router)
     app.include_router(alerts_router)
     app.include_router(analytics_router)
     app.include_router(accounts_router)
@@ -92,6 +95,7 @@ def create_app() -> FastAPI:
     app.include_router(revenue_router)
     app.include_router(trust_index_router)
     app.include_router(signals_router)
+    app.include_router(support_router)
     app.include_router(telegram_router)
     app.include_router(trading_router)
 

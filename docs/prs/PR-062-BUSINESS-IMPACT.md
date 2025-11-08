@@ -202,7 +202,7 @@
 ### Case Study 1: Global SaaS Company (500 seats)
 - **Problem**: Customers in APAC region complaining about 9-5 PST support gap
 - **Solution**: Now available 24/7 with AI + human escalation
-- **Result**: 
+- **Result**:
   - Support tickets down 45% (FAQ automation)
   - CSAT up 18 points (instant availability)
   - Upgraded to premium tier (additional $99/month × 50 users = $59.4K/year)
