@@ -12,6 +12,7 @@ from backend.app.approvals.routes import router as approvals_router
 from backend.app.auth.routes import router as auth_router
 from backend.app.clients.devices.routes import router as devices_router
 from backend.app.clients.exec.routes import router as exec_router
+from backend.app.copy.routes import router as copy_router
 from backend.app.core.settings import get_settings
 from backend.app.ea.routes_admin import router as ea_admin_router
 from backend.app.education.routes import router as education_router
@@ -79,6 +80,7 @@ app.include_router(journeys_router, tags=["journeys"])
 app.include_router(trust_router, tags=["trust"])
 app.include_router(messaging_router, tags=["messaging"])
 app.include_router(privacy_router, tags=["privacy"])
+app.include_router(copy_router, tags=["copy"])
 
 
 @app.get("/")

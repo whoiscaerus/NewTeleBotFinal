@@ -1,0 +1,78 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Ocurrió un error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "close": "Cerrar"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "performance": "Rendimiento",
+    "pricing": "Precios",
+    "about": "Acerca de",
+    "docs": "Documentación",
+    "legal": "Legal",
+    "contact": "Contacto"
+  },
+  "hero": {
+    "title": "Señales de Trading Profesionales",
+    "subtitle": "Análisis impulsado por IA con supervisión humana",
+    "cta": "Comenzar",
+    "learnMore": "Más Información"
+  },
+  "features": {
+    "title": "¿Por qué Caerus Trading?",
+    "approval": {
+      "title": "Trading Basado en Aprobación",
+      "description": "Revisa y aprueba cada señal antes de la ejecución"
+    },
+    "analytics": {
+      "title": "Análisis Avanzado",
+      "description": "Rastrea el rendimiento con métricas de nivel profesional"
+    },
+    "automation": {
+      "title": "Integración MT5",
+      "description": "Ejecución sin problemas a través de MetaTrader 5"
+    }
+  },
+  "pricing": {
+    "title": "Elige Tu Plan",
+    "free": {
+      "name": "Gratuito",
+      "price": "£0",
+      "features": ["Señales básicas", "Aprobación manual", "Soporte por correo"]
+    },
+    "starter": {
+      "name": "Inicial",
+      "price": "£20/mes",
+      "features": ["Todas las funciones gratuitas", "Señales prioritarias", "Panel de análisis", "Soporte Telegram"]
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "£50/mes",
+      "features": ["Todas las funciones iniciales", "Análisis avanzado", "Alertas de precios", "Copy trading (+30%)"]
+    }
+  },
+  "performance": {
+    "title": "Rendimiento en Vivo",
+    "disclaimer": "El rendimiento pasado no garantiza resultados futuros. El trading implica riesgo de pérdida.",
+    "verified": "Verificado por terceros",
+    "metrics": {
+      "winRate": "Tasa de Éxito",
+      "totalTrades": "Total de Operaciones",
+      "profitFactor": "Factor de Beneficio",
+      "sharpeRatio": "Ratio de Sharpe"
+    }
+  },
+  "footer": {
+    "company": "Empresa",
+    "product": "Producto",
+    "legal": "Legal",
+    "support": "Soporte",
+    "copyright": "© 2025 Caerus Trading. Todos los derechos reservados."
+  }
+}

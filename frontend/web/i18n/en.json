@@ -1,0 +1,78 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "close": "Close"
+  },
+  "navigation": {
+    "home": "Home",
+    "performance": "Performance",
+    "pricing": "Pricing",
+    "about": "About",
+    "docs": "Documentation",
+    "legal": "Legal",
+    "contact": "Contact"
+  },
+  "hero": {
+    "title": "Professional Trading Signals",
+    "subtitle": "AI-powered analysis with human oversight",
+    "cta": "Get Started",
+    "learnMore": "Learn More"
+  },
+  "features": {
+    "title": "Why Caerus Trading?",
+    "approval": {
+      "title": "Approval-Based Trading",
+      "description": "Review and approve every signal before execution"
+    },
+    "analytics": {
+      "title": "Advanced Analytics",
+      "description": "Track performance with professional-grade metrics"
+    },
+    "automation": {
+      "title": "MT5 Integration",
+      "description": "Seamless execution through MetaTrader 5"
+    }
+  },
+  "pricing": {
+    "title": "Choose Your Plan",
+    "free": {
+      "name": "Free",
+      "price": "£0",
+      "features": ["Basic signals", "Manual approval", "Email support"]
+    },
+    "starter": {
+      "name": "Starter",
+      "price": "£20/month",
+      "features": ["All free features", "Priority signals", "Analytics dashboard", "Telegram support"]
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "£50/month",
+      "features": ["All starter features", "Advanced analytics", "Price alerts", "Copy trading (+30%)"]
+    }
+  },
+  "performance": {
+    "title": "Live Performance",
+    "disclaimer": "Past performance does not guarantee future results. Trading involves risk of loss.",
+    "verified": "Third-party verified",
+    "metrics": {
+      "winRate": "Win Rate",
+      "totalTrades": "Total Trades",
+      "profitFactor": "Profit Factor",
+      "sharpeRatio": "Sharpe Ratio"
+    }
+  },
+  "footer": {
+    "company": "Company",
+    "product": "Product",
+    "legal": "Legal",
+    "support": "Support",
+    "copyright": "© 2025 Caerus Trading. All rights reserved."
+  }
+}
