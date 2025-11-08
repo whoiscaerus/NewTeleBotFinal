@@ -1,0 +1,63 @@
+{
+  "distribution": {
+    "header": "📢 Nuevo Contenido del Admin",
+    "footer": "💬 ¿Preguntas? Responde a este mensaje o contacta con soporte.",
+    "gold_tag": "🥇 ORO",
+    "crypto_tag": "₿ CRIPTO",
+    "sp500_tag": "📊 SP500",
+    "forex_tag": "💱 FOREX",
+    "success": "✅ Contenido distribuido a {count} grupos",
+    "no_groups": "⚠️ No hay grupos configurados para las palabras clave: {keywords}",
+    "failed": "❌ Fallo al distribuir al grupo {group_id}: {error}"
+  },
+  "signal": {
+    "new_signal": "🔔 Nueva Señal de Trading",
+    "instrument": "📊 Instrumento: {instrument}",
+    "side": "📈 Dirección: {side}",
+    "entry_price": "💰 Entrada: {price}",
+    "stop_loss": "🛑 Stop Loss: {price}",
+    "take_profit": "✅ Take Profit: {price}",
+    "status": "📌 Estado: {status}",
+    "open_app": "👉 Abre la Mini App para aprobar o rechazar esta señal.",
+    "auto_executed": "⚡ Auto-ejecutado (Premium)"
+  },
+  "approval": {
+    "approved": "✅ ¡Señal aprobada! La operación se ejecutará en breve.",
+    "rejected": "❌ Señal rechazada.",
+    "pending": "⏳ Esperando tu aprobación en la Mini App..."
+  },
+  "alerts": {
+    "price_alert": "💰 Alerta de Precio: {instrument}",
+    "price_crossed": "{instrument} cruzó {direction} {price}",
+    "drawdown_alert": "⚠️ Alerta de Drawdown",
+    "drawdown_message": "El drawdown de tu cuenta es {percent}%. Revisa tus posiciones.",
+    "margin_alert": "🔴 Alerta de Margen",
+    "margin_message": "Advertencia de margen bajo. Nivel de margen actual: {percent}%"
+  },
+  "position_updates": {
+    "opened": "✅ Posición Abierta",
+    "opened_details": "{instrument} {side} @ {price}\nVolumen: {volume}\nStop Loss: {sl}\nTake Profit: {tp}",
+    "closed": "🔒 Posición Cerrada",
+    "closed_details": "{instrument} {side} cerrado @ {price}\nGanancia/Pérdida: {pnl} ({pnl_percent}%)",
+    "modified": "🔄 Posición Modificada",
+    "modified_details": "{instrument} {side}\nNuevo Stop Loss: {sl}\nNuevo Take Profit: {tp}"
+  },
+  "billing": {
+    "trial_ending": "⏰ Prueba Finalizando Pronto",
+    "trial_ending_message": "Tu prueba gratuita termina en {days} días. Actualiza a Premium para seguir disfrutando de todas las funciones.",
+    "payment_failed": "❌ Pago Fallido",
+    "payment_failed_message": "No pudimos procesar tu pago. Por favor, actualiza tu método de pago para evitar la interrupción del servicio.",
+    "subscription_renewed": "✅ Suscripción Renovada",
+    "subscription_renewed_message": "Tu suscripción de {plan} ha sido renovada. ¡Gracias!",
+    "subscription_cancelled": "❌ Suscripción Cancelada",
+    "subscription_cancelled_message": "Tu suscripción ha sido cancelada. Tendrás acceso hasta {end_date}."
+  },
+  "education": {
+    "new_course": "📚 Nuevo Curso Disponible",
+    "new_course_message": "Mira nuestro nuevo curso: {title}",
+    "quiz_passed": "🎉 ¡Quiz Aprobado!",
+    "quiz_passed_message": "¡Felicitaciones! Has aprobado el quiz de {course} con {score}%.",
+    "reward_earned": "🎁 Recompensa Ganada",
+    "reward_earned_message": "¡Has ganado un descuento del {discount}% en tu próxima suscripción!"
+  }
+}

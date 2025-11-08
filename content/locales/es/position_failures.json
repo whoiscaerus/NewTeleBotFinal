@@ -1,0 +1,22 @@
+{
+  "entry_failure": {
+    "title": "⚠️ Acción Manual Requerida",
+    "message": "Fallo al abrir posición {instrument} {side} @ {price}.\n\n📊 Detalles:\nVolumen: {volume}\nStop Loss: {sl}\nTake Profit: {tp}\n\n❌ Error: {error}\n\n👉 Acción: Por favor, abre esta operación manualmente en tu plataforma de broker o contacta con soporte si necesitas asistencia.\n\nID de Aprobación: {approval_id}"
+  },
+  "exit_sl_hit": {
+    "title": "🛑 URGENTE: Cerrar Posición Manualmente Requerido",
+    "message": "Stop Loss alcanzado para posición {instrument} {side} pero el cierre automático FALLÓ.\n\n📊 Detalles de Posición:\nTicket de Broker: {ticket}\nPrecio de Entrada: {entry_price}\nPrecio Actual: {current_price}\nStop Loss: {sl_price}\nPérdida Estimada: {loss_amount} ({loss_percent}%)\n\n❌ Error: {error}\n\n🚨 ACCIÓN URGENTE REQUERIDA:\nDEBES cerrar esta posición manualmente en tu plataforma de broker AHORA para prevenir más pérdidas.\n\nID de Posición: {position_id}"
+  },
+  "exit_tp_hit": {
+    "title": "✅ Cerrar Take Profit Manualmente Requerido",
+    "message": "Take Profit alcanzado para posición {instrument} {side} pero el cierre automático FALLÓ.\n\n📊 Detalles de Posición:\nTicket de Broker: {ticket}\nPrecio de Entrada: {entry_price}\nPrecio Actual: {current_price}\nTake Profit: {tp_price}\nGanancia Estimada: {profit_amount} ({profit_percent}%)\n\n❌ Error: {error}\n\n👉 Acción: Por favor, cierra esta posición manualmente en tu plataforma de broker para asegurar tu ganancia.\n\nID de Posición: {position_id}"
+  },
+  "position_monitor_failure": {
+    "title": "⚠️ Problema de Monitoreo de Posición",
+    "message": "No se puede monitorear posición {instrument} {side}.\n\n📊 Detalles de Posición:\nTicket de Broker: {ticket}\nPrecio de Entrada: {entry_price}\nStop Loss: {sl_price}\nTake Profit: {tp_price}\n\n❌ Error: {error}\n\n👉 Acción: Por favor, monitorea esta posición manualmente en tu plataforma de broker. El monitoreo automatizado se reanudará cuando se resuelva el problema.\n\nID de Posición: {position_id}"
+  },
+  "broker_connection_lost": {
+    "title": "🔴 Conexión con Broker Perdida",
+    "message": "Se ha perdido la conexión con tu broker.\n\n⚠️ Impacto:\n• No se pueden ejecutar nuevas señales\n• No se pueden monitorear posiciones existentes\n• No se pueden cerrar posiciones automáticamente\n\n👉 Acción:\n1. Verifica que tu plataforma de broker esté accesible\n2. Verifica que tu EA esté ejecutándose en MetaTrader\n3. Monitorea tus posiciones manualmente hasta que se restaure la conexión\n4. Contacta con soporte si el problema persiste\n\nÚltima conexión exitosa: {last_connected}"
+  }
+}

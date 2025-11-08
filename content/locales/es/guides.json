@@ -1,0 +1,59 @@
+{
+  "categories": {
+    "trading": "📈 Conceptos Básicos de Trading",
+    "technical": "🔬 Análisis Técnico",
+    "risk": "⚠️ Gestión de Riesgo",
+    "psychology": "🧠 Psicología del Trading",
+    "automation": "⚙️ Automatización y Bots",
+    "platform": "💻 Funciones de la Plataforma"
+  },
+  "browse": {
+    "title": "📚 Guías de Aprendizaje",
+    "description": "Explora nuestro contenido educativo:",
+    "select_category": "Selecciona una categoría para explorar:",
+    "no_guides": "No hay guías disponibles en esta categoría todavía.",
+    "button_back": "« Volver a Categorías"
+  },
+  "guide": {
+    "read_time": "📖 Tiempo de lectura: {minutes} min",
+    "difficulty": "🎯 Dificultad: {level}",
+    "related_guides": "📚 Guías relacionadas:",
+    "button_next": "Siguiente Guía »",
+    "button_bookmark": "🔖 Guardar",
+    "button_share": "📤 Compartir",
+    "bookmarked": "✅ ¡Guardado!"
+  },
+  "getting_started": {
+    "title": "🚀 Comenzando con Señales de Trading",
+    "intro": "¡Bienvenido! Esta guía te ayudará a entender cómo usar las señales de trading de manera efectiva.",
+    "section_1_title": "¿Qué son las Señales de Trading?",
+    "section_1_content": "Las señales de trading son notificaciones en tiempo real que sugieren cuándo comprar o vender un activo. Nuestras señales son generadas por algoritmos avanzados que analizan las condiciones del mercado.",
+    "section_2_title": "Cómo Aprobar Señales",
+    "section_2_content": "Los usuarios gratuitos deben aprobar manualmente cada señal en la Mini App. Los usuarios Premium pueden habilitar la auto-ejecución para trading sin intervención manual.",
+    "section_3_title": "Gestión de Riesgo",
+    "section_3_content": "Siempre usa niveles de stop-loss y take-profit. Nunca arriesgues más de lo que puedes permitirte perder.",
+    "cta": "¿Listo para empezar? Abre la Mini App para ver señales en vivo."
+  },
+  "risk_management": {
+    "title": "⚠️ Fundamentos de Gestión de Riesgo",
+    "intro": "La gestión de riesgo adecuada es la base del trading exitoso.",
+    "section_1_title": "Tamaño de Posición",
+    "section_1_content": "Nunca arriesgues más del 1-2% de tu cuenta en una sola operación. Calcula el tamaño de posición basándote en la distancia de tu stop-loss.",
+    "section_2_title": "Órdenes de Stop-Loss",
+    "section_2_content": "Siempre usa órdenes de stop-loss para limitar pérdidas potenciales. Nuestras señales incluyen niveles de stop-loss recomendados.",
+    "section_3_title": "Diversificación",
+    "section_3_content": "No pongas todos tus huevos en una sola canasta. Opera con múltiples instrumentos y evita la sobreexposición a cualquier activo único.",
+    "cta": "Aprende más sobre configuración de riesgo en la Mini App."
+  },
+  "automation": {
+    "title": "⚙️ Trading Automatizado con Premium",
+    "intro": "Los suscriptores Premium pueden automatizar la ejecución de señales para trading sin intervención manual.",
+    "section_1_title": "Cómo Funciona la Auto-Ejecución",
+    "section_1_content": "Cuando se genera una señal, se envía automáticamente a tu broker para ejecución. No se necesita aprobación manual.",
+    "section_2_title": "Funciones de Seguridad",
+    "section_2_content": "La auto-ejecución incluye verificaciones de seguridad integradas: límites de drawdown máximo, límites de pérdida diaria y pausa de emergencia.",
+    "section_3_title": "Monitoreando tus Operaciones",
+    "section_3_content": "Incluso con automatización, monitorea tus operaciones regularmente. Consulta el panel de análisis para obtener información sobre el rendimiento.",
+    "cta": "Actualiza a Premium para habilitar la auto-ejecución."
+  }
+}

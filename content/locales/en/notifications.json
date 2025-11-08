@@ -1,0 +1,63 @@
+{
+  "distribution": {
+    "header": "📢 New Content from Admin",
+    "footer": "💬 Questions? Reply to this message or contact support.",
+    "gold_tag": "🥇 GOLD",
+    "crypto_tag": "₿ CRYPTO",
+    "sp500_tag": "📊 SP500",
+    "forex_tag": "💱 FOREX",
+    "success": "✅ Content distributed to {count} groups",
+    "no_groups": "⚠️ No groups configured for keywords: {keywords}",
+    "failed": "❌ Failed to distribute to group {group_id}: {error}"
+  },
+  "signal": {
+    "new_signal": "🔔 New Trading Signal",
+    "instrument": "📊 Instrument: {instrument}",
+    "side": "📈 Direction: {side}",
+    "entry_price": "💰 Entry: {price}",
+    "stop_loss": "🛑 Stop Loss: {price}",
+    "take_profit": "✅ Take Profit: {price}",
+    "status": "📌 Status: {status}",
+    "open_app": "👉 Open Mini App to approve or reject this signal.",
+    "auto_executed": "⚡ Auto-executed (Premium)"
+  },
+  "approval": {
+    "approved": "✅ Signal approved! Trade will be executed shortly.",
+    "rejected": "❌ Signal rejected.",
+    "pending": "⏳ Awaiting your approval in Mini App..."
+  },
+  "alerts": {
+    "price_alert": "💰 Price Alert: {instrument}",
+    "price_crossed": "{instrument} crossed {direction} {price}",
+    "drawdown_alert": "⚠️ Drawdown Alert",
+    "drawdown_message": "Your account drawdown is {percent}%. Review your positions.",
+    "margin_alert": "🔴 Margin Alert",
+    "margin_message": "Low margin warning. Current margin level: {percent}%"
+  },
+  "position_updates": {
+    "opened": "✅ Position Opened",
+    "opened_details": "{instrument} {side} @ {price}\nVolume: {volume}\nStop Loss: {sl}\nTake Profit: {tp}",
+    "closed": "🔒 Position Closed",
+    "closed_details": "{instrument} {side} closed @ {price}\nProfit/Loss: {pnl} ({pnl_percent}%)",
+    "modified": "🔄 Position Modified",
+    "modified_details": "{instrument} {side}\nNew Stop Loss: {sl}\nNew Take Profit: {tp}"
+  },
+  "billing": {
+    "trial_ending": "⏰ Trial Ending Soon",
+    "trial_ending_message": "Your free trial ends in {days} days. Upgrade to Premium to continue enjoying all features.",
+    "payment_failed": "❌ Payment Failed",
+    "payment_failed_message": "We couldn't process your payment. Please update your payment method to avoid service interruption.",
+    "subscription_renewed": "✅ Subscription Renewed",
+    "subscription_renewed_message": "Your {plan} subscription has been renewed. Thank you!",
+    "subscription_cancelled": "❌ Subscription Cancelled",
+    "subscription_cancelled_message": "Your subscription has been cancelled. You'll have access until {end_date}."
+  },
+  "education": {
+    "new_course": "📚 New Course Available",
+    "new_course_message": "Check out our new course: {title}",
+    "quiz_passed": "🎉 Quiz Passed!",
+    "quiz_passed_message": "Congratulations! You've passed the {course} quiz with {score}%.",
+    "reward_earned": "🎁 Reward Earned",
+    "reward_earned_message": "You've earned a {discount}% discount on your next subscription!"
+  }
+}

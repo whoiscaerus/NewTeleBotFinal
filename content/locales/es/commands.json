@@ -1,0 +1,63 @@
+{
+  "start": {
+    "welcome": "¡Bienvenido al Bot de Señales de Trading, {username}!",
+    "description": "Recibe señales de trading en tiempo real con gestión de riesgo avanzada.",
+    "get_started": "Haz clic en el botón de abajo para comenzar:",
+    "button_open_app": "🚀 Abrir Mini App"
+  },
+  "help": {
+    "title": "📚 Ayuda y Comandos",
+    "description": "Aquí están los comandos disponibles:",
+    "command_start": "/start - Iniciar el bot y abrir Mini App",
+    "command_help": "/help - Mostrar este mensaje de ayuda",
+    "command_shop": "/shop - Explorar planes de suscripción",
+    "command_settings": "/settings - Gestionar tus preferencias",
+    "command_support": "/support - Obtener soporte de nuestro equipo",
+    "need_help": "¿Necesitas más ayuda? Contacta con soporte: {support_email}"
+  },
+  "shop": {
+    "title": "💳 Planes de Suscripción",
+    "description": "Elige un plan que se adapte a tus necesidades:",
+    "free_plan": "🆓 Plan Gratuito",
+    "free_features": "• Aprobación manual de señales\n• Análisis básico\n• Soporte por email",
+    "premium_plan": "⭐ Plan Premium - ${price}/mes",
+    "premium_features": "• Auto-ejecución de señales\n• Análisis avanzado\n• Soporte prioritario\n• Alertas personalizadas",
+    "enterprise_plan": "🏢 Plan Empresarial - ${price}/mes",
+    "enterprise_features": "• Todas las funciones Premium\n• Gerente de cuenta dedicado\n• Acceso API\n• Integraciones personalizadas",
+    "button_subscribe": "Suscribirse Ahora",
+    "button_upgrade": "Actualizar Plan",
+    "current_plan": "✅ Tu plan actual: {plan}"
+  },
+  "settings": {
+    "title": "⚙️ Configuración",
+    "description": "Gestiona tus preferencias:",
+    "language": "🌐 Idioma: {language}",
+    "notifications": "🔔 Notificaciones: {status}",
+    "quiet_hours": "🌙 Horas silenciosas: {start} - {end}",
+    "button_change_language": "Cambiar Idioma",
+    "button_notifications": "Gestionar Notificaciones",
+    "button_quiet_hours": "Configurar Horas Silenciosas"
+  },
+  "support": {
+    "title": "💬 Soporte",
+    "description": "¿Necesitas ayuda? ¡Estamos aquí para ti!",
+    "contact_email": "📧 Email: {email}",
+    "contact_telegram": "💬 Telegram: @support",
+    "faq_link": "📚 FAQ: {url}",
+    "button_create_ticket": "Crear Ticket de Soporte",
+    "button_ai_assistant": "Chatear con Asistente IA"
+  },
+  "errors": {
+    "generic": "❌ Ocurrió un error. Por favor, inténtalo de nuevo.",
+    "unauthorized": "🔒 No tienes permiso para realizar esta acción.",
+    "rate_limit": "⏱️ Demasiadas solicitudes. Por favor, espera {seconds} segundos.",
+    "maintenance": "🔧 El sistema está en mantenimiento. Por favor, inténtalo más tarde.",
+    "invalid_command": "❓ Comando inválido. Escribe /help para ver los comandos disponibles."
+  },
+  "success": {
+    "generic": "✅ ¡Éxito!",
+    "settings_updated": "✅ Configuración actualizada correctamente.",
+    "subscription_created": "✅ ¡Suscripción creada! Bienvenido a {plan}.",
+    "support_ticket_created": "✅ Ticket de soporte #{ticket_id} creado."
+  }
+}

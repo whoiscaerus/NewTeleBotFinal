@@ -1,0 +1,22 @@
+{
+  "entry_failure": {
+    "title": "⚠️ Manual Action Required",
+    "message": "Failed to open {instrument} {side} position @ {price}.\n\n📊 Details:\nVolume: {volume}\nStop Loss: {sl}\nTake Profit: {tp}\n\n❌ Error: {error}\n\n👉 Action: Please open this trade manually in your broker platform or contact support if you need assistance.\n\nApproval ID: {approval_id}"
+  },
+  "exit_sl_hit": {
+    "title": "🛑 URGENT: Manual Stop Loss Close Required",
+    "message": "Stop Loss hit for {instrument} {side} position but auto-close FAILED.\n\n📊 Position Details:\nBroker Ticket: {ticket}\nEntry Price: {entry_price}\nCurrent Price: {current_price}\nStop Loss: {sl_price}\nEstimated Loss: {loss_amount} ({loss_percent}%)\n\n❌ Error: {error}\n\n🚨 URGENT ACTION REQUIRED:\nYou MUST manually close this position in your broker platform NOW to prevent further losses.\n\nPosition ID: {position_id}"
+  },
+  "exit_tp_hit": {
+    "title": "✅ Manual Take Profit Close Required",
+    "message": "Take Profit hit for {instrument} {side} position but auto-close FAILED.\n\n📊 Position Details:\nBroker Ticket: {ticket}\nEntry Price: {entry_price}\nCurrent Price: {current_price}\nTake Profit: {tp_price}\nEstimated Profit: {profit_amount} ({profit_percent}%)\n\n❌ Error: {error}\n\n👉 Action: Please close this position manually in your broker platform to lock in your profit.\n\nPosition ID: {position_id}"
+  },
+  "position_monitor_failure": {
+    "title": "⚠️ Position Monitoring Issue",
+    "message": "Unable to monitor {instrument} {side} position.\n\n📊 Position Details:\nBroker Ticket: {ticket}\nEntry Price: {entry_price}\nStop Loss: {sl_price}\nTake Profit: {tp_price}\n\n❌ Error: {error}\n\n👉 Action: Please monitor this position manually in your broker platform. Automated monitoring will resume when the issue is resolved.\n\nPosition ID: {position_id}"
+  },
+  "broker_connection_lost": {
+    "title": "🔴 Broker Connection Lost",
+    "message": "Connection to your broker has been lost.\n\n⚠️ Impact:\n• Cannot execute new signals\n• Cannot monitor existing positions\n• Cannot close positions automatically\n\n👉 Action:\n1. Check your broker platform is accessible\n2. Verify your EA is running in MetaTrader\n3. Monitor your positions manually until connection is restored\n4. Contact support if issue persists\n\nLast successful connection: {last_connected}"
+  }
+}

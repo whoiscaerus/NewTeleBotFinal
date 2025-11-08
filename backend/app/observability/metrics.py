@@ -336,6 +336,31 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # PR-070: Telegram Bot Localization metrics
+        self.telegram_locale_used_total = Counter(
+            "telegram_locale_used_total",
+            "Total times a locale was used in Telegram bot",
+            ["locale"],  # en, es
+            registry=self.registry,
+        )
+
+        self.distribution_localized_total = Counter(
+            "distribution_localized_total",
+            "Total content distributions with localization",
+            ["locale"],  # en, es
+            registry=self.registry,
+        )
+
+        self.position_failure_telegram_sent_total = Counter(
+            "position_failure_telegram_sent_total",
+            "Total position failure notifications sent via Telegram",
+            [
+                "locale",
+                "type",
+            ],  # locale: en, es; type: entry_failure, exit_sl_hit, exit_tp_hit
+            registry=self.registry,
+        )
+
         # Device registry metrics (PR-039)
         self.miniapp_device_register_total = Counter(
             "miniapp_device_register_total",

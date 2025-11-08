@@ -1,0 +1,63 @@
+{
+  "start": {
+    "welcome": "Welcome to the Trading Signals Bot, {username}!",
+    "description": "Get real-time trading signals with advanced risk management.",
+    "get_started": "Click the button below to get started:",
+    "button_open_app": "🚀 Open Mini App"
+  },
+  "help": {
+    "title": "📚 Help & Commands",
+    "description": "Here are the available commands:",
+    "command_start": "/start - Start the bot and open Mini App",
+    "command_help": "/help - Show this help message",
+    "command_shop": "/shop - Browse subscription plans",
+    "command_settings": "/settings - Manage your preferences",
+    "command_support": "/support - Get support from our team",
+    "need_help": "Need more help? Contact support: {support_email}"
+  },
+  "shop": {
+    "title": "💳 Subscription Plans",
+    "description": "Choose a plan that fits your needs:",
+    "free_plan": "🆓 Free Plan",
+    "free_features": "• Manual signal approval\n• Basic analytics\n• Email support",
+    "premium_plan": "⭐ Premium Plan - ${price}/month",
+    "premium_features": "• Auto-execute signals\n• Advanced analytics\n• Priority support\n• Custom alerts",
+    "enterprise_plan": "🏢 Enterprise Plan - ${price}/month",
+    "enterprise_features": "• All Premium features\n• Dedicated account manager\n• API access\n• Custom integrations",
+    "button_subscribe": "Subscribe Now",
+    "button_upgrade": "Upgrade Plan",
+    "current_plan": "✅ Your current plan: {plan}"
+  },
+  "settings": {
+    "title": "⚙️ Settings",
+    "description": "Manage your preferences:",
+    "language": "🌐 Language: {language}",
+    "notifications": "🔔 Notifications: {status}",
+    "quiet_hours": "🌙 Quiet hours: {start} - {end}",
+    "button_change_language": "Change Language",
+    "button_notifications": "Manage Notifications",
+    "button_quiet_hours": "Set Quiet Hours"
+  },
+  "support": {
+    "title": "💬 Support",
+    "description": "Need help? We're here for you!",
+    "contact_email": "📧 Email: {email}",
+    "contact_telegram": "💬 Telegram: @support",
+    "faq_link": "📚 FAQ: {url}",
+    "button_create_ticket": "Create Support Ticket",
+    "button_ai_assistant": "Chat with AI Assistant"
+  },
+  "errors": {
+    "generic": "❌ An error occurred. Please try again.",
+    "unauthorized": "🔒 You don't have permission to perform this action.",
+    "rate_limit": "⏱️ Too many requests. Please wait {seconds} seconds.",
+    "maintenance": "🔧 System is under maintenance. Please try again later.",
+    "invalid_command": "❓ Invalid command. Type /help to see available commands."
+  },
+  "success": {
+    "generic": "✅ Success!",
+    "settings_updated": "✅ Settings updated successfully.",
+    "subscription_created": "✅ Subscription created! Welcome to {plan}.",
+    "support_ticket_created": "✅ Support ticket #{ticket_id} created."
+  }
+}
