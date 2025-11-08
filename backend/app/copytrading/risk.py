@@ -12,7 +12,7 @@ All evaluations trigger Telegram alerts on breach and force pause on violation.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -25,10 +25,12 @@ try:
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
+    Counter = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics
+copy_risk_block_counter: Any
 if PROMETHEUS_AVAILABLE:
     copy_risk_block_counter = Counter(
         "copy_risk_block_total",

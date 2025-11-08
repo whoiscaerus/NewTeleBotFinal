@@ -167,7 +167,7 @@ def _calculate_endorsement_score(
         (in_degree_weighted / max_possible * 100) if max_possible > 0 else 0.0, 100.0
     )
 
-    return endorsement_score
+    return float(endorsement_score)
 
 
 def _calculate_tier(score: float) -> str:

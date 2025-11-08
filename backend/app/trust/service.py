@@ -106,7 +106,7 @@ class TrustScoringService:
 
             # Fetch performance data for all users (from performance metrics table)
             # This assumes performance_data is available in the database
-            perf_data = await _get_performance_data(db, created_map.keys())
+            perf_data = await _get_performance_data(db, list(created_map.keys()))
 
             # Calculate trust scores (deterministic algorithm)
             scores = calculate_trust_scores(graph, perf_data, created_map)

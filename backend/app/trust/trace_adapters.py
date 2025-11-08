@@ -128,7 +128,7 @@ class TraceAdapter(ABC):
         """
         multiplier = 6
         backoff = self.config.retry_backoff_base * (multiplier**retry_count)
-        return min(backoff, self.config.retry_backoff_max)
+        return int(min(backoff, self.config.retry_backoff_max))
 
 
 class MyfxbookAdapter(TraceAdapter):

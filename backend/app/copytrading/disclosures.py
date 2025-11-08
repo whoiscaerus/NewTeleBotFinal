@@ -12,7 +12,7 @@ All consent acceptance is logged immutably for compliance.
 
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -25,10 +25,12 @@ try:
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
+    Counter = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 # Prometheus metrics
+copy_consent_counter: Any
 if PROMETHEUS_AVAILABLE:
     copy_consent_counter = Counter(
         "copy_consent_signed_total",
