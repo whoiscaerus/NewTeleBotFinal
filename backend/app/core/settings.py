@@ -265,19 +265,23 @@ class MediaSettings(BaseSettings):
 
 
 class Settings(BaseSettings):
-    """Main settings combining all config objects."""
+    """Main settings combining all config objects.
+    
+    Pydantic v2 auto-instantiates nested BaseSettings from environment.
+    No need for default values - they're created automatically.
+    """
 
-    app: AppSettings = Field(default_factory=AppSettings)
-    db: DbSettings = Field(default_factory=DbSettings)
-    redis: RedisSettings = Field(default_factory=RedisSettings)
-    smtp: SmtpSettings = Field(default_factory=SmtpSettings)
-    push: PushSettings = Field(default_factory=PushSettings)
-    security: SecuritySettings = Field(default_factory=SecuritySettings)
-    payments: PaymentSettings = Field(default_factory=PaymentSettings)
-    signals: SignalsSettings = Field(default_factory=SignalsSettings)
-    telegram: TelegramSettings = Field(default_factory=TelegramSettings)
-    telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
-    media: MediaSettings = Field(default_factory=MediaSettings)
+    app: AppSettings
+    db: DbSettings
+    redis: RedisSettings
+    smtp: SmtpSettings
+    push: PushSettings
+    security: SecuritySettings
+    payments: PaymentSettings
+    signals: SignalsSettings
+    telegram: TelegramSettings
+    telemetry: TelemetrySettings
+    media: MediaSettings
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
@@ -329,8 +333,12 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    """Get global settings instance."""
-    return Settings()
+    """Get global settings instance.
+    
+    Pydantic BaseSettings auto-instantiates nested settings from environment.
+    Mypy doesn't understand this pattern, hence the type ignore.
+    """
+    return Settings()  # type: ignore[call-arg]
 
 
 # Global instance

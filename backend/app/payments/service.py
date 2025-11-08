@@ -183,7 +183,7 @@ class StripeService:
         user_id: str,
         tier: str,
         db: AsyncSession,
-    ) -> dict[str, bool]:
+    ) -> dict[str, bool | str | int]:
         """
         Deactivate all features for given tier.
 
@@ -193,7 +193,7 @@ class StripeService:
             db: Database session
 
         Returns:
-            dict: Deactivation status
+            dict: Deactivation status (mixed types)
         """
         # Stub implementation
         return {

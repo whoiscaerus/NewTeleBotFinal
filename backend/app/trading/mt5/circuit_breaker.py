@@ -157,7 +157,9 @@ class CircuitBreaker:
         if self.is_half_open:
             if self._half_open_calls >= self.half_open_max_calls:
                 raise MT5CircuitBreakerOpen(
-                    "Circuit breaker is testing recovery. Please wait."
+                    "Circuit breaker is testing recovery. Please wait.",
+                    failure_count=self._failure_count,
+                    max_failures=self.failure_threshold,
                 )
             self._half_open_calls += 1
 
