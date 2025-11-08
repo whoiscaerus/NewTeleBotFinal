@@ -154,6 +154,16 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Risk management metrics (PR-074)
+        self.risk_block_total = Counter(
+            "risk_block_total",
+            "Total trades blocked by risk guards",
+            [
+                "reason"
+            ],  # max_drawdown_exceeded, min_equity_breach, max_position_size_exceeded, etc.
+            registry=self.registry,
+        )
+
         # Audit metrics
         self.audit_events_total = Counter(
             "audit_events_total",
