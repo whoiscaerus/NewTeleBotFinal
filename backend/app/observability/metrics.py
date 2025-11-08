@@ -389,6 +389,14 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # PR-072: Signal Generation & Distribution metrics
+        self.signal_publish_total = Counter(
+            "signal_publish_total",
+            "Total signals published",
+            ["route"],  # api, telegram
+            registry=self.registry,
+        )
+
         logger.info("Metrics collector initialized")
 
     def record_http_request(
