@@ -87,6 +87,12 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         QuizQuestion,
         Reward,
     )
+    from backend.app.journeys.models import (  # noqa: F401
+        Journey,
+        JourneyStep,
+        StepExecution,
+        UserJourney,
+    )
     from backend.app.kb.models import Article, ArticleVersion, Tag  # noqa: F401
     from backend.app.marketing.models import MarketingClick  # noqa: F401
     from backend.app.orders.models import Order, OrderItem  # noqa: F401
