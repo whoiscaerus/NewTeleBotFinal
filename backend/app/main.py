@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.accounts.routes import router as accounts_router
 from backend.app.affiliates.routes import router as affiliates_router
 from backend.app.alerts.routes import router as alerts_router
+from backend.app.alerts.routes_smart import router as smart_alerts_router
 from backend.app.analytics.routes import router as analytics_router
 from backend.app.approvals.routes import router as approvals_router
 from backend.app.auth.routes import router as auth_router
@@ -13,6 +14,7 @@ from backend.app.clients.devices.routes import router as devices_router
 from backend.app.clients.exec.routes import router as exec_router
 from backend.app.core.settings import get_settings
 from backend.app.ea.routes_admin import router as ea_admin_router
+from backend.app.education.routes import router as education_router
 from backend.app.exports.routes import router as exports_router
 from backend.app.messaging.routes import router as messaging_router
 from backend.app.polling.routes import router as polling_v2_router
@@ -54,6 +56,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(alerts_router, prefix="/api/v1", tags=["alerts"])
+app.include_router(smart_alerts_router, tags=["smart-alerts"])
 app.include_router(analytics_router, tags=["analytics"])
 app.include_router(accounts_router, tags=["accounts"])
 app.include_router(affiliates_router, prefix="/api/v1/affiliates", tags=["affiliates"])
@@ -68,6 +71,7 @@ app.include_router(signals_router, prefix="/api/v1", tags=["signals"])
 app.include_router(devices_router, prefix="/api/v1", tags=["devices"])
 app.include_router(exec_router, prefix="/api/v1", tags=["execution"])
 app.include_router(ea_admin_router, tags=["executions"])
+app.include_router(education_router, tags=["education"])
 app.include_router(exports_router, prefix="/api/v1", tags=["exports"])
 app.include_router(trust_router, tags=["trust"])
 app.include_router(messaging_router, tags=["messaging"])

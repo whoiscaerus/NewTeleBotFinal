@@ -59,6 +59,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         ChatSession,
         KBEmbedding,
     )
+    from backend.app.alerts.rules import RuleNotification, SmartAlertRule  # noqa: F401
     from backend.app.alerts.service import AlertNotification, PriceAlert  # noqa: F401
     from backend.app.approvals.models import Approval  # noqa: F401
     from backend.app.audit.models import AuditLog  # noqa: F401
@@ -78,6 +79,14 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     from backend.app.clients.models import Client  # noqa: F401
     from backend.app.core.db import Base
     from backend.app.ea.models import Execution  # noqa: F401
+    from backend.app.education.models import (  # noqa: F401
+        Attempt,
+        Course,
+        Lesson,
+        Quiz,
+        QuizQuestion,
+        Reward,
+    )
     from backend.app.kb.models import Article, ArticleVersion, Tag  # noqa: F401
     from backend.app.marketing.models import MarketingClick  # noqa: F401
     from backend.app.orders.models import Order, OrderItem  # noqa: F401
