@@ -20,6 +20,7 @@ from backend.app.journeys.routes import router as journeys_router
 from backend.app.messaging.routes import router as messaging_router
 from backend.app.polling.routes import router as polling_v2_router
 from backend.app.prefs.routes import router as prefs_router
+from backend.app.privacy.routes import router as privacy_router
 from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.revenue.routes import router as revenue_router
@@ -77,6 +78,7 @@ app.include_router(exports_router, prefix="/api/v1", tags=["exports"])
 app.include_router(journeys_router, tags=["journeys"])
 app.include_router(trust_router, tags=["trust"])
 app.include_router(messaging_router, tags=["messaging"])
+app.include_router(privacy_router, tags=["privacy"])
 
 
 @app.get("/")
