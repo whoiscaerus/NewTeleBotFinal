@@ -408,8 +408,6 @@ async def send_batch_push(
                     failed += 1
             else:
                 failed += 1
-            else:
-                failed += 1
 
         # Delay between batches
         if i + batch_size < len(notifications):
