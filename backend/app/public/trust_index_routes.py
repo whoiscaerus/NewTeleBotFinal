@@ -176,7 +176,7 @@ async def get_trust_index_stats(
             .limit(limit)
         )
         result = await db.execute(stmt)
-        top_accuracy = result.scalars().all()
+        top_accuracy: list[PublicTrustIndexRecord] = list(result.scalars().all())
 
         # Get top by R/R
         stmt = (
@@ -185,7 +185,7 @@ async def get_trust_index_stats(
             .limit(limit)
         )
         result = await db.execute(stmt)
-        top_rr = result.scalars().all()
+        top_rr: list[PublicTrustIndexRecord] = list(result.scalars().all())
 
         logger.info(
             "Trust index stats accessed",

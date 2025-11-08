@@ -54,7 +54,7 @@ class PerformanceResponse:
         calmar_ratio: float = 0.0,
         avg_rr: float = 0.0,
         max_drawdown_percent: float = 0.0,
-        data_as_of: datetime = None,
+        data_as_of: Optional[datetime] = None,
         delay_applied_minutes: int = 1440,
         disclaimer: str = "Past performance is not indicative of future results. This data is provided for informational purposes only and should not be used as investment advice.",
     ):
