@@ -102,7 +102,8 @@ class PricingCalculator:
             if not tier:
                 raise ValueError(f"Product tier not found: {product_tier_id}")
 
-            base_price = tier.base_price
+            base_price = float(tier.base_price)
+            billing_period = str(tier.billing_period)
             logger.info(
                 f"Calculating price for {product_tier_id}: base £{base_price}",
                 extra={"tier_id": product_tier_id, "region": region},
@@ -158,7 +159,7 @@ class PricingCalculator:
                 final_price=final_price,
                 currency=currency,
                 region=region,
-                billing_period=tier.billing_period,
+                billing_period=billing_period,
             )
 
             logger.info(

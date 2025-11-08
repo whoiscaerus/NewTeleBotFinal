@@ -334,10 +334,13 @@ async def send_batch_emails(
         for result in results:
             if isinstance(result, Exception):
                 failed += 1
-            elif result["status"] == "sent":
-                sent += 1
-            elif result["status"] == "rate_limited":
-                rate_limited += 1
+            elif isinstance(result, dict):
+                if result["status"] == "sent":
+                    sent += 1
+                elif result["status"] == "rate_limited":
+                    rate_limited += 1
+                else:
+                    failed += 1
             else:
                 failed += 1
 

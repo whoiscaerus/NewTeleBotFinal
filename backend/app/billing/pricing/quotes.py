@@ -107,17 +107,24 @@ class QuoteService:
                         rate = prices[crypto_id]
                     else:
                         # Use static rates as fallback
-                        rate = self.BASE_RATES.get(currency)
-                        if not rate:
+                        rate_tmp = self.BASE_RATES.get(currency)
+                        if not rate_tmp:
                             raise ValueError(f"Unsupported currency: {currency}")
+                        rate = rate_tmp
                 except Exception as e:
                     logger.warning(
                         f"Failed to fetch live rate for {currency}, using static: {e}"
                     )
-                    rate = self.BASE_RATES.get(currency)
+                    rate_tmp = self.BASE_RATES.get(currency)
+                    if not rate_tmp:
+                        raise ValueError(f"No fallback rate for {currency}")
+                    rate = rate_tmp
             else:
                 # Use static rates
-                rate = self.BASE_RATES.get(currency)
+                rate_tmp = self.BASE_RATES.get(currency)
+                if not rate_tmp:
+                    raise ValueError(f"No rate available for {currency}")
+                rate = rate_tmp
 
             if not rate:
                 raise ValueError(f"No rate available for {currency}")
@@ -167,10 +174,11 @@ class QuoteService:
             quotes = {}
             for product in products:
                 try:
-                    quote = await self.quote_for(product.slug, currency)
-                    quotes[product.slug] = quote
+                    product_slug = str(product.slug)
+                    quote = await self.quote_for(product_slug, currency)
+                    quotes[product_slug] = quote
                 except Exception as e:
-                    logger.error(f"Failed to quote {product.slug}: {e}")
+                    logger.error(f"Failed to quote {str(product.slug)}: {e}")
                     # Skip this product, continue with others
                     continue
 

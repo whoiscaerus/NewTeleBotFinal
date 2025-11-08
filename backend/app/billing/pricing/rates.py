@@ -110,7 +110,7 @@ class RateFetcher:
         self.session: Optional[aiohttp.ClientSession] = None
         self.consecutive_failures = 0
         self.circuit_breaker_open = False
-        self.circuit_breaker_until = None
+        self.circuit_breaker_until: Optional[datetime] = None
 
     async def __aenter__(self):
         """Async context manager enter."""

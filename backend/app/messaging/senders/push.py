@@ -127,17 +127,21 @@ async def send_push(
         }
 
     # Prepare push payload
-    payload = {
+    payload: dict[str, Any] = {
         "title": title,
         "body": body,
         "icon": icon,
         "badge": badge,
     }
 
+    # Build data dict separately
+    data_dict: dict[str, Any] = {}
     if url:
-        payload["data"] = {"url": url}
+        data_dict["url"] = url
     if data:
-        payload["data"] = payload.get("data", {}) | data
+        data_dict = data_dict | data
+    if data_dict:
+        payload["data"] = data_dict
 
     try:
         # Send push notification via pywebpush
@@ -395,10 +399,15 @@ async def send_batch_push(
         for result in results:
             if isinstance(result, Exception):
                 failed += 1
-            elif result["status"] == "sent":
-                sent += 1
-            elif result["status"] == "no_subscription":
-                no_subscription += 1
+            elif isinstance(result, dict):
+                if result["status"] == "sent":
+                    sent += 1
+                elif result["status"] == "no_subscription":
+                    no_subscription += 1
+                else:
+                    failed += 1
+            else:
+                failed += 1
             else:
                 failed += 1
 
