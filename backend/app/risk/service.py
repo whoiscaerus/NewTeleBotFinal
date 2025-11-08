@@ -358,7 +358,7 @@ class RiskService:
         client_id: str,
         signal: Signal,
         risk_percent: Optional[Decimal] = None,
-        db: AsyncSession = None,
+        db: Optional[AsyncSession] = None,
     ) -> Decimal:
         """Calculate safe position size using Kelly-like criterion.
 
