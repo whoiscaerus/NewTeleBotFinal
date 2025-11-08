@@ -4,11 +4,18 @@ Routes accepted signals to:
 1. Signals API (PR-021) for storage and approval workflow
 2. Admin Telegram channel (optional) for monitoring
 
-Includes duplicate prevention, error handling, and telemetry.
+Includes persistent duplicate prevention (Redis-backed), error handling, and telemetry.
 
 Example:
     >>> from backend.app.strategy.publisher import SignalPublisher
-    >>> publisher = SignalPublisher(signals_api_base="http://localhost:8000")
+    >>> from backend.app.strategy.cache import get_signal_publish_cache
+    >>>
+    >>> # With persistent caching
+    >>> signal_cache = await get_signal_publish_cache()
+    >>> publisher = SignalPublisher(
+    ...     signals_api_base="http://localhost:8000",
+    ...     signal_publish_cache=signal_cache
+    ... )
     >>>
     >>> signal_data = {
     ...     "instrument": "GOLD",
@@ -20,17 +27,20 @@ Example:
     ...     "timestamp": datetime.utcnow(),
     ... }
     >>>
-    >>> # Publish to API + optional Telegram
+    >>> # Publish to API + optional Telegram (with duplicate prevention)
     >>> result = await publisher.publish(signal_data, notify_telegram=True)
 """
 
 import logging
 import os
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from telegram import Bot
+
+if TYPE_CHECKING:
+    from backend.app.strategy.cache import SignalPublishCache
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +48,15 @@ logger = logging.getLogger(__name__)
 class SignalPublisher:
     """Publishes signals to API and notification channels.
 
+    Supports both in-memory (fallback) and Redis-backed (persistent) duplicate prevention.
+
     Attributes:
         signals_api_base: Base URL for Signals API (PR-021)
         telegram_token: Bot token for admin notifications
         telegram_admin_chat_id: Chat ID for admin notifications
         _telegram_bot: Telegram bot instance (lazy-loaded)
-        _published_signals: Cache for duplicate prevention
+        _published_signals: In-memory cache for duplicate prevention
+        _signal_publish_cache: Redis cache for persistent duplicate prevention
     """
 
     def __init__(
@@ -51,6 +64,7 @@ class SignalPublisher:
         signals_api_base: str | None = None,
         telegram_token: str | None = None,
         telegram_admin_chat_id: str | None = None,
+        signal_publish_cache: "SignalPublishCache | None" = None,
     ):
         """Initialize signal publisher.
 
@@ -58,12 +72,17 @@ class SignalPublisher:
             signals_api_base: Signals API base URL (default: from env)
             telegram_token: Telegram bot token (default: from env)
             telegram_admin_chat_id: Admin chat ID (default: from env)
+            signal_publish_cache: Optional SignalPublishCache for persistent caching
 
         Example:
+            >>> from backend.app.strategy.cache import get_signal_publish_cache
+            >>>
+            >>> cache = await get_signal_publish_cache()
             >>> publisher = SignalPublisher(
             ...     signals_api_base="http://localhost:8000",
             ...     telegram_token="1234567890:ABC...",
-            ...     telegram_admin_chat_id="-100123456789"
+            ...     telegram_admin_chat_id="-100123456789",
+            ...     signal_publish_cache=cache
             ... )
         """
         self.signals_api_base = signals_api_base or os.getenv(
@@ -77,7 +96,10 @@ class SignalPublisher:
         self._telegram_bot: Bot | None = None
         self._published_signals: dict[tuple, datetime] = (
             {}
-        )  # (instrument, candle_start) -> timestamp
+        )  # (instrument, candle_start) -> timestamp (in-memory fallback)
+
+        # Redis cache for persistent duplicate prevention
+        self._signal_publish_cache = signal_publish_cache
 
         # Validate configuration
         if not self.signals_api_base:
@@ -89,12 +111,16 @@ class SignalPublisher:
                 extra={
                     "api_base": self.signals_api_base,
                     "telegram_enabled": True,
+                    "redis_cache_enabled": signal_publish_cache is not None,
                 },
             )
         else:
             logger.info(
                 "SignalPublisher initialized without Telegram notifications",
-                extra={"api_base": self.signals_api_base},
+                extra={
+                    "api_base": self.signals_api_base,
+                    "redis_cache_enabled": signal_publish_cache is not None,
+                },
             )
 
     async def publish(

@@ -5,9 +5,10 @@ drift tolerance to handle timing variations in real-world systems.
 
 Key Features:
     - New candle detection with configurable window
-    - Duplicate signal prevention within same candle
+    - Duplicate signal prevention (Redis-backed persistent cache)
     - Multi-timeframe support (15m, 1h, 4h, 1d)
     - Timezone-aware handling
+    - Distributed system support
 
 Example:
     >>> from backend.app.strategy.candles import CandleDetector
@@ -16,8 +17,8 @@ Example:
     >>> # Check if timestamp is at new candle boundary
     >>> is_new = detector.is_new_candle(datetime.utcnow(), "15m")
     >>>
-    >>> # Prevent duplicates within same candle
-    >>> if detector.should_process_candle("GOLD", "15m", datetime.utcnow()):
+    >>> # Prevent duplicates within same candle (async, uses Redis cache)
+    >>> if await detector.should_process_candle_async("GOLD", "15m", datetime.utcnow()):
     ...     # Process signal
     ...     pass
 """
@@ -25,6 +26,10 @@ Example:
 import logging
 import os
 from datetime import datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.app.strategy.cache import CandleCache
 
 logger = logging.getLogger(__name__)
 
@@ -32,30 +37,48 @@ logger = logging.getLogger(__name__)
 class CandleDetector:
     """Detects new candle boundaries and prevents duplicate processing.
 
+    Supports both in-memory (fallback) and Redis-backed (distributed) caching.
+
     Attributes:
         window_seconds: Grace period for boundary detection (drift tolerance)
-        _processed_candles: Cache of (instrument, timeframe, candle_timestamp)
+        _processed_candles: In-memory cache of (instrument, timeframe, candle_ts)
+        _redis_cache: Optional Redis cache for persistent duplicate prevention
     """
 
-    def __init__(self, window_seconds: int | None = None):
+    def __init__(
+        self,
+        window_seconds: int | None = None,
+        redis_cache: "CandleCache | None" = None,
+    ):
         """Initialize candle detector.
 
         Args:
             window_seconds: Grace period in seconds (default: from CANDLE_CHECK_WINDOW env)
+            redis_cache: Optional CandleCache instance for persistent caching
 
         Example:
             >>> detector = CandleDetector(window_seconds=60)
+            >>>
+            >>> # With Redis cache
+            >>> cache = await get_candle_cache()
+            >>> detector = CandleDetector(redis_cache=cache)
         """
         self.window_seconds = window_seconds or int(
             os.getenv("CANDLE_CHECK_WINDOW", "60")
         )
 
-        # Track processed candles to prevent duplicates: (instrument, tf, candle_ts) -> timestamp
+        # In-memory cache (fallback or primary if Redis unavailable)
         self._processed_candles: dict[tuple[str, str, datetime], datetime] = {}
+
+        # Redis cache for persistent duplicate prevention
+        self._redis_cache = redis_cache
 
         logger.info(
             "CandleDetector initialized",
-            extra={"window_seconds": self.window_seconds},
+            extra={
+                "window_seconds": self.window_seconds,
+                "redis_enabled": redis_cache is not None,
+            },
         )
 
     def is_new_candle(
@@ -193,6 +216,95 @@ class CandleDetector:
                 "timeframe": timeframe,
                 "candle_start": candle_start.isoformat(),
                 "timestamp": timestamp.isoformat(),
+            },
+        )
+
+        return True
+
+    async def should_process_candle_async(
+        self,
+        instrument: str,
+        timeframe: str,
+        timestamp: datetime,
+    ) -> bool:
+        """Check if candle should be processed with Redis-backed persistent caching.
+
+        Uses Redis for duplicate prevention across process restarts and distributed deployments.
+        Falls back to in-memory cache if Redis unavailable.
+
+        Args:
+            instrument: Trading instrument (e.g., "GOLD", "EURUSD")
+            timeframe: Timeframe string (e.g., "15m", "1h")
+            timestamp: Current timestamp (UTC)
+
+        Returns:
+            True if this is a new candle that hasn't been processed yet
+
+        Example:
+            >>> from backend.app.strategy.cache import get_candle_cache
+            >>>
+            >>> cache = await get_candle_cache()
+            >>> detector = CandleDetector(redis_cache=cache)
+            >>>
+            >>> # First call at boundary
+            >>> if await detector.should_process_candle_async("GOLD", "15m", datetime.utcnow()):
+            ...     # Process signal
+            ...     pass
+        """
+        # Check if at new candle boundary
+        if not self.is_new_candle(timestamp, timeframe):
+            return False
+
+        # Get candle start timestamp
+        candle_start = self.get_candle_start(timestamp, timeframe)
+
+        # Create cache key
+        cache_key = f"{instrument}:{timeframe}:{candle_start.isoformat()}"
+
+        # Check Redis cache first (if available)
+        if self._redis_cache:
+            if await self._redis_cache.exists(cache_key):
+                logger.debug(
+                    "Duplicate candle detected (Redis cache), skipping",
+                    extra={
+                        "instrument": instrument,
+                        "timeframe": timeframe,
+                        "candle_start": candle_start.isoformat(),
+                    },
+                )
+                return False
+
+            # Mark as processed in Redis (24 hour TTL)
+            await self._redis_cache.set(cache_key, "processed", ttl=86400)
+
+        # Also check in-memory cache for this process
+        sync_key = (instrument, timeframe, candle_start)
+        if sync_key in self._processed_candles:
+            logger.debug(
+                "Duplicate candle detected (in-memory cache), skipping",
+                extra={
+                    "instrument": instrument,
+                    "timeframe": timeframe,
+                    "candle_start": candle_start.isoformat(),
+                },
+            )
+            return False
+
+        # Mark as processed in-memory
+        self._processed_candles[sync_key] = timestamp
+
+        # Clean up old entries
+        if len(self._processed_candles) > 1000:
+            self._cleanup_old_candles()
+
+        logger.info(
+            "New candle ready for processing (async)",
+            extra={
+                "instrument": instrument,
+                "timeframe": timeframe,
+                "candle_start": candle_start.isoformat(),
+                "timestamp": timestamp.isoformat(),
+                "redis_backed": self._redis_cache is not None,
             },
         )
 
