@@ -146,6 +146,14 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Decision log metrics (PR-073)
+        self.decision_logs_total = Counter(
+            "decision_logs_total",
+            "Total trade decisions logged",
+            ["strategy"],
+            registry=self.registry,
+        )
+
         # Audit metrics
         self.audit_events_total = Counter(
             "audit_events_total",
