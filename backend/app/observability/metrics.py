@@ -208,6 +208,22 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Quota metrics (PR-082)
+        self.quota_block_total = Counter(
+            "quota_block_total",
+            "Total quota limit blocks (PR-082: resource protection)",
+            ["key"],  # signals_per_day, alerts_per_day, exports_per_month, etc.
+            registry=self.registry,
+        )
+
+        # Gateway migration metrics (PR-083)
+        self.legacy_calls_total = Counter(
+            "legacy_calls_total",
+            "Total calls to legacy Flask routes (PR-083: should trend to zero)",
+            ["route"],  # /api/price, /api/trades, /api/positions, etc.
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",

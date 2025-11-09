@@ -264,6 +264,24 @@ class MediaSettings(BaseSettings):
     )
 
 
+class GatewaySettings(BaseSettings):
+    """Gateway migration settings (PR-083)."""
+
+    flask_compatibility_mode: bool = Field(
+        default=True, alias="FLASK_COMPATIBILITY_MODE"
+    )
+    telegram_user_id: str = Field(default="123456789", alias="TELEGRAM_USER_ID")
+    trading_symbol: str = Field(default="XAUUSD", alias="TRADING_SYMBOL")
+    exchange_rate: float = Field(default=1.27, alias="EXCHANGE_RATE")
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",
+    )
+
+
 class Settings(BaseSettings):
     """Main settings combining all config objects.
 
@@ -282,6 +300,7 @@ class Settings(BaseSettings):
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
     media: MediaSettings = Field(default_factory=MediaSettings)
+    gateway: GatewaySettings = Field(default_factory=GatewaySettings)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=".env",
