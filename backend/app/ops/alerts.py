@@ -427,7 +427,7 @@ async def send_feature_quality_alert(
             f"Type: <code>{violation_type}</code>",
             f"Symbol: <b>{symbol}</b>",
             f"Severity: {severity.upper()}",
-            f"",
+            "",
             f"{message}",
         ]
 

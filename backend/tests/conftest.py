@@ -37,8 +37,31 @@ from sqlalchemy.orm import sessionmaker
 
 # Set test environment variables BEFORE importing app
 os.environ["APP_ENV"] = "development"
+os.environ["APP_NAME"] = "test-app"
+os.environ["APP_VERSION"] = "0.1.0-test"
+os.environ["APP_LOG_LEVEL"] = "DEBUG"
 os.environ["DB_DSN"] = "postgresql+psycopg://user:pass@localhost:5432/test_app"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["REDIS_URL"] = "redis://localhost:6379/0"
+os.environ["SMTP_HOST"] = "localhost"
+os.environ["SMTP_PORT"] = "587"
+os.environ["SMTP_USER"] = "test@example.com"
+os.environ["SMTP_PASSWORD"] = "test_password"
+os.environ["SMTP_FROM"] = "noreply@test.com"
+os.environ["PUSH_ENABLED"] = "false"
+os.environ["JWT_SECRET_KEY"] = "test_jwt_secret_key_12345678901234567890"
+os.environ["JWT_ALGORITHM"] = "HS256"
+os.environ["JWT_EXPIRE_MINUTES"] = "30"
+os.environ["STRIPE_SECRET_KEY"] = "sk_test_123456789"
+os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test_123456789"
+os.environ["TELEGRAM_PAYMENT_PROVIDER_TOKEN"] = "test_payment_token"
+os.environ["SIGNALS_API_BASE"] = "http://localhost:8000"
+os.environ["SIGNALS_HMAC_KEY"] = "test_hmac_key_12345678901234567890"
+os.environ["TELEGRAM_BOT_TOKEN"] = "test_bot_token"
+os.environ["TELEGRAM_BOT_USERNAME"] = "TestBot"
+os.environ["OTEL_ENABLED"] = "false"
+os.environ["PROMETHEUS_ENABLED"] = "false"
+os.environ["MEDIA_DIR"] = "test_media"
 os.environ["HMAC_PRODUCER_ENABLED"] = "false"
 
 from backend.app.accounts.models import AccountLink  # noqa: F401, E402
@@ -47,8 +70,13 @@ from backend.app.audit.models import AuditLog  # noqa: F401, E402
 # Import all models so they're registered with Base.metadata
 from backend.app.auth.models import User  # noqa: F401, E402
 from backend.app.billing.stripe.models import StripeEvent  # noqa: F401, E402
-from backend.app.prefs.models import UserPreferences  # noqa: F401, E402
 from backend.app.features.models import FeatureSnapshot  # noqa: F401, E402
+from backend.app.paper.models import (  # noqa: F401, E402
+    PaperAccount,
+    PaperPosition,
+    PaperTrade,
+)
+from backend.app.prefs.models import UserPreferences  # noqa: F401, E402
 from backend.app.strategy.logs.models import DecisionLog  # noqa: F401, E402
 from backend.app.strategy.models import (  # noqa: F401, E402
     CanaryConfig,

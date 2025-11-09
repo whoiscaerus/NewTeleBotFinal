@@ -194,6 +194,20 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Paper trading metrics (PR-081)
+        self.paper_fills_total = Counter(
+            "paper_fills_total",
+            "Total paper trading fills (PR-081: sandbox orders)",
+            ["symbol", "side"],
+            registry=self.registry,
+        )
+
+        self.paper_pnl_total = Gauge(
+            "paper_pnl_total",
+            "Total paper trading PnL across all users (PR-081)",
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",

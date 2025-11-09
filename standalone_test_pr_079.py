@@ -7,15 +7,12 @@ This minimal test bypasses conftest issues to demonstrate that:
 """
 
 import asyncio
-import math
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.app.core.db import Base
-from backend.app.features.models import FeatureSnapshot
 from backend.app.features.quality import QualityMonitor, ViolationType
 from backend.app.features.store import FeatureStore
 
@@ -80,7 +77,9 @@ async def test_feature_store_and_quality():
             features={"rsi": 50.0},
         )
 
-        staleness_violations = monitor.check_staleness(old_snapshot, max_age_seconds=300)
+        staleness_violations = monitor.check_staleness(
+            old_snapshot, max_age_seconds=300
+        )
         assert len(staleness_violations) == 1
         assert staleness_violations[0].type == ViolationType.STALE_DATA
         assert staleness_violations[0].severity == "high"
@@ -94,10 +93,15 @@ async def test_feature_store_and_quality():
         )
 
         expected_features = ["rsi_14", "roc_10", "atr_14"]
-        missing_violations = monitor.check_missing(incomplete_snapshot, expected_features)
+        missing_violations = monitor.check_missing(
+            incomplete_snapshot, expected_features
+        )
         assert len(missing_violations) == 1
         assert missing_violations[0].type == ViolationType.MISSING_FEATURES
-        assert set(missing_violations[0].metadata["missing_features"]) == {"roc_10", "atr_14"}
+        assert set(missing_violations[0].metadata["missing_features"]) == {
+            "roc_10",
+            "atr_14",
+        }
         print("✅ TEST 5 PASSED: Missing features detection works correctly")
 
         # ✅ TEST 6: Quality score threshold

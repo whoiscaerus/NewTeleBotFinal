@@ -25,7 +25,7 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -60,7 +60,7 @@ class QualityViolation:
     symbol: str
     message: str
     severity: str = "medium"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __repr__(self) -> str:
         return f"<QualityViolation {self.type.value} [{self.severity}]: {self.message}>"
@@ -81,8 +81,8 @@ class QualityReport:
     symbol: str
     timestamp: datetime
     passed: bool
-    violations: List[QualityViolation] = field(default_factory=list)
-    snapshot_id: Optional[int] = None
+    violations: list[QualityViolation] = field(default_factory=list)
+    snapshot_id: int | None = None
 
     def __repr__(self) -> str:
         status = (
@@ -118,8 +118,8 @@ class QualityMonitor:
     async def check_quality(
         self,
         symbol: str,
-        expected_features: Optional[List[str]] = None,
-        max_age_seconds: Optional[int] = None,
+        expected_features: list[str] | None = None,
+        max_age_seconds: int | None = None,
     ) -> QualityReport:
         """Run all quality checks on the latest snapshot.
 
@@ -140,7 +140,7 @@ class QualityMonitor:
             >>> report.passed
             True
         """
-        violations: List[QualityViolation] = []
+        violations: list[QualityViolation] = []
         snapshot = await self.store.get_latest(symbol)
 
         if not snapshot:
@@ -193,7 +193,7 @@ class QualityMonitor:
 
     def check_staleness(
         self, snapshot: Any, max_age_seconds: int
-    ) -> List[QualityViolation]:
+    ) -> list[QualityViolation]:
         """Check if data is stale.
 
         Args:
@@ -229,7 +229,7 @@ class QualityMonitor:
 
         return violations
 
-    def check_nans(self, snapshot: Any) -> List[QualityViolation]:
+    def check_nans(self, snapshot: Any) -> list[QualityViolation]:
         """Check for NaN values in features.
 
         Args:
@@ -268,8 +268,8 @@ class QualityMonitor:
         return violations
 
     def check_missing(
-        self, snapshot: Any, expected_features: List[str]
-    ) -> List[QualityViolation]:
+        self, snapshot: Any, expected_features: list[str]
+    ) -> list[QualityViolation]:
         """Check for missing expected features.
 
         Args:
@@ -304,7 +304,7 @@ class QualityMonitor:
 
         return violations
 
-    def check_quality_score(self, snapshot: Any) -> List[QualityViolation]:
+    def check_quality_score(self, snapshot: Any) -> list[QualityViolation]:
         """Check if quality score is below threshold.
 
         Args:
@@ -340,7 +340,7 @@ class QualityMonitor:
 
     async def check_drift(
         self, symbol: str, current_snapshot: Any
-    ) -> List[QualityViolation]:
+    ) -> list[QualityViolation]:
         """Check for feature drift/regime shifts.
 
         Compares current features to historical mean/std to detect

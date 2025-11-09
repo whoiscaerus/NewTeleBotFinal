@@ -25,8 +25,8 @@ Examples:
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,7 +54,7 @@ class FeatureStore:
         self,
         symbol: str,
         timestamp: datetime,
-        features: Dict[str, Any],
+        features: dict[str, Any],
         quality_score: float = 1.0,
     ) -> FeatureSnapshot:
         """Store a feature snapshot.
@@ -109,7 +109,7 @@ class FeatureStore:
 
         return snapshot
 
-    async def get_latest(self, symbol: str) -> Optional[FeatureSnapshot]:
+    async def get_latest(self, symbol: str) -> FeatureSnapshot | None:
         """Get the latest feature snapshot for a symbol.
 
         Args:
@@ -136,10 +136,10 @@ class FeatureStore:
     async def get_features(
         self,
         symbol: str,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        limit: Optional[int] = None,
-    ) -> List[FeatureSnapshot]:
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        limit: int | None = None,
+    ) -> list[FeatureSnapshot]:
         """Get feature snapshots for a symbol in a time range.
 
         Args:
@@ -177,7 +177,7 @@ class FeatureStore:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_id(self, snapshot_id: int) -> Optional[FeatureSnapshot]:
+    async def get_by_id(self, snapshot_id: int) -> FeatureSnapshot | None:
         """Get a feature snapshot by ID.
 
         Args:
@@ -197,9 +197,9 @@ class FeatureStore:
 
     async def count_snapshots(
         self,
-        symbol: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        symbol: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> int:
         """Count feature snapshots matching criteria.
 

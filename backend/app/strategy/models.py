@@ -36,9 +36,8 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Float, Index, String
-from sqlalchemy.dialects.postgresql import JSONB
 
-from backend.app.core.db import Base
+from backend.app.core.db import Base, JSONBType
 
 
 class VersionStatus(str, enum.Enum):
@@ -113,7 +112,7 @@ class StrategyVersion(Base):
     )
 
     # Strategy-specific configuration (JSONB for flexibility)
-    config = Column(JSONB, nullable=False)
+    config = Column(JSONBType, nullable=False)
 
     # Lifecycle timestamps
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -271,13 +270,13 @@ class ShadowDecisionLog(Base):
     decision = Column(String(20), nullable=False, index=True)  # buy, sell, hold
 
     # ALL input features used for decision (JSONB for flexibility)
-    features = Column(JSONB, nullable=False)
+    features = Column(JSONBType, nullable=False)
 
     # Confidence score (0.0 to 1.0) if strategy provides it
     confidence = Column(Float, nullable=True)
 
     # Additional metadata (e.g., comparison with active version)
-    metadata = Column(JSONB, nullable=True)
+    meta_data = Column(JSONBType, nullable=True)
 
     # Composite indexes for analytics queries
     __table_args__ = (

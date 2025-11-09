@@ -21,10 +21,9 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
-from backend.app.core.db import Base
+from backend.app.core.db import Base, JSONBType
 
 
 class CopyType(str, Enum):
@@ -62,7 +61,7 @@ class CopyEntry(Base):
     type = Column(String(20), nullable=False, index=True)  # CopyType enum
     status = Column(String(20), nullable=False, default=CopyStatus.DRAFT)
     description = Column(Text, nullable=True)  # Editor notes
-    metadata = Column(JSONB, nullable=False, default=dict)  # Context, tags, etc.
+    metadata = Column(JSONBType, nullable=False, default=dict)  # Context, tags, etc.
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
@@ -145,7 +144,9 @@ class CopyVariant(Base):
     is_control = Column(Boolean, nullable=False, default=True)  # Control variant
 
     text = Column(Text, nullable=False)  # The actual copy
-    metadata = Column(JSONB, nullable=False, default=dict)  # Rich text, variables, etc.
+    metadata = Column(
+        JSONBType, nullable=False, default=dict
+    )  # Rich text, variables, etc.
 
     # A/B testing metrics
     impressions = Column(Integer, nullable=False, default=0)

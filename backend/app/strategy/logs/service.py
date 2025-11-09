@@ -15,7 +15,7 @@ from uuid import uuid4
 from sqlalchemy import String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.observability.metrics import metrics_collector
+from backend.app.observability.metrics import metrics
 from backend.app.strategy.logs.models import DecisionLog, DecisionOutcome
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ class DecisionLogService:
             await self.db.refresh(decision_log)
 
             # Record telemetry
-            metrics_collector.decision_logs_total.labels(strategy=strategy).inc()
+            metrics.decision_logs_total.labels(strategy=strategy).inc()
 
             logger.info(
                 f"Recorded decision: strategy={strategy}, symbol={symbol}, "

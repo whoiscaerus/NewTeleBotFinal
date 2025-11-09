@@ -1,8 +1,10 @@
 """Database setup and session management."""
 
+import json
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import create_engine
+from sqlalchemy import Text, TypeDecorator, create_engine
+from sqlalchemy.dialects.postgresql import JSONB as PostgreSQLJSONB
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -15,6 +17,31 @@ from backend.app.core.settings import get_settings
 
 # SQLAlchemy declarative base
 Base = declarative_base()
+
+
+class JSONBType(TypeDecorator):
+    """Universal JSONB type that works with SQLite (as JSON) and PostgreSQL (as JSONB)."""
+
+    impl = Text
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(PostgreSQLJSONB())
+        else:
+            return dialect.type_descriptor(Text())
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            if dialect.name != "postgresql":
+                return json.dumps(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            if dialect.name != "postgresql":
+                return json.loads(value)
+        return value
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

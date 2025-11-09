@@ -11,13 +11,14 @@ Coverage targets:
 - Integration with quality violations
 """
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.features.quality import QualityMonitor, ViolationType
+from backend.app.features.quality import QualityMonitor
 from backend.app.features.store import FeatureStore
 from backend.app.ops.alerts import send_feature_quality_alert
-from datetime import UTC, datetime, timedelta
 
 
 @pytest.mark.asyncio

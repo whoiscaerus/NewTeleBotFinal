@@ -14,9 +14,8 @@ from typing import Any
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Index, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
 
-from backend.app.core.db import Base
+from backend.app.core.db import Base, JSONBType
 
 
 class DecisionOutcome(str, enum.Enum):
@@ -70,7 +69,7 @@ class DecisionLog(Base):
     symbol = Column(String(20), nullable=False, index=True)
 
     # Full decision context (flexible JSONB)
-    features = Column(JSONB, nullable=False)
+    features = Column(JSONBType, nullable=False)
 
     # Decision result
     outcome: DecisionOutcome = Column(  # type: ignore[assignment]

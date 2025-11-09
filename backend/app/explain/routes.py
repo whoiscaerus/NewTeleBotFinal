@@ -75,7 +75,7 @@ async def get_attribution(
     Example:
         GET /api/v1/explain/attribution?decision_id=abc-123&strategy=fib_rsi
     """
-    from backend.app.observability.metrics import metrics_collector
+    from backend.app.observability.metrics import metrics
 
     try:
         result = await compute_attribution(
@@ -86,7 +86,7 @@ async def get_attribution(
         )
 
         # Increment telemetry
-        metrics_collector.explain_requests_total.inc()
+        metrics.explain_requests_total.inc()
 
         logger.info(
             f"Attribution computed for decision {decision_id}: "
@@ -137,7 +137,7 @@ async def get_feature_importance(
     Example:
         GET /api/v1/explain/feature-importance?strategy=fib_rsi&lookback_days=30
     """
-    from backend.app.observability.metrics import metrics_collector
+    from backend.app.observability.metrics import metrics
 
     try:
         importance = await compute_feature_importance(
@@ -147,7 +147,7 @@ async def get_feature_importance(
         )
 
         # Increment telemetry
-        metrics_collector.explain_requests_total.inc()
+        metrics.explain_requests_total.inc()
 
         logger.info(
             f"Feature importance computed for {strategy} "
