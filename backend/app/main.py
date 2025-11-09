@@ -26,6 +26,7 @@ from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.revenue.routes import router as revenue_router
 from backend.app.risk.routes import router as risk_router
+from backend.app.risk.routes import trading_router
 from backend.app.signals.routes import router as signals_router
 from backend.app.trust.routes import router as trust_router
 
@@ -70,6 +71,7 @@ app.include_router(polling_v2_router, tags=["polling-v2"])
 app.include_router(prefs_router, tags=["preferences"])
 app.include_router(revenue_router, prefix="/api/v1", tags=["revenue"])
 app.include_router(risk_router, tags=["risk"])
+app.include_router(trading_router, tags=["trading-controls"])  # PR-075
 app.include_router(signals_router, prefix="/api/v1", tags=["signals"])
 app.include_router(devices_router, prefix="/api/v1", tags=["devices"])
 app.include_router(exec_router, prefix="/api/v1", tags=["execution"])

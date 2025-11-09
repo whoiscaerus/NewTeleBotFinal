@@ -6,11 +6,16 @@ REST API endpoints:
 - GET /api/v1/risk/exposure - Get current exposure snapshot
 - GET /api/v1/admin/risk/global-exposure - Platform-wide exposure (admin only)
 
+PR-075 Trading Control endpoints:
+- PATCH /api/v1/trading/pause - Pause trading (stops signal generation)
+- PATCH /api/v1/trading/resume - Resume trading (restarts on next candle)
+- PUT /api/v1/trading/size - Update position size override
+- GET /api/v1/trading/status - Get trading control status
+
 All endpoints require authentication. Admin endpoints require premium tier.
 """
 
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -19,8 +24,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.dependencies import get_current_user
 from backend.app.core.db import get_db
 from backend.app.risk.service import RiskService
+from backend.app.risk.trading_controls import TradingControlService
 
 router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
+trading_router = APIRouter(prefix="/api/v1/trading", tags=["trading-controls"])
 
 
 # ============================================================================
@@ -31,33 +38,33 @@ router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
 class RiskLimitUpdate(BaseModel):
     """Request model for updating risk limits."""
 
-    max_drawdown_percent: Optional[Decimal] = Field(
+    max_drawdown_percent: Decimal | None = Field(
         None,
         ge=Decimal("1"),
         le=Decimal("100"),
         description="Maximum drawdown threshold (1-100%)",
     )
-    max_daily_loss: Optional[Decimal] = Field(
+    max_daily_loss: Decimal | None = Field(
         None,
         ge=Decimal("0"),
         description="Maximum daily loss in account currency (0=unlimited)",
     )
-    max_position_size: Optional[Decimal] = Field(
+    max_position_size: Decimal | None = Field(
         None,
         ge=Decimal("0.01"),
         le=Decimal("100"),
         description="Maximum position size per trade (0.01-100 lots)",
     )
-    max_open_positions: Optional[int] = Field(
+    max_open_positions: int | None = Field(
         None, ge=1, le=100, description="Maximum concurrent open trades"
     )
-    max_correlation_exposure: Optional[Decimal] = Field(
+    max_correlation_exposure: Decimal | None = Field(
         None,
         ge=Decimal("0"),
         le=Decimal("1"),
         description="Max exposure to related instruments (0-1)",
     )
-    risk_per_trade_percent: Optional[Decimal] = Field(
+    risk_per_trade_percent: Decimal | None = Field(
         None,
         ge=Decimal("0.1"),
         le=Decimal("10"),
@@ -82,7 +89,7 @@ class RiskProfileOut(BaseModel):
     id: str
     client_id: str
     max_drawdown_percent: Decimal
-    max_daily_loss: Optional[Decimal]
+    max_daily_loss: Decimal | None
     max_position_size: Decimal
     max_open_positions: int
     max_correlation_exposure: Decimal
@@ -117,7 +124,7 @@ class ExposureOut(BaseModel):
     exposure_by_direction: dict
     open_positions_count: int
     current_drawdown_percent: Decimal
-    daily_pnl: Optional[Decimal]
+    daily_pnl: Decimal | None
 
     class Config:
         from_attributes = True
@@ -348,6 +355,234 @@ async def get_global_exposure(
             exposure_utilization_percent=exposure_util,
             positions_utilization_percent=positions_util,
         )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# PR-075: Trading Control Endpoints
+# ============================================================================
+
+
+class PauseRequest(BaseModel):
+    """Request model for pausing trading."""
+
+    reason: str | None = Field(
+        None, max_length=500, description="Optional reason for pause"
+    )
+
+    class Config:
+        json_schema_extra = {"example": {"reason": "Manual pause for risk review"}}
+
+
+class PositionSizeUpdate(BaseModel):
+    """Request model for position size override."""
+
+    position_size: Decimal | None = Field(
+        None,
+        ge=Decimal("0.01"),
+        le=Decimal("100"),
+        description="Position size in lots (None = use default risk %)",
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {"position_size": "0.5"}  # Override to 0.5 lots
+        }
+
+
+class TradingStatusOut(BaseModel):
+    """Response model for trading status."""
+
+    is_paused: bool
+    paused_at: str | None
+    paused_by: str | None
+    pause_reason: str | None
+    position_size_override: float | None
+    notifications_enabled: bool
+    updated_at: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "is_paused": False,
+                "paused_at": None,
+                "paused_by": None,
+                "pause_reason": None,
+                "position_size_override": None,
+                "notifications_enabled": True,
+                "updated_at": "2025-01-15T10:30:00Z",
+            }
+        }
+
+
+@trading_router.patch("/pause", response_model=TradingStatusOut)
+async def pause_trading(
+    request: PauseRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Pause trading for current user.
+
+    Business Logic:
+    - Sets is_paused=True, stops signal generation in strategy scheduler
+    - Existing open positions are NOT automatically closed
+    - User can manually close positions if desired
+    - Resume via PATCH /trading/resume
+
+    Args:
+        request: Pause request with optional reason
+        db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        TradingStatusOut: Updated trading status with paused state
+
+    Raises:
+        HTTPException: 400 if already paused, 500 on error
+
+    Example:
+        >>> response = await client.patch(
+        ...     "/api/v1/trading/pause",
+        ...     json={"reason": "Risk breach"}
+        ... )
+        >>> assert response.json()["is_paused"] is True
+    """
+    try:
+        await TradingControlService.pause_trading(
+            user_id=current_user["id"],
+            db=db,
+            actor="user",
+            reason=request.reason,
+        )
+
+        status = await TradingControlService.get_trading_status(current_user["id"], db)
+        return TradingStatusOut(**status)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@trading_router.patch("/resume", response_model=TradingStatusOut)
+async def resume_trading(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Resume trading for current user.
+
+    Business Logic:
+    - Sets is_paused=False, signal generation resumes on NEXT candle bar
+    - No retroactive signals generated for missed bars during pause
+    - Preserves pause audit history (paused_at, paused_by, pause_reason)
+
+    Args:
+        db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        TradingStatusOut: Updated trading status with running state
+
+    Raises:
+        HTTPException: 400 if already running, 500 on error
+
+    Example:
+        >>> response = await client.patch("/api/v1/trading/resume")
+        >>> assert response.json()["is_paused"] is False
+    """
+    try:
+        await TradingControlService.resume_trading(
+            user_id=current_user["id"], db=db, actor="user"
+        )
+
+        status = await TradingControlService.get_trading_status(current_user["id"], db)
+        return TradingStatusOut(**status)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@trading_router.put("/size", response_model=TradingStatusOut)
+async def update_position_size(
+    request: PositionSizeUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Update position size override.
+
+    Business Logic:
+    - position_size=None → use default risk % from PR-074 guards
+    - position_size=X → force all trades to X lots (subject to broker constraints)
+    - Size validation happens in PR-074 position_size.py before order placement
+
+    Args:
+        request: Position size update (None = use default)
+        db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        TradingStatusOut: Updated trading status with new size
+
+    Raises:
+        HTTPException: 400 if invalid size, 500 on error
+
+    Example:
+        >>> response = await client.put(
+        ...     "/api/v1/trading/size",
+        ...     json={"position_size": "0.5"}
+        ... )
+        >>> assert response.json()["position_size_override"] == 0.5
+    """
+    try:
+        await TradingControlService.update_position_size(
+            user_id=current_user["id"],
+            db=db,
+            position_size=request.position_size,
+        )
+
+        status = await TradingControlService.get_trading_status(current_user["id"], db)
+        return TradingStatusOut(**status)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@trading_router.get("/status", response_model=TradingStatusOut)
+async def get_trading_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Get current trading control status.
+
+    Returns comprehensive status:
+    - Trading paused/running
+    - Pause metadata (when, who, why)
+    - Position size override (if any)
+    - Notification preferences
+
+    Args:
+        db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        TradingStatusOut: Current trading status
+
+    Raises:
+        HTTPException: 500 on error
+
+    Example:
+        >>> response = await client.get("/api/v1/trading/status")
+        >>> print(f"Trading: {'PAUSED' if response.json()['is_paused'] else 'RUNNING'}")
+    """
+    try:
+        status = await TradingControlService.get_trading_status(current_user["id"], db)
+        return TradingStatusOut(**status)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

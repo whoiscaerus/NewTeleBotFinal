@@ -164,6 +164,27 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Trading control metrics (PR-075)
+        self.trading_paused_total = Counter(
+            "trading_paused_total",
+            "Total trading pause actions",
+            ["actor"],  # user, admin, system
+            registry=self.registry,
+        )
+
+        self.trading_resumed_total = Counter(
+            "trading_resumed_total",
+            "Total trading resume actions",
+            ["actor"],  # user, admin
+            registry=self.registry,
+        )
+
+        self.trading_size_changed_total = Counter(
+            "trading_size_changed_total",
+            "Total position size override changes",
+            registry=self.registry,
+        )
+
         # Audit metrics
         self.audit_events_total = Counter(
             "audit_events_total",
