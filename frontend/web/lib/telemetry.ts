@@ -18,6 +18,7 @@ interface CWVData {
   fid?: number;  // First Input Delay (milliseconds)
   cls?: number;  // Cumulative Layout Shift (score)
   ttfb?: number; // Time to First Byte (milliseconds)
+  tti?: number;  // Time to Interactive (milliseconds) - PR-086
 }
 
 /**
@@ -98,7 +99,7 @@ export async function initCWVTracking(): Promise<void> {
   if (typeof window === 'undefined') return;
 
   try {
-    const { onLCP, onFID, onCLS, onTTFB } = await import('web-vitals');
+    const { onLCP, onFID, onCLS, onTTFB, onTTI } = await import('web-vitals');
 
     const cwvData: CWVData = {};
 
@@ -121,6 +122,14 @@ export async function initCWVTracking(): Promise<void> {
       cwvData.ttfb = metric.value;
       trackCoreWebVitals(cwvData);
     });
+
+    // PR-086: Track Time to Interactive
+    if (typeof onTTI === 'function') {
+      onTTI((metric) => {
+        cwvData.tti = metric.value;
+        trackCoreWebVitals(cwvData);
+      });
+    }
   } catch (error) {
     console.warn('Failed to initialize CWV tracking:', error);
   }

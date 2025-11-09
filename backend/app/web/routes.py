@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 # Import observability from existing metrics infrastructure
-from backend.app.observability.metrics import get_metrics_service
+from backend.app.observability.metrics import get_metrics
 
 router = APIRouter(prefix="/api/v1/web", tags=["web-telemetry"])
 
@@ -46,6 +46,32 @@ class CoreWebVitalsRequest(BaseModel):
     ttfb: float | None = Field(
         None, gt=0, description="Time to First Byte (milliseconds)"
     )
+    tti: float | None = Field(
+        None, gt=0, description="Time to Interactive (milliseconds)"
+    )
+
+
+class ABVariantRequest(BaseModel):
+    """A/B test variant exposure request (PR-086)."""
+
+    experiment: str = Field(
+        ..., min_length=1, max_length=100, description="Experiment name"
+    )
+    variant: str = Field(..., min_length=1, max_length=100, description="Variant name")
+    timestamp: int = Field(..., description="Client timestamp (Unix ms)")
+
+
+class ABConversionRequest(BaseModel):
+    """A/B test conversion tracking request (PR-086)."""
+
+    experiment: str = Field(
+        ..., min_length=1, max_length=100, description="Experiment name"
+    )
+    variant: str = Field(..., min_length=1, max_length=100, description="Variant name")
+    event: str = Field(
+        ..., min_length=1, max_length=100, description="Conversion event (e.g., signup)"
+    )
+    timestamp: int = Field(..., description="Client timestamp (Unix ms)")
 
 
 # Response Models
@@ -59,7 +85,7 @@ class TelemetryResponse(BaseModel):
 @router.post("/pageview", status_code=201, response_model=TelemetryResponse)
 async def track_page_view(
     request: PageViewRequest,
-    metrics_service=Depends(get_metrics_service),
+    metrics_service=Depends(get_metrics),
 ):
     """
     Track a page view for analytics.
@@ -97,7 +123,7 @@ async def track_page_view(
 @router.post("/cwv", status_code=201, response_model=TelemetryResponse)
 async def track_core_web_vitals(
     request: CoreWebVitalsRequest,
-    metrics_service=Depends(get_metrics_service),
+    metrics_service=Depends(get_metrics),
 ):
     """
     Track Core Web Vitals for performance monitoring.
@@ -137,8 +163,91 @@ async def track_core_web_vitals(
         if request.ttfb is not None:
             metrics_service.web_cwv_ttfb_seconds.observe(request.ttfb / 1000)
 
+        # Record TTI (Time to Interactive) - convert ms to seconds (PR-086)
+        if request.tti is not None:
+            metrics_service.web_cwv_tti_seconds.observe(request.tti / 1000)
+
         return TelemetryResponse(status="recorded")
 
-    except Exception:
-        print(f="[WARN] Failed to record CWV: {e}")
+    except Exception as e:
+        print(f"[WARN] Failed to record CWV: {e}")
+        return TelemetryResponse(status="recorded")
+
+
+@router.post("/ab", status_code=201, response_model=TelemetryResponse)
+async def track_ab_variant(
+    request: ABVariantRequest,
+    metrics_service=Depends(get_metrics),
+):
+    """
+    Track A/B test variant exposure.
+
+    Increments `ab_variant_view_total{experiment,variant}` counter.
+
+    Args:
+        request: A/B variant data (experiment, variant, timestamp)
+        metrics_service: Prometheus metrics service
+
+    Returns:
+        TelemetryResponse: Confirmation with timestamp
+
+    Example:
+        >>> response = await client.post("/api/v1/web/ab", json={
+        ...     "experiment": "hero_copy",
+        ...     "variant": "benefit_focused",
+        ...     "timestamp": 1699564800000
+        ... })
+        >>> assert response.status_code == 201
+    """
+    try:
+        # Increment Prometheus counter
+        metrics_service.ab_variant_view_total.labels(
+            experiment=request.experiment, variant=request.variant
+        ).inc()
+
+        return TelemetryResponse(status="recorded")
+
+    except Exception as e:
+        print(f"[WARN] Failed to record A/B variant: {e}")
+        return TelemetryResponse(status="recorded")
+
+
+@router.post("/ab/conversion", status_code=201, response_model=TelemetryResponse)
+async def track_ab_conversion(
+    request: ABConversionRequest,
+    metrics_service=Depends(get_metrics),
+):
+    """
+    Track A/B test conversion event.
+
+    Increments `ab_conversion_total{experiment,variant,event}` counter.
+
+    Args:
+        request: A/B conversion data (experiment, variant, event, timestamp)
+        metrics_service: Prometheus metrics service
+
+    Returns:
+        TelemetryResponse: Confirmation with timestamp
+
+    Example:
+        >>> response = await client.post("/api/v1/web/ab/conversion", json={
+        ...     "experiment": "hero_copy",
+        ...     "variant": "benefit_focused",
+        ...     "event": "signup",
+        ...     "timestamp": 1699564800000
+        ... })
+        >>> assert response.status_code == 201
+    """
+    try:
+        # Increment Prometheus counter
+        metrics_service.ab_conversion_total.labels(
+            experiment=request.experiment,
+            variant=request.variant,
+            event=request.event,
+        ).inc()
+
+        return TelemetryResponse(status="recorded")
+
+    except Exception as e:
+        print(f"[WARN] Failed to record A/B conversion: {e}")
         return TelemetryResponse(status="recorded")

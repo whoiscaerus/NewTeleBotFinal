@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 
 from backend.app.accounts.routes import router as accounts_router
 from backend.app.affiliates.routes import router as affiliates_router
@@ -27,6 +28,7 @@ from backend.app.ea.routes import router as ea_router
 from backend.app.kb.routes import router as kb_router
 from backend.app.messaging.routes import router as messaging_router
 from backend.app.miniapp.auth_bridge import router as miniapp_router
+from backend.app.observability.metrics import get_metrics
 from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.revenue.routes import router as revenue_router
@@ -35,6 +37,7 @@ from backend.app.strategy.routes import router as strategy_router
 from backend.app.support.routes import router as support_router
 from backend.app.telegram.webhook import router as telegram_router
 from backend.app.trading.routes import router as trading_router
+from backend.app.web.routes import router as web_router
 
 
 def create_app() -> FastAPI:
@@ -100,11 +103,19 @@ def create_app() -> FastAPI:
     app.include_router(support_router)
     app.include_router(telegram_router)
     app.include_router(trading_router)
+    app.include_router(web_router)  # PR-084, PR-086
 
     @app.get("/health")
     async def health_check() -> dict:
         """Health check endpoint."""
         return {"status": "ok", "version": "0.1.0"}
+
+    @app.get("/metrics", response_class=PlainTextResponse)
+    async def metrics_endpoint() -> PlainTextResponse:
+        """Prometheus metrics endpoint."""
+        metrics_collector = get_metrics()
+        metrics_data = metrics_collector.get_metrics()
+        return PlainTextResponse(content=metrics_data)
 
     @app.get("/ready")
     async def readiness_check() -> dict:

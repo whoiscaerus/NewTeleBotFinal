@@ -260,6 +260,28 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        self.web_cwv_tti_seconds = Histogram(
+            "web_cwv_tti_seconds",
+            "Time to Interactive (seconds)",
+            buckets=(0.5, 1.0, 2.5, 5.0, 10.0),
+            registry=self.registry,
+        )
+
+        # A/B Testing metrics (PR-086)
+        self.ab_variant_view_total = Counter(
+            "ab_variant_view_total",
+            "Total A/B test variant views",
+            ["experiment", "variant"],  # hero_copy, benefit_focused
+            registry=self.registry,
+        )
+
+        self.ab_conversion_total = Counter(
+            "ab_conversion_total",
+            "Total A/B test conversions",
+            ["experiment", "variant", "event"],  # hero_copy, benefit_focused, signup
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",
