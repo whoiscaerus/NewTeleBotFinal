@@ -282,6 +282,20 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Dashboard WebSocket metrics (PR-087)
+        self.dashboard_ws_clients_gauge = Gauge(
+            "dashboard_ws_clients",
+            "Number of active dashboard WebSocket connections",
+            registry=self.registry,
+        )
+
+        self.dashboard_card_click_total = Counter(
+            "dashboard_card_click_total",
+            "Total dashboard card clicks",
+            ["name"],  # approvals, positions, equity, signals, etc.
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",

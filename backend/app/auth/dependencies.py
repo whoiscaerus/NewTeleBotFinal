@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Query, WebSocket, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -112,5 +112,70 @@ async def require_owner(
     return current_user
 
 
+async def get_current_user_from_websocket(
+    websocket: WebSocket,
+    token: str = Query(..., description="JWT authentication token"),
+) -> User:
+    """Extract and validate JWT token from WebSocket query parameter.
+
+    Used for WebSocket authentication where Authorization headers are not
+    easily accessible from browser WebSocket clients.
+
+    Args:
+        websocket: WebSocket connection
+        token: JWT token from query parameter
+
+    Returns:
+        User: Current authenticated user
+
+    Raises:
+        WebSocketException: Closes connection with 1008 (policy violation) if auth fails
+
+    Example:
+        ```javascript
+        const ws = new WebSocket('ws://localhost:8000/ws?token=eyJ...');
+        ```
+
+    Business Logic:
+        - Extract token from query parameter (?token=...)
+        - Decode and validate JWT token
+        - Fetch user from database
+        - Close connection if authentication fails
+    """
+    log = get_logger(__name__)
+
+    try:
+        # Decode token
+        payload = decode_token(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            log.warning("Invalid token: missing user_id")
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        # Fetch user from database
+        async for db in get_db():
+            stmt = select(User).where(User.id == user_id)
+            result = await db.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if not user:
+                log.warning("User not found", extra={"user_id": user_id})
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                raise HTTPException(status_code=401, detail="User not found")
+
+            return user
+
+    except ValueError as e:
+        log.warning("Token validation failed", extra={"error": str(e)})
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        raise HTTPException(status_code=401, detail="Invalid token") from e
+
+
 # Export for use in other modules
-__all__ = ["get_current_user", "get_bearer_token", "require_owner"]
+__all__ = [
+    "get_current_user",
+    "get_bearer_token",
+    "require_owner",
+    "get_current_user_from_websocket",
+]

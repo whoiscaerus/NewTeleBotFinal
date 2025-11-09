@@ -86,6 +86,13 @@ class User(Base):
         lazy="select",
         cascade="all, delete-orphan",
     )
+    paper_account: Mapped[object] = relationship(
+        "PaperAccount",
+        back_populates="user",
+        uselist=False,
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
 
     def __init__(self, **kwargs):
         """Initialize User with default role."""

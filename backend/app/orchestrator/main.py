@@ -24,6 +24,7 @@ from backend.app.core.errors import (
     pydantic_validation_exception_handler,
 )
 from backend.app.core.middleware import RequestIDMiddleware
+from backend.app.dashboard.routes import router as dashboard_router
 from backend.app.ea.routes import router as ea_router
 from backend.app.kb.routes import router as kb_router
 from backend.app.messaging.routes import router as messaging_router
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(miniapp_router)
     app.include_router(affiliates_router)
     app.include_router(approvals_router)
+    app.include_router(dashboard_router)  # PR-087: Real-time dashboard WebSocket
     app.include_router(devices_router)
     app.include_router(ea_router)
     app.include_router(exec_router)
