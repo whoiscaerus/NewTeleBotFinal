@@ -181,6 +181,14 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Feature quality metrics (PR-079)
+        self.feature_quality_fail_total = Counter(
+            "feature_quality_fail_total",
+            "Total feature quality check failures (PR-079: staleness, NaNs, drift)",
+            ["type"],  # missing_features, nan_values, stale_data, drift_detected, low_quality_score
+            registry=self.registry,
+        )
+
         # Risk management metrics (PR-074)
         self.risk_block_total = Counter(
             "risk_block_total",

@@ -28,6 +28,7 @@ import httpx
 __all__ = [
     "send_owner_alert",
     "send_signal_delivery_error",
+    "send_feature_quality_alert",
     "OpsAlertService",
     "AlertConfigError",
 ]
@@ -364,5 +365,89 @@ async def send_signal_delivery_error(
         _logger = logger_ or logger
         _logger.error(
             f"Alert service not configured. Signal {signal_id} delivery failed silently."
+        )
+        return False
+
+
+async def send_feature_quality_alert(
+    violation_type: str,
+    symbol: str,
+    message: str,
+    severity: str = "medium",
+    metadata: dict | None = None,
+    logger_: logging.Logger | None = None,
+) -> bool:
+    """Send feature quality violation alert to ops team.
+
+    Called when feature quality checks detect violations (staleness, NaNs, drift).
+    Formats a structured alert with violation details for investigation.
+
+    Args:
+        violation_type: Type of violation (missing_features, nan_values, stale_data, drift_detected)
+        symbol: Trading instrument affected
+        message: Human-readable violation description
+        severity: Violation severity (low, medium, high)
+        metadata: Additional context dict (optional)
+        logger_: Optional logger for debugging
+
+    Returns:
+        True if alert sent successfully, False otherwise
+
+    Examples:
+        >>> await send_feature_quality_alert(
+        ...     violation_type="nan_values",
+        ...     symbol="GOLD",
+        ...     message="2 features contain NaN: rsi_14, roc_10",
+        ...     severity="high",
+        ...     metadata={"snapshot_id": 123}
+        ... )
+        True
+
+        >>> await send_feature_quality_alert(
+        ...     violation_type="stale_data",
+        ...     symbol="XAUUSD",
+        ...     message="Data is 600s old (max 300s)",
+        ...     severity="medium"
+        ... )
+    """
+    try:
+        service = _get_alert_service()
+
+        # Map severity to emoji
+        severity_icons = {
+            "low": "ℹ️",
+            "medium": "⚠️",
+            "high": "🚨",
+        }
+        icon = severity_icons.get(severity.lower(), "⚠️")
+
+        # Format alert message
+        alert_parts = [
+            f"{icon} <b>Feature Quality Violation</b>",
+            f"Type: <code>{violation_type}</code>",
+            f"Symbol: <b>{symbol}</b>",
+            f"Severity: {severity.upper()}",
+            f"",
+            f"{message}",
+        ]
+
+        # Add metadata if provided
+        if metadata:
+            alert_parts.append("")
+            alert_parts.append("<b>Details:</b>")
+            for key, value in metadata.items():
+                alert_parts.append(f"  • {key}: {value}")
+
+        full_message = "\n".join(alert_parts)
+
+        return await service.send(
+            full_message,
+            severity=severity.upper(),
+        )
+
+    except AlertConfigError:
+        _logger = logger_ or logger
+        _logger.error(
+            f"Alert service not configured. Feature quality violation for {symbol} not sent."
         )
         return False

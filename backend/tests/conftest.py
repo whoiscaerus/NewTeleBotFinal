@@ -48,6 +48,7 @@ from backend.app.audit.models import AuditLog  # noqa: F401, E402
 from backend.app.auth.models import User  # noqa: F401, E402
 from backend.app.billing.stripe.models import StripeEvent  # noqa: F401, E402
 from backend.app.prefs.models import UserPreferences  # noqa: F401, E402
+from backend.app.features.models import FeatureSnapshot  # noqa: F401, E402
 from backend.app.strategy.logs.models import DecisionLog  # noqa: F401, E402
 from backend.app.strategy.models import (  # noqa: F401, E402
     CanaryConfig,
