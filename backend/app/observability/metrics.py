@@ -154,6 +154,33 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Strategy versioning & shadow mode metrics (PR-078)
+        self.shadow_decisions_total = Counter(
+            "shadow_decisions_total",
+            "Total shadow mode decisions generated (PR-078: no execution, log-only)",
+            [
+                "version",
+                "strategy",
+                "symbol",
+                "decision",
+            ],  # v2.0.0, fib_rsi, GOLD, buy/sell/hold
+            registry=self.registry,
+        )
+
+        self.canary_traffic_percent = Gauge(
+            "canary_traffic_percent",
+            "Current canary rollout percentage (PR-078: gradual version rollout)",
+            ["strategy", "version"],  # fib_rsi, v2.0.0
+            registry=self.registry,
+        )
+
+        self.version_activations_total = Counter(
+            "version_activations_total",
+            "Total strategy version activations (PR-078: shadow → canary → active transitions)",
+            ["strategy", "version"],  # fib_rsi, v2.0.0
+            registry=self.registry,
+        )
+
         # Risk management metrics (PR-074)
         self.risk_block_total = Counter(
             "risk_block_total",
