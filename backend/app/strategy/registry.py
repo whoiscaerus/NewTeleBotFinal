@@ -294,3 +294,23 @@ def get_registry() -> StrategyRegistry:
     if _registry is None:
         _registry = StrategyRegistry()
     return _registry
+
+
+def get_strategy(name: str) -> Any:
+    """Helper to get strategy from global registry.
+
+    Args:
+        name: Strategy name
+
+    Returns:
+        Strategy instance
+
+    Raises:
+        KeyError: If strategy not registered
+
+    Example:
+        >>> from backend.app.strategy.registry import get_strategy
+        >>> strategy = get_strategy("fib_rsi")
+    """
+    registry = get_registry()
+    return registry.get_strategy(name)
