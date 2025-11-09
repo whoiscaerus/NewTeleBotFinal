@@ -181,11 +181,26 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Explainability metrics (PR-080)
+        self.explain_requests_total = Counter(
+            "explain_requests_total",
+            "Total explainability requests (PR-080: attribution, feature importance)",
+            registry=self.registry,
+        )
+
+        self.decision_search_total = Counter(
+            "decision_search_total",
+            "Total decision search requests (PR-080: filter, paginate)",
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",
             "Total feature quality check failures (PR-079: staleness, NaNs, drift)",
-            ["type"],  # missing_features, nan_values, stale_data, drift_detected, low_quality_score
+            [
+                "type"
+            ],  # missing_features, nan_values, stale_data, drift_detected, low_quality_score
             registry=self.registry,
         )
 
