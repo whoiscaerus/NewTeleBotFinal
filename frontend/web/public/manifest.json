@@ -1,0 +1,38 @@
+{
+  "name": "TeleBot Trading Platform",
+  "short_name": "TeleBot",
+  "description": "Professional trading signal platform for Gold, Indices, and Crypto",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d4941d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "trading", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "View Pricing",
+      "url": "/pricing",
+      "description": "View subscription plans and pricing"
+    },
+    {
+      "name": "Performance",
+      "url": "/performance",
+      "description": "View trading performance and metrics"
+    }
+  ]
+}

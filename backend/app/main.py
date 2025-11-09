@@ -29,6 +29,7 @@ from backend.app.risk.routes import router as risk_router
 from backend.app.risk.routes import trading_router
 from backend.app.signals.routes import router as signals_router
 from backend.app.trust.routes import router as trust_router
+from backend.app.web.routes import router as web_router
 
 try:
     from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
@@ -83,6 +84,7 @@ app.include_router(trust_router, tags=["trust"])
 app.include_router(messaging_router, tags=["messaging"])
 app.include_router(privacy_router, tags=["privacy"])
 app.include_router(copy_router, tags=["copy"])
+app.include_router(web_router, tags=["web-telemetry"])  # PR-084
 
 
 @app.get("/")

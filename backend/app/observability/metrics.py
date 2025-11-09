@@ -224,6 +224,42 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Web platform telemetry metrics (PR-084)
+        self.web_page_view_total = Counter(
+            "web_page_view_total",
+            "Total web page views",
+            ["route"],  # /, /pricing, /legal/terms, etc.
+            registry=self.registry,
+        )
+
+        self.web_cwv_lcp_seconds = Histogram(
+            "web_cwv_lcp_seconds",
+            "Largest Contentful Paint (seconds)",
+            buckets=(0.5, 1.0, 2.5, 4.0, 5.0, 10.0),
+            registry=self.registry,
+        )
+
+        self.web_cwv_fid_seconds = Histogram(
+            "web_cwv_fid_seconds",
+            "First Input Delay (seconds)",
+            buckets=(0.01, 0.05, 0.1, 0.3, 0.5),
+            registry=self.registry,
+        )
+
+        self.web_cwv_cls_score = Histogram(
+            "web_cwv_cls_score",
+            "Cumulative Layout Shift (score)",
+            buckets=(0.1, 0.25, 0.5, 1.0),
+            registry=self.registry,
+        )
+
+        self.web_cwv_ttfb_seconds = Histogram(
+            "web_cwv_ttfb_seconds",
+            "Time to First Byte (seconds)",
+            buckets=(0.1, 0.2, 0.5, 1.0, 2.0),
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",
