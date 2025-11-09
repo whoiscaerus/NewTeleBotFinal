@@ -130,6 +130,30 @@ async def db_postgres() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Create in-memory SQLite session for unit tests."""
+    from backend.app.core.db import Base
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        echo=False,
+    )
+
+    # Create all tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Create session factory
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with async_session() as session:
+        yield session
+
+    # Cleanup
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
 async def db(db_session: AsyncSession) -> AsyncSession:
     """Alias for db_session for backward compatibility."""
     return db_session

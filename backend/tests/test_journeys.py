@@ -23,7 +23,6 @@ from backend.app.journeys.models import (
     UserJourney,
 )
 
-
 # ============================================================================
 # FIXTURES
 # ============================================================================
@@ -504,7 +503,7 @@ async def test_execute_steps_idempotency(
     result1 = await journey_engine.execute_steps(
         db=db_session, user_journey_id=user_journey.id
     )
-    executed_count1 = result1["executed"]
+    assert result1["executed"] > 0  # At least one step executed
 
     # Second execution (should not re-execute completed steps)
     result2 = await journey_engine.execute_steps(

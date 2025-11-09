@@ -6,7 +6,6 @@ Defines journey workflows, steps, triggers, and user progress tracking.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (

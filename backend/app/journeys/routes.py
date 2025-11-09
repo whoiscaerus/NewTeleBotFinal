@@ -5,7 +5,7 @@ CRUD operations for journey definitions (owner/admin only).
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -41,14 +41,14 @@ class JourneyStepCreate(BaseModel):
     action_type: ActionType
     action_config: dict[str, Any] = Field(default_factory=dict)
     delay_minutes: int = Field(default=0, ge=0)
-    condition: Optional[dict[str, Any]] = None
+    condition: dict[str, Any] | None = None
 
 
 class JourneyCreate(BaseModel):
     """Schema for creating a journey."""
 
     name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = None
+    description: str | None = None
     trigger_type: TriggerType
     trigger_config: dict[str, Any] = Field(default_factory=dict)
     is_active: bool = True
@@ -59,11 +59,11 @@ class JourneyCreate(BaseModel):
 class JourneyUpdate(BaseModel):
     """Schema for updating a journey."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = None
-    is_active: Optional[bool] = None
-    priority: Optional[int] = Field(None, ge=0)
-    trigger_config: Optional[dict[str, Any]] = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = None
+    is_active: bool | None = None
+    priority: int | None = Field(None, ge=0)
+    trigger_config: dict[str, Any] | None = None
 
 
 class JourneyOut(BaseModel):
@@ -71,7 +71,7 @@ class JourneyOut(BaseModel):
 
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
     trigger_type: str
     trigger_config: dict[str, Any]
     is_active: bool
@@ -89,9 +89,9 @@ class UserJourneyOut(BaseModel):
     journey_id: str
     journey_name: str
     status: str
-    current_step_id: Optional[str]
+    current_step_id: str | None
     started_at: str
-    completed_at: Optional[str]
+    completed_at: str | None
     metadata: dict[str, Any]
 
 
@@ -178,8 +178,8 @@ async def create_journey(
 
 @router.get("", response_model=list[JourneyOut])
 async def list_journeys(
-    trigger_type: Optional[str] = None,
-    is_active: Optional[bool] = None,
+    trigger_type: str | None = None,
+    is_active: bool | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[JourneyOut]:
@@ -366,7 +366,7 @@ async def delete_journey(
 @router.get("/users/{user_id}/journeys", response_model=list[UserJourneyOut])
 async def list_user_journeys(
     user_id: str,
-    status_filter: Optional[str] = None,
+    status_filter: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[UserJourneyOut]:
@@ -419,7 +419,7 @@ async def list_user_journeys(
 async def trigger_journey(
     trigger_type: TriggerType,
     user_id: str,
-    context: dict[str, Any] = {},
+    context: dict[str, Any] | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -430,7 +430,7 @@ async def trigger_journey(
     """
     engine = JourneyEngine()
     started_journey_ids = await engine.evaluate_trigger(
-        db, trigger_type, user_id, context
+        db, trigger_type, user_id, context or {}
     )
 
     logger.info(

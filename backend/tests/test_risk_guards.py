@@ -15,7 +15,6 @@ NO MOCKS - Tests use REAL guard functions with REAL calculations.
 from decimal import Decimal
 from unittest.mock import patch
 
-
 from backend.app.risk.guards import (
     AccountState,
     RiskCheckResult,
