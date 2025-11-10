@@ -310,6 +310,35 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Education metrics (PR-089)
+        self.education_lessons_completed_total = Counter(
+            "education_lessons_completed_total",
+            "Total lessons completed by users",
+            ["course_id", "lesson_id"],  # Track which courses/lessons are popular
+            registry=self.registry,
+        )
+
+        self.education_quiz_pass_total = Counter(
+            "education_quiz_pass_total",
+            "Total quiz attempts that passed",
+            ["quiz_id", "course_id"],  # Track quiz difficulty and engagement
+            registry=self.registry,
+        )
+
+        self.education_quiz_fail_total = Counter(
+            "education_quiz_fail_total",
+            "Total quiz attempts that failed",
+            ["quiz_id", "course_id"],  # Track which quizzes need improvement
+            registry=self.registry,
+        )
+
+        self.education_rewards_issued_total = Counter(
+            "education_rewards_issued_total",
+            "Total rewards issued for course completion",
+            ["course_id", "reward_type"],  # discount, credit
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",

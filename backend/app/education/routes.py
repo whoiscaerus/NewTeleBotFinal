@@ -26,11 +26,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/education", tags=["education"])
 
-# Prometheus metrics
-quiz_attempts_total = Counter(
-    "education_quiz_attempts_total",
-    "Total quiz attempts",
-    ["quiz_id", "passed"],
+# Prometheus metrics (PR-089)
+quiz_pass_total = Counter(
+    "education_quiz_pass_total",
+    "Total quiz attempts that passed",
+    ["quiz_id", "course_id"],
+)
+
+quiz_fail_total = Counter(
+    "education_quiz_fail_total",
+    "Total quiz attempts that failed",
+    ["quiz_id", "course_id"],
+)
+
+lessons_completed_total = Counter(
+    "education_lessons_completed_total",
+    "Total lessons completed by users",
+    ["course_id", "lesson_id"],
 )
 
 rewards_issued_total = Counter(
@@ -408,11 +420,26 @@ async def submit_attempt(
             time_taken_seconds=attempt_data.time_taken_seconds,
         )
 
-        # Update Prometheus metric
-        quiz_attempts_total.labels(
-            quiz_id=attempt_data.quiz_id,
-            passed=str(attempt.passed).lower(),
-        ).inc()
+        # Update Prometheus metrics (PR-089)
+        if attempt.passed:
+            quiz_pass_total.labels(
+                quiz_id=attempt_data.quiz_id,
+                course_id=attempt_data.course_id,
+            ).inc()
+
+            # Lesson completion: passing quiz = completing lesson
+            # Get lesson_id from quiz
+            quiz = await service.get_quiz(attempt_data.quiz_id)
+            if quiz:
+                lessons_completed_total.labels(
+                    course_id=attempt_data.course_id,
+                    lesson_id=quiz.lesson_id,
+                ).inc()
+        else:
+            quiz_fail_total.labels(
+                quiz_id=attempt_data.quiz_id,
+                course_id=attempt_data.course_id,
+            ).inc()
 
         # Check course completion and issue reward if eligible
         completed, _ = await service.check_course_completion(
