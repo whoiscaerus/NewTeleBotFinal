@@ -363,6 +363,21 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Ledger metrics (PR-093)
+        self.ledger_submissions_total = Counter(
+            "ledger_submissions_total",
+            "Total successful blockchain submissions",
+            ["chain"],  # polygon, arbitrum
+            registry=self.registry,
+        )
+
+        self.ledger_fail_total = Counter(
+            "ledger_fail_total",
+            "Total failed blockchain submissions after retries",
+            ["chain"],  # polygon, arbitrum
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",
