@@ -65,13 +65,16 @@ os.environ["MEDIA_DIR"] = "test_media"
 os.environ["HMAC_PRODUCER_ENABLED"] = "false"
 
 from backend.app.accounts.models import AccountLink  # noqa: F401, E402
+from backend.app.approvals.models import Approval  # noqa: F401, E402
 from backend.app.audit.models import AuditLog  # noqa: F401, E402
 
 # Import all models so they're registered with Base.metadata
 from backend.app.auth.models import User  # noqa: F401, E402
 from backend.app.billing.stripe.models import StripeEvent  # noqa: F401, E402
+from backend.app.clients.models import Client, Device  # noqa: F401, E402
 from backend.app.ea.models import Execution  # noqa: F401, E402
 from backend.app.features.models import FeatureSnapshot  # noqa: F401, E402
+from backend.app.fraud.models import AnomalyEvent  # noqa: F401, E402
 from backend.app.gamification.models import (  # noqa: F401, E402
     Badge,
     EarnedBadge,
@@ -268,7 +271,7 @@ async def client(db_session: AsyncSession, monkeypatch):
     app.dependency_overrides[get_current_user] = mock_get_current_user
 
     # Override get_device_auth to bypass signature verification in tests
-    from backend.app.clients.devices.models import Device
+    # Device already imported at top of file
     from backend.app.ea.auth import get_device_auth
 
     async def mock_get_device_auth(
@@ -698,11 +701,22 @@ async def regular_auth_headers(regular_user) -> dict:
 
 
 @pytest_asyncio.fixture
+async def admin_auth_headers(admin_user) -> dict:
+    """Create JWT authentication headers for admin user."""
+    from backend.app.auth.utils import create_access_token
+
+    token = create_access_token(
+        subject=admin_user.id, role=admin_user.role, expires_delta=None
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
 async def test_client(db_session: AsyncSession):
     """Create a test client for device registration."""
     from uuid import uuid4
 
-    from backend.app.clients.models import Client
+    # Client already imported at top of file
 
     client = Client(
         id=str(uuid4()),
@@ -720,7 +734,7 @@ async def test_device(db_session: AsyncSession, test_client):
     """Create a test EA device for integration tests."""
     from uuid import uuid4
 
-    from backend.app.clients.devices.models import Device
+    # Device already imported at top of file
 
     device = Device(
         id=str(uuid4()),

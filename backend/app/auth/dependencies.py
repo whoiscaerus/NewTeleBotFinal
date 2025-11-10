@@ -112,6 +112,32 @@ async def require_owner(
     return current_user
 
 
+async def require_admin(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Verify current user has admin or owner role.
+
+    Args:
+        current_user: Current authenticated user
+
+    Returns:
+        User: Current user if admin or owner
+
+    Raises:
+        HTTPException: 403 if user is not admin or owner
+
+    Example:
+        >>> user = await require_admin(current_user=admin_user)
+        >>> assert user.role in [UserRole.ADMIN, UserRole.OWNER]
+    """
+    if current_user.role not in [UserRole.ADMIN, UserRole.OWNER]:
+        raise HTTPException(
+            status_code=403,
+            detail="This operation requires admin privileges",
+        )
+    return current_user
+
+
 async def get_current_user_from_websocket(
     websocket: WebSocket,
     token: str = Query(..., description="JWT authentication token"),
@@ -177,5 +203,6 @@ __all__ = [
     "get_current_user",
     "get_bearer_token",
     "require_owner",
+    "require_admin",
     "get_current_user_from_websocket",
 ]

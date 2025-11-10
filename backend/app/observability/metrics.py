@@ -355,6 +355,14 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Fraud detection metrics (PR-092)
+        self.fraud_events_total = Counter(
+            "fraud_events_total",
+            "Total fraud detection anomalies flagged",
+            ["type"],  # slippage_extreme, latency_spike, out_of_band_fill, etc.
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",
