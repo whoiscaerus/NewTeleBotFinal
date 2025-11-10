@@ -22,6 +22,7 @@ from backend.app.messaging.routes import router as messaging_router
 from backend.app.polling.routes import router as polling_v2_router
 from backend.app.prefs.routes import router as prefs_router
 from backend.app.privacy.routes import router as privacy_router
+from backend.app.profile.routes import router as profile_router
 from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.revenue.routes import router as revenue_router
@@ -70,6 +71,7 @@ app.include_router(performance_router, tags=["public"])
 app.include_router(trust_index_router, tags=["public"])
 app.include_router(polling_v2_router, tags=["polling-v2"])
 app.include_router(prefs_router, tags=["preferences"])
+app.include_router(profile_router, tags=["profile"])  # PR-090: Theme settings
 app.include_router(revenue_router, prefix="/api/v1", tags=["revenue"])
 app.include_router(risk_router, tags=["risk"])
 app.include_router(trading_router, tags=["trading-controls"])  # PR-075

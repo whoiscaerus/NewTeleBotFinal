@@ -15,6 +15,7 @@ class User(Base):
     email = Column(String, nullable=False, unique=True)
     username = Column(String)
     status = Column(String, default="active")
+    theme_preference = Column(String, default="professional")  # professional, darkTrader, goldMinimal
 
     # Relationships
     preferences = relationship(

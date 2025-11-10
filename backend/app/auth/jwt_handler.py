@@ -26,6 +26,7 @@ class JWTHandler:
         expires_at: datetime | None = None,
         expires_delta: timedelta | None = None,
         jti: str | None = None,
+        theme: str | None = None,
     ) -> str:
         """
         Create JWT access token.
@@ -38,13 +39,14 @@ class JWTHandler:
             expires_at: Optional explicit expiration time
             expires_delta: Optional expiration delta (takes precedence over expires_at)
             jti: Optional JWT ID (unique identifier for token)
+            theme: Optional user theme preference (PR-090)
 
         Returns:
             Encoded JWT token string
 
         Example:
             >>> handler = JWTHandler()
-            >>> token = handler.create_token(user_id="123", role="admin")
+            >>> token = handler.create_token(user_id="123", role="admin", theme="darkTrader")
             >>> isinstance(token, str)
             True
         """
@@ -71,6 +73,8 @@ class JWTHandler:
             payload["aud"] = audience
         if jti:
             payload["jti"] = jti
+        if theme:
+            payload["theme"] = theme  # PR-090: Include theme in JWT for SSR/CSR consistency
 
         # Encode token
         token = jwt.encode(

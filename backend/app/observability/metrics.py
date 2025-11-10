@@ -339,6 +339,14 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Theme metrics (PR-090)
+        self.theme_selected_total = Counter(
+            "theme_selected_total",
+            "Total theme selections by users",
+            ["name"],  # professional, darkTrader, goldMinimal
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",
