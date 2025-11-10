@@ -102,3 +102,59 @@ class GuardrailPolicyOut(BaseModel):
     policy_name: str
     blocked: bool
     reason: str | None = None
+
+
+# PR-091: AI Analyst / Market Outlook Schemas
+
+
+class VolatilityZone(BaseModel):
+    """Volatility zone classification."""
+
+    level: str  # "low", "medium", "high"
+    threshold: float  # Volatility percentage threshold
+    description: str  # Human-readable description
+
+
+class CorrelationPair(BaseModel):
+    """Correlation between two instruments."""
+
+    instrument_a: str  # e.g., "GOLD"
+    instrument_b: str  # e.g., "USD/JPY"
+    coefficient: float  # -1 to 1
+
+
+class OutlookReport(BaseModel):
+    """Daily AI-written market outlook report (PR-091)."""
+
+    narrative: str = Field(..., min_length=200, max_length=5000)
+    volatility_zones: list[VolatilityZone] = Field(default_factory=list)
+    correlations: list[CorrelationPair] = Field(default_factory=list)
+    data_citations: dict[str, str | float] = Field(
+        default_factory=dict
+    )  # {"sharpe_ratio": 1.25, "max_drawdown": "-15.3%", ...}
+    generated_at: datetime
+    instruments_covered: list[str] = Field(default_factory=list)  # ["GOLD", ...]
+
+    class Config:
+        from_attributes = True
+
+
+class FeatureFlagOut(BaseModel):
+    """Feature flag status (PR-091)."""
+
+    name: str
+    enabled: bool
+    owner_only: bool
+    updated_at: datetime
+    updated_by: str | None = None
+    description: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class FeatureFlagUpdateIn(BaseModel):
+    """Feature flag update request (PR-091)."""
+
+    enabled: bool
+    owner_only: bool = Field(default=True)

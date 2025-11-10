@@ -133,3 +133,23 @@ class KBEmbedding(Base):
 
     def __repr__(self):
         return f"<KBEmbedding article={self.article_id}, model={self.embedding_model}>"
+
+
+class FeatureFlag(Base):
+    """Feature flags for owner-controlled toggles (PR-091)."""
+
+    __tablename__ = "feature_flags"
+
+    name = Column(String(100), primary_key=True)
+    enabled = Column(Boolean, nullable=False, default=False)
+    owner_only = Column(Boolean, nullable=False, default=True)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+    updated_by = Column(String(36), nullable=True)  # User ID who toggled
+    description = Column(Text, nullable=True)
+
+    __table_args__ = (Index("ix_feature_flags_enabled", "enabled"),)
+
+    def __repr__(self):
+        return f"<FeatureFlag {self.name}: enabled={self.enabled}, owner_only={self.owner_only}>"

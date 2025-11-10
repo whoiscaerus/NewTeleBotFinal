@@ -357,3 +357,181 @@ async def index_status(
     except Exception as e:
         logger.error(f"Error retrieving index status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve index status")
+
+
+# ========================================
+# PR-091: AI Analyst / Market Outlook Routes
+# ========================================
+
+from datetime import date
+
+from backend.app.ai.analyst import (
+    FeatureDisabledError,
+    build_outlook,
+    is_analyst_enabled,
+    is_analyst_owner_only,
+)
+from backend.app.ai.models import FeatureFlag
+from backend.app.ai.schemas import (
+    FeatureFlagOut,
+    FeatureFlagUpdateIn,
+    OutlookReport,
+)
+from sqlalchemy import select, update
+
+
+@router.post("/analyst/toggle", response_model=FeatureFlagOut)
+async def toggle_analyst(
+    request: FeatureFlagUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    """
+    Toggle AI Analyst Mode on/off (Admin/Owner only).
+
+    Args:
+        request: FeatureFlagUpdateIn with enabled and owner_only fields
+        db: Database session
+        admin_user: Current admin user
+
+    Returns:
+        FeatureFlagOut: Updated feature flag status
+
+    Raises:
+        HTTPException: 403 if not admin, 500 on error
+    """
+    try:
+        # Update feature flag
+        stmt = (
+            update(FeatureFlag)
+            .where(FeatureFlag.name == "ai_analyst")
+            .values(
+                enabled=request.enabled,
+                owner_only=request.owner_only,
+                updated_by=str(admin_user.id),
+            )
+            .returning(FeatureFlag)
+        )
+
+        result = await db.execute(stmt)
+        await db.commit()
+        flag = result.scalar_one()
+
+        logger.info(
+            f"AI Analyst toggled: enabled={flag.enabled}, owner_only={flag.owner_only}",
+            extra={
+                "admin_id": str(admin_user.id),
+                "enabled": flag.enabled,
+                "owner_only": flag.owner_only,
+            },
+        )
+
+        return FeatureFlagOut(
+            name=flag.name,
+            enabled=flag.enabled,
+            owner_only=flag.owner_only,
+            updated_at=flag.updated_at,
+            updated_by=flag.updated_by,
+            description=flag.description,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to toggle AI Analyst: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to toggle feature")
+
+
+@router.get("/analyst/status", response_model=FeatureFlagOut)
+async def get_analyst_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get AI Analyst feature status.
+
+    Args:
+        db: Database session
+        current_user: Current authenticated user
+
+    Returns:
+        FeatureFlagOut: Current feature flag status
+    """
+    try:
+        stmt = select(FeatureFlag).where(FeatureFlag.name == "ai_analyst")
+        result = await db.execute(stmt)
+        flag = result.scalar_one_or_none()
+
+        if flag is None:
+            raise HTTPException(status_code=404, detail="Feature flag not found")
+
+        return FeatureFlagOut(
+            name=flag.name,
+            enabled=flag.enabled,
+            owner_only=flag.owner_only,
+            updated_at=flag.updated_at,
+            updated_by=flag.updated_by,
+            description=flag.description,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get analyst status: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve status")
+
+
+@router.get("/outlook/latest", response_model=OutlookReport)
+async def get_latest_outlook(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get latest AI-generated market outlook.
+
+    Respects owner_only flag: if enabled, only owner can view.
+
+    Args:
+        db: Database session
+        current_user: Current authenticated user
+
+    Returns:
+        OutlookReport: Latest outlook with narrative, zones, correlations
+
+    Raises:
+        HTTPException: 403 if feature disabled or owner-only, 404 if no outlook
+    """
+    try:
+        # Check if feature is enabled
+        if not await is_analyst_enabled(db):
+            raise HTTPException(
+                status_code=403,
+                detail="AI Analyst Mode is currently disabled. Feature in testing.",
+            )
+
+        # Check owner-only restriction
+        owner_only = await is_analyst_owner_only(db)
+        if owner_only and current_user.role != UserRole.ADMIN:
+            raise HTTPException(
+                status_code=403,
+                detail="AI Analyst is in owner-only testing mode. Feature not yet available.",
+            )
+
+        # Generate outlook for today
+        outlook = await build_outlook(db, target_date=date.today(), instrument="GOLD")
+
+        logger.info(
+            f"Outlook retrieved by user {current_user.id}",
+            extra={
+                "user_id": str(current_user.id),
+                "narrative_length": len(outlook.narrative),
+            },
+        )
+
+        return outlook
+
+    except FeatureDisabledError:
+        raise HTTPException(status_code=403, detail="AI Analyst Mode is disabled")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate outlook: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to generate outlook")

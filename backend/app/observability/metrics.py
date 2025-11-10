@@ -347,6 +347,14 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # AI Analyst metrics (PR-091)
+        self.ai_outlook_published_total = Counter(
+            "ai_outlook_published_total",
+            "Total AI market outlooks published",
+            ["channel"],  # email, telegram
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",

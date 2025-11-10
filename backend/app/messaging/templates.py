@@ -452,9 +452,174 @@ def validate_template_vars(
             "profit_amount",
             "broker_ticket",
         ],
+        # PR-091: Daily Outlook templates
+        "daily_outlook_email": ["outlook"],
+        "daily_outlook_telegram": ["outlook"],
     }
 
     required = required_vars.get(template_name, [])
     missing = [var for var in required if var not in template_vars]
 
     return missing
+
+
+# ========================================
+# PR-091: Daily Market Outlook Templates
+# ========================================
+
+
+def render_daily_outlook_email(outlook) -> dict[str, str]:
+    """
+    Render Daily Outlook email template.
+
+    Args:
+        outlook: OutlookReport object
+
+    Returns:
+        dict with keys: subject, html, text
+    """
+    date_str = outlook.generated_at.strftime("%B %d, %Y")
+    subject = f"📊 Daily Market Outlook - {date_str}"
+
+    # HTML version (rich formatting)
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 700px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }}
+        .content {{ background: white; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px; }}
+        .narrative {{ white-space: pre-wrap; margin-bottom: 30px; }}
+        .data-box {{ background: #f5f5f5; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0; }}
+        .zone {{ padding: 10px; margin: 5px 0; border-radius: 4px; }}
+        .zone.low {{ background: #d4edda; color: #155724; }}
+        .zone.medium {{ background: #fff3cd; color: #856404; }}
+        .zone.high {{ background: #f8d7da; color: #721c24; }}
+        .correlations {{ margin-top: 20px; }}
+        .correlation {{ padding: 8px; margin: 5px 0; background: #f9f9f9; border-radius: 4px; }}
+        .footer {{ text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Daily Market Outlook</h1>
+            <p>{date_str}</p>
+        </div>
+        <div class="content">
+            <div class="narrative">
+{outlook.narrative}
+            </div>
+            
+            <div class="data-box">
+                <h3>Data Citations</h3>
+                <ul>
+                    <li><strong>Sharpe Ratio:</strong> {outlook.data_citations.get('sharpe_ratio', 'N/A'):.2f}</li>
+                    <li><strong>Sortino Ratio:</strong> {outlook.data_citations.get('sortino_ratio', 'N/A'):.2f}</li>
+                    <li><strong>Max Drawdown:</strong> {outlook.data_citations.get('max_drawdown_pct', 'N/A'):.1f}%</li>
+                    <li><strong>Volatility:</strong> {outlook.data_citations.get('volatility_pct', 'N/A'):.1f}%</li>
+                    <li><strong>Win Rate:</strong> {outlook.data_citations.get('win_rate', 'N/A'):.1f}%</li>
+                    <li><strong>RSI (14):</strong> {outlook.data_citations.get('rsi', 'N/A'):.1f}</li>
+                    <li><strong>ROC (10):</strong> {outlook.data_citations.get('roc', 'N/A'):.2f}%</li>
+                </ul>
+            </div>
+            
+            <h3>Volatility Zones</h3>
+            {"".join([f'<div class="zone {zone.level}"><strong>{zone.level.upper()}</strong>: {zone.description}</div>' for zone in outlook.volatility_zones])}
+            
+            <div class="correlations">
+                <h3>Key Correlations</h3>
+                {"".join([f'<div class="correlation">{corr.instrument_b}: {corr.coefficient:+.2f}</div>' for corr in outlook.correlations])}
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><em>This is an AI-generated analysis based on historical data.</em></p>
+            <p><em>Past performance does not guarantee future results. Not financial advice.</em></p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    # Plain text version (fallback)
+    text = f"""
+Daily Market Outlook - {date_str}
+
+{outlook.narrative}
+
+Data Citations:
+- Sharpe Ratio: {outlook.data_citations.get('sharpe_ratio', 'N/A'):.2f}
+- Sortino Ratio: {outlook.data_citations.get('sortino_ratio', 'N/A'):.2f}
+- Max Drawdown: {outlook.data_citations.get('max_drawdown_pct', 'N/A'):.1f}%
+- Volatility: {outlook.data_citations.get('volatility_pct', 'N/A'):.1f}%
+- Win Rate: {outlook.data_citations.get('win_rate', 'N/A'):.1f}%
+- RSI (14): {outlook.data_citations.get('rsi', 'N/A'):.1f}
+- ROC (10): {outlook.data_citations.get('roc', 'N/A'):.2f}%
+
+Volatility Zones:
+{chr(10).join([f"{zone.level.upper()}: {zone.description}" for zone in outlook.volatility_zones])}
+
+Key Correlations:
+{chr(10).join([f"{corr.instrument_b}: {corr.coefficient:+.2f}" for corr in outlook.correlations])}
+
+---
+This is an AI-generated analysis. Past performance does not guarantee future results. Not financial advice.
+"""
+
+    return {"subject": subject, "html": html.strip(), "text": text.strip()}
+
+
+def render_daily_outlook_telegram(outlook) -> str:
+    """
+    Render Daily Outlook Telegram template (MarkdownV2-safe).
+
+    Args:
+        outlook: OutlookReport object
+
+    Returns:
+        str: Telegram-formatted message
+    """
+    date_str = outlook.generated_at.strftime("%B %d, %Y")
+
+    # Build concise narrative (first 500 chars + ellipsis)
+    narrative_short = outlook.narrative[:500]
+    if len(outlook.narrative) > 500:
+        narrative_short += "..."
+
+    # Escape special chars for MarkdownV2
+    narrative_escaped = _escape_markdown_v2(narrative_short)
+
+    # Build message
+    message = f"""
+📊 *Daily Market Outlook*
+_{date_str}_
+
+{narrative_escaped}
+
+📈 *Key Metrics*
+• Sharpe: {outlook.data_citations.get('sharpe_ratio', 0.0):.2f}
+• Sortino: {outlook.data_citations.get('sortino_ratio', 0.0):.2f}
+• Drawdown: {outlook.data_citations.get('max_drawdown_pct', 0.0):.1f}%
+• Volatility: {outlook.data_citations.get('volatility_pct', 0.0):.1f}%
+• Win Rate: {outlook.data_citations.get('win_rate', 0.0):.1f}%
+
+🔍 *Correlations*
+{chr(10).join([f"• {corr.instrument_b}: {corr.coefficient:+.2f}" for corr in outlook.correlations[:3]])}
+
+_AI\\-generated analysis\\. Not financial advice\\._
+"""
+
+    return message.strip()
+
+
+def _escape_markdown_v2(text: str) -> str:
+    """Escape special characters for Telegram MarkdownV2."""
+    # Characters that need escaping in MarkdownV2
+    special_chars = r"_*[]()~`>#+-=|{}.!"
+    for char in special_chars:
+        text = text.replace(char, f"\\{char}")
+    return text
