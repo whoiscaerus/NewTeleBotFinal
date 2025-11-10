@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,7 @@ from backend.app.trading.store.models import Trade
 # ============================================================================
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def sample_trades(db_session: AsyncSession, test_user: User) -> list[Trade]:
     """Create sample trades for fraud detection testing.
 
@@ -304,6 +305,7 @@ async def test_latency_spike_under_threshold(db_session: AsyncSession, test_user
     await db_session.commit()
     await db_session.refresh(trade)
 
+    signal_time = trade.entry_time - timedelta(milliseconds=500)  # Low latency
     anomaly = await detect_latency_spike(db_session, trade, signal_time)
 
     assert anomaly is None, "Low latency should not trigger anomaly"
@@ -320,7 +322,7 @@ async def test_latency_spike_above_threshold(
         - Test: 5000ms latency
         - Expected: CRITICAL severity anomaly
     """
-    # signal_time = high_latency_trade.entry_time - timedelta(seconds=5)
+    signal_time = high_latency_trade.entry_time - timedelta(seconds=5)
 
     anomaly = await detect_latency_spike(db_session, high_latency_trade, signal_time)
 
@@ -356,7 +358,7 @@ async def test_latency_spike_severity_thresholds(
     ]
 
     for latency_ms, expected_severity in test_cases:
-        # signal_time = datetime.utcnow() - timedelta(milliseconds=latency_ms)
+        signal_time = datetime.utcnow() - timedelta(milliseconds=latency_ms)
         trade = Trade(
             user_id=test_user.user_id,
             symbol="GOLD",
