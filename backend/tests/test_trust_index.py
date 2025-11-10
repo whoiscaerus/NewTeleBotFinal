@@ -5,19 +5,19 @@ Tests trust band calculation with social influence, zero data edge cases,
 and trust index API to validate 100% working business logic.
 """
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User
 from backend.app.public.trust_index import (
+    PublicTrustIndexRecord,
     calculate_trust_band,
     calculate_trust_index,
-    PublicTrustIndexRecord,
 )
-from backend.app.auth.models import User
 from backend.app.trading.store.models import Trade
 from backend.app.trust.social.models import VerificationEdge
-
 
 # ============================================================================
 # Trust Band Calculation Tests (Without Social Graph)
@@ -28,7 +28,10 @@ def test_calculate_trust_band_unverified():
     """Test calculate_trust_band returns 'unverified' for <50% composite score."""
     # 40% accuracy, 0% influence → 0.4 * 0.7 + 0.0 * 0.3 = 0.28 < 0.50
     band = calculate_trust_band(
-        accuracy_metric=0.40, average_rr=1.5, verified_trades_pct=50, influence_score=0.0
+        accuracy_metric=0.40,
+        average_rr=1.5,
+        verified_trades_pct=50,
+        influence_score=0.0,
     )
     assert band == "unverified"
 
@@ -38,7 +41,10 @@ def test_calculate_trust_band_verified():
     # 60% accuracy, 10% influence → 0.6 * 0.7 + 0.1 * 0.3 = 0.45 < 0.50 (unverified)
     # 70% accuracy, 10% influence → 0.7 * 0.7 + 0.1 * 0.3 = 0.52 ≥ 0.50 (verified)
     band = calculate_trust_band(
-        accuracy_metric=0.72, average_rr=1.5, verified_trades_pct=60, influence_score=0.10
+        accuracy_metric=0.72,
+        average_rr=1.5,
+        verified_trades_pct=60,
+        influence_score=0.10,
     )
     assert band == "verified"
 
@@ -48,7 +54,10 @@ def test_calculate_trust_band_expert():
     # 70% accuracy, 30% influence → 0.7 * 0.7 + 0.3 * 0.3 = 0.58 < 0.60 (verified)
     # 75% accuracy, 30% influence → 0.75 * 0.7 + 0.3 * 0.3 = 0.615 ≥ 0.60 (expert)
     band = calculate_trust_band(
-        accuracy_metric=0.75, average_rr=2.0, verified_trades_pct=80, influence_score=0.30
+        accuracy_metric=0.75,
+        average_rr=2.0,
+        verified_trades_pct=80,
+        influence_score=0.30,
     )
     assert band == "expert"
 
@@ -57,7 +66,10 @@ def test_calculate_trust_band_elite():
     """Test calculate_trust_band returns 'elite' for ≥75% composite score."""
     # 90% accuracy, 50% influence → 0.9 * 0.7 + 0.5 * 0.3 = 0.78 ≥ 0.75 (elite)
     band = calculate_trust_band(
-        accuracy_metric=0.90, average_rr=2.5, verified_trades_pct=95, influence_score=0.50
+        accuracy_metric=0.90,
+        average_rr=2.5,
+        verified_trades_pct=95,
+        influence_score=0.50,
     )
     assert band == "elite"
 
@@ -74,7 +86,10 @@ def test_trust_band_social_graph_boosts_verified_to_expert():
     # Need 60% accuracy + 50% influence → 0.6 * 0.7 + 0.5 * 0.3 = 0.57 < 0.60 (verified)
     # Need 65% accuracy + 50% influence → 0.65 * 0.7 + 0.5 * 0.3 = 0.605 ≥ 0.60 (expert)
     band = calculate_trust_band(
-        accuracy_metric=0.65, average_rr=1.8, verified_trades_pct=70, influence_score=0.50
+        accuracy_metric=0.65,
+        average_rr=1.8,
+        verified_trades_pct=70,
+        influence_score=0.50,
     )
     assert band == "expert"
 
@@ -86,7 +101,10 @@ def test_trust_band_social_graph_boosts_expert_to_elite():
     # Need 70% accuracy + 80% influence → 0.7 * 0.7 + 0.8 * 0.3 = 0.73 < 0.75 (expert)
     # Need 75% accuracy + 80% influence → 0.75 * 0.7 + 0.8 * 0.3 = 0.765 ≥ 0.75 (elite)
     band = calculate_trust_band(
-        accuracy_metric=0.75, average_rr=2.2, verified_trades_pct=90, influence_score=0.80
+        accuracy_metric=0.75,
+        average_rr=2.2,
+        verified_trades_pct=90,
+        influence_score=0.80,
     )
     assert band == "elite"
 
@@ -95,7 +113,10 @@ def test_trust_band_low_accuracy_high_influence_still_unverified():
     """Test high influence cannot overcome very low accuracy."""
     # 30% accuracy, 90% influence → 0.3 * 0.7 + 0.9 * 0.3 = 0.48 < 0.50 (unverified)
     band = calculate_trust_band(
-        accuracy_metric=0.30, average_rr=1.0, verified_trades_pct=20, influence_score=0.90
+        accuracy_metric=0.30,
+        average_rr=1.0,
+        verified_trades_pct=20,
+        influence_score=0.90,
     )
     assert band == "unverified"
 
@@ -105,7 +126,10 @@ def test_trust_band_zero_influence_accuracy_only():
     # 60% accuracy, 0% influence → 0.6 * 0.7 + 0.0 * 0.3 = 0.42 < 0.50 (unverified)
     # Need 72% accuracy, 0% influence → 0.72 * 0.7 = 0.504 ≥ 0.50 (verified)
     band = calculate_trust_band(
-        accuracy_metric=0.72, average_rr=1.5, verified_trades_pct=60, influence_score=0.0
+        accuracy_metric=0.72,
+        average_rr=1.5,
+        verified_trades_pct=60,
+        influence_score=0.0,
     )
     assert band == "verified"
 
@@ -119,10 +143,9 @@ def test_trust_band_zero_influence_accuracy_only():
 async def test_calculate_trust_index_no_trades(db_session: AsyncSession):
     """Test calculate_trust_index with user who has no trades."""
     user = User(
-        id="user1",
-        telegram_id=12345,
-        username="user1",
-        role="free",
+        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        telegram_user_id=12345,
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user)
@@ -143,10 +166,9 @@ async def test_calculate_trust_index_no_trades(db_session: AsyncSession):
 async def test_calculate_trust_index_with_trades(db_session: AsyncSession):
     """Test calculate_trust_index with user who has closed trades."""
     user = User(
-        id="user1",
-        telegram_id=12345,
-        username="user1",
-        role="free",
+        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        telegram_user_id=12345,
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user)
@@ -156,20 +178,27 @@ async def test_calculate_trust_index_with_trades(db_session: AsyncSession):
     trades = []
     for i in range(10):
         profit = 100.0 if i < 7 else -50.0  # First 7 win, last 3 lose
+        entry_price = 1900.0
+        exit_price = 1950.0 if profit > 0 else 1850.0
         trade = Trade(
-            id=f"trade{i}",
+            trade_id=f"trade{i}",  # was id
             user_id="user1",
-            instrument="XAUUSD",
-            side=0,  # buy
-            entry_price=1900.0,
-            exit_price=1950.0 if profit > 0 else 1850.0,
-            quantity=0.1,
+            symbol="XAUUSD",  # was instrument
+            strategy="fib_rsi",  # required
+            timeframe="H1",  # required
+            trade_type="BUY",
+            direction=0,  # was side
+            entry_price=entry_price,
+            entry_time=datetime.utcnow() - timedelta(hours=i),
+            stop_loss=entry_price * 0.98,  # required: 2% below entry
+            take_profit=entry_price * 1.04,  # required: 4% above entry
+            volume=0.1,  # was quantity
+            exit_price=exit_price,
+            exit_time=datetime.utcnow() - timedelta(hours=i, minutes=30),
             profit=profit,
             risk_reward_ratio=2.0 if profit > 0 else 0.5,
             status="CLOSED",
             signal_id=f"signal{i}" if i < 5 else None,  # First 5 are verified
-            entry_time=datetime.utcnow() - timedelta(hours=i),
-            exit_time=datetime.utcnow() - timedelta(hours=i, minutes=30),
         )
         trades.append(trade)
     db_session.add_all(trades)
@@ -197,10 +226,9 @@ async def test_calculate_trust_index_integrates_social_graph(db_session: AsyncSe
     """Test calculate_trust_index integrates PR-094 social graph influence."""
     # Create user with trades
     user1 = User(
-        id="user1",
-        telegram_id=12345,
-        username="user1",
-        role="free",
+        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        telegram_user_id=12345,
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user1)
@@ -210,20 +238,27 @@ async def test_calculate_trust_index_integrates_social_graph(db_session: AsyncSe
     trades = []
     for i in range(10):
         profit = 100.0 if i < 7 else -50.0
+        entry_price = 1900.0
+        exit_price = 1950.0 if profit > 0 else 1850.0
         trade = Trade(
-            id=f"trade{i}",
+            trade_id=f"trade{i}",  # was id
             user_id="user1",
-            instrument="XAUUSD",
-            side=0,
-            entry_price=1900.0,
-            exit_price=1950.0 if profit > 0 else 1850.0,
-            quantity=0.1,
+            symbol="XAUUSD",  # was instrument
+            strategy="fib_rsi",  # required
+            timeframe="H1",  # required
+            trade_type="BUY",
+            direction=0,  # was side
+            entry_price=entry_price,
+            entry_time=datetime.utcnow() - timedelta(hours=i),
+            stop_loss=entry_price * 0.98,  # required
+            take_profit=entry_price * 1.04,  # required
+            volume=0.1,  # was quantity
+            exit_price=exit_price,
+            exit_time=datetime.utcnow() - timedelta(hours=i, minutes=30),
             profit=profit,
             risk_reward_ratio=2.0 if profit > 0 else 0.5,
             status="CLOSED",
             signal_id=f"signal{i}" if i < 5 else None,
-            entry_time=datetime.utcnow() - timedelta(hours=i),
-            exit_time=datetime.utcnow() - timedelta(hours=i, minutes=30),
         )
         trades.append(trade)
     db_session.add_all(trades)
@@ -234,9 +269,10 @@ async def test_calculate_trust_index_integrates_social_graph(db_session: AsyncSe
     for i in range(2, 5):
         verifier = User(
             id=f"user{i}",
-            telegram_id=10000 + i,
-            username=f"user{i}",
-            role="free",
+            email=f"user{i}@test.com",
+            password_hash="hashed_pwd",
+            telegram_user_id=10000 + i,
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         verifiers.append(verifier)
@@ -264,7 +300,9 @@ async def test_calculate_trust_index_integrates_social_graph(db_session: AsyncSe
     assert index.accuracy_metric == 0.7  # 70% accuracy
     # Influence score: 3 verifications → 3.0 / (1 + 3) = 0.75
     # Composite: 0.7 * 0.7 + 0.75 * 0.3 = 0.49 + 0.225 = 0.715 ≥ 0.60 (expert)
-    assert index.trust_band == "expert"  # Social graph boosts from unverified to expert!
+    assert (
+        index.trust_band == "expert"
+    )  # Social graph boosts from unverified to expert!
 
 
 @pytest.mark.asyncio
@@ -274,10 +312,9 @@ async def test_calculate_trust_index_high_influence_boosts_to_elite(
     """Test high social influence boosts trust band to elite tier."""
     # Create user with good trades (75% accuracy)
     user1 = User(
-        id="user1",
-        telegram_id=12345,
-        username="user1",
-        role="free",
+        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        telegram_user_id=12345,
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user1)
@@ -287,17 +324,24 @@ async def test_calculate_trust_index_high_influence_boosts_to_elite(
     trades = []
     for i in range(20):
         profit = 100.0 if i < 15 else -50.0
+        entry_price = 1900.0
+        exit_price = 1950.0 if profit > 0 else 1850.0
         trade = Trade(
-            id=f"trade{i}",
+            trade_id=f"trade{i}",
             user_id="user1",
-            instrument="XAUUSD",
-            side=0,
-            entry_price=1900.0,
-            exit_price=1950.0 if profit > 0 else 1850.0,
-            quantity=0.1,
+            symbol="XAUUSD",
+            strategy="fib_rsi",
+            timeframe="H1",
+            trade_type="BUY",
+            direction=0,
+            entry_price=entry_price,
+            exit_price=exit_price,
+            volume=0.1,
             profit=profit,
             risk_reward_ratio=2.0 if profit > 0 else 0.5,
             status="CLOSED",
+            stop_loss=entry_price * 0.98,
+            take_profit=entry_price * 1.04,
             signal_id=f"signal{i}" if i < 10 else None,
             entry_time=datetime.utcnow() - timedelta(hours=i),
             exit_time=datetime.utcnow() - timedelta(hours=i, minutes=30),
@@ -311,9 +355,10 @@ async def test_calculate_trust_index_high_influence_boosts_to_elite(
     for i in range(2, 11):
         verifier = User(
             id=f"user{i}",
-            telegram_id=10000 + i,
-            username=f"user{i}",
-            role="free",
+            email=f"user{i}@test.com",
+            password_hash="hashed_pwd",
+            telegram_user_id=10000 + i,
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         verifiers.append(verifier)
@@ -348,10 +393,9 @@ async def test_calculate_trust_index_high_influence_boosts_to_elite(
 async def test_calculate_trust_index_caching(db_session: AsyncSession):
     """Test calculate_trust_index returns cached record within TTL."""
     user = User(
-        id="user1",
-        telegram_id=12345,
-        username="user1",
-        role="free",
+        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        telegram_user_id=12345,
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user)
@@ -396,10 +440,9 @@ async def test_calculate_trust_index_user_not_found(db_session: AsyncSession):
 async def test_trust_index_all_losing_trades(db_session: AsyncSession):
     """Test trust index with user who has all losing trades."""
     user = User(
-        id="user1",
-        telegram_id=12345,
-        username="user1",
-        role="free",
+        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        telegram_user_id=12345,
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user)
@@ -408,17 +451,24 @@ async def test_trust_index_all_losing_trades(db_session: AsyncSession):
     # Create 5 closed trades: all losing
     trades = []
     for i in range(5):
+        entry_price = 1900.0
+        exit_price = 1850.0  # All losing
         trade = Trade(
-            id=f"trade{i}",
+            trade_id=f"trade{i}",
             user_id="user1",
-            instrument="XAUUSD",
-            side=0,
-            entry_price=1900.0,
-            exit_price=1850.0,  # All losing
-            quantity=0.1,
+            symbol="XAUUSD",
+            strategy="fib_rsi",
+            timeframe="H1",
+            trade_type="BUY",
+            direction=0,
+            entry_price=entry_price,
+            exit_price=exit_price,
+            volume=0.1,
             profit=-50.0,
             risk_reward_ratio=0.5,
             status="CLOSED",
+            stop_loss=entry_price * 0.98,
+            take_profit=entry_price * 1.04,
             signal_id=None,
             entry_time=datetime.utcnow() - timedelta(hours=i),
             exit_time=datetime.utcnow() - timedelta(hours=i, minutes=30),
@@ -439,10 +489,9 @@ async def test_trust_index_all_losing_trades(db_session: AsyncSession):
 async def test_trust_index_all_verified_trades(db_session: AsyncSession):
     """Test trust index with user who has 100% verified trades."""
     user = User(
-        id="user1",
-        telegram_id=12345,
-        username="user1",
-        role="free",
+        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        telegram_user_id=12345,
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user)
@@ -452,17 +501,24 @@ async def test_trust_index_all_verified_trades(db_session: AsyncSession):
     trades = []
     for i in range(10):
         profit = 100.0 if i < 8 else -50.0  # 80% accuracy
+        entry_price = 1900.0
+        exit_price = 1950.0 if profit > 0 else 1850.0
         trade = Trade(
-            id=f"trade{i}",
+            trade_id=f"trade{i}",
             user_id="user1",
-            instrument="XAUUSD",
-            side=0,
-            entry_price=1900.0,
-            exit_price=1950.0 if profit > 0 else 1850.0,
-            quantity=0.1,
+            symbol="XAUUSD",
+            strategy="fib_rsi",
+            timeframe="H1",
+            trade_type="BUY",
+            direction=0,
+            entry_price=entry_price,
+            exit_price=exit_price,
+            volume=0.1,
             profit=profit,
             risk_reward_ratio=2.0 if profit > 0 else 0.5,
             status="CLOSED",
+            stop_loss=entry_price * 0.98,
+            take_profit=entry_price * 1.04,
             signal_id=f"signal{i}",  # ALL verified
             entry_time=datetime.utcnow() - timedelta(hours=i),
             exit_time=datetime.utcnow() - timedelta(hours=i, minutes=30),
@@ -479,3 +535,6 @@ async def test_trust_index_all_verified_trades(db_session: AsyncSession):
     assert index.accuracy_metric == 0.8  # 80% accuracy
     # 80% accuracy, 0% influence → 0.8 * 0.7 = 0.56 ≥ 0.50 (verified)
     assert index.trust_band == "verified"
+
+
+
