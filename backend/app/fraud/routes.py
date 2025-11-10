@@ -24,16 +24,16 @@ class AnomalyEventOut(BaseModel):
 
     event_id: str
     user_id: str
-    trade_id: str]
+    trade_id: str | None = None
     anomaly_type: str
     severity: str
     score: float
     details: dict
     detected_at: datetime
-    reviewed_at: datetime]
-    reviewed_by: str]
+    reviewed_at: datetime | None = None
+    reviewed_by: str | None = None
     status: str
-    resolution_note: str]
+    resolution_note: str | None = None
     created_at: datetime
 
     class Config:
@@ -63,17 +63,17 @@ class ReviewAnomalyRequest(BaseModel):
     """Request to review an anomaly."""
 
     status: str = Field(..., pattern="^(investigating|resolved|false_positive)$")
-    resolution_note: str] = Field(None, max_length=2000)
+    resolution_note: str | None = Field(None, max_length=2000)
 
 
 @router.get("/events", response_model=AnomalyListOut)
 async def get_fraud_events(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin),  # Admin-only
-    anomaly_type: str] = Query(None, description="Filter by anomaly type"),
-    severity: str] = Query(None, description="Filter by severity"),
-    status: str] = Query(None, description="Filter by status"),
-    user_id: str] = Query(None, description="Filter by user_id"),
+    anomaly_type: str | None = Query(None, description="Filter by anomaly type"),
+    severity: str | None = Query(None, description="Filter by severity"),
+    status: str | None = Query(None, description="Filter by status"),
+    user_id: str | None = Query(None, description="Filter by user_id"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
 ):
