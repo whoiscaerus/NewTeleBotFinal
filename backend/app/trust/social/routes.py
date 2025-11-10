@@ -3,8 +3,7 @@
 PR-094: Public endpoints for peer verification.
 """
 
-import logging
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -59,8 +58,8 @@ class UserVerificationsOut(BaseModel):
     """Response schema for user verifications (given + received)."""
 
     user_id: str
-    given: List[VerificationEdgeOut]
-    received: List[VerificationEdgeOut]
+    given: list[VerificationEdgeOut]
+    received: list[VerificationEdgeOut]
     influence_score: float = Field(..., ge=0.0, le=1.0)
 
 
@@ -285,7 +284,5 @@ async def get_user_influence(
         return {"user_id": user_id, "influence_score": influence_score}
 
     except Exception as e:
-        logger.error(
-            f"Error calculating influence for {user_id}: {e}", exc_info=True
-        )
+        logger.error(f"Error calculating influence for {user_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")

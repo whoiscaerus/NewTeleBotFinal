@@ -30,6 +30,7 @@ from backend.app.risk.routes import router as risk_router
 from backend.app.risk.routes import trading_router
 from backend.app.signals.routes import router as signals_router
 from backend.app.trust.routes import router as trust_router
+from backend.app.trust.ledger.routes import router as ledger_router
 from backend.app.web.routes import router as web_router
 
 try:
@@ -69,6 +70,7 @@ app.include_router(affiliates_router, prefix="/api/v1/affiliates", tags=["affili
 app.include_router(approvals_router, prefix="/api/v1", tags=["approvals"])
 app.include_router(performance_router, tags=["public"])
 app.include_router(trust_index_router, tags=["public"])
+app.include_router(ledger_router, tags=["public"])  # PR-093: Blockchain ledger proof routes
 app.include_router(polling_v2_router, tags=["polling-v2"])
 app.include_router(prefs_router, tags=["preferences"])
 app.include_router(profile_router, tags=["profile"])  # PR-090: Theme settings

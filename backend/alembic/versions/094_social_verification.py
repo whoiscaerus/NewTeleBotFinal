@@ -26,7 +26,9 @@ def upgrade():
         sa.Column("verified_id", sa.String(length=36), nullable=False),
         # Verification Details
         sa.Column("weight", sa.Float, nullable=False, server_default="1.0"),
-        sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime, nullable=False, server_default=sa.func.now()
+        ),
         # Anti-Sybil Metadata
         sa.Column("ip_address", sa.String(length=45), nullable=True),  # IPv6 support
         sa.Column("device_fingerprint", sa.String(length=64), nullable=True),

@@ -37,12 +37,8 @@ class VerificationEdge(Base):
     __tablename__ = "verification_edges"
 
     id = Column(String(36), primary_key=True)
-    verifier_id = Column(
-        String(36), ForeignKey("users.id"), nullable=False, index=True
-    )
-    verified_id = Column(
-        String(36), ForeignKey("users.id"), nullable=False, index=True
-    )
+    verifier_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    verified_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     weight = Column(Float, nullable=False, default=1.0)  # 0.0-1.0
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     ip_address = Column(String(45), nullable=True)  # IPv6 max length

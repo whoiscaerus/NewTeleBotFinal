@@ -35,6 +35,7 @@ from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.revenue.routes import router as revenue_router
 from backend.app.trust.ledger.routes import router as ledger_router  # PR-093: Blockchain ledger proof routes
+from backend.app.trust.social.routes import router as social_router  # PR-094: Social verification graph routes
 from backend.app.signals.routes import router as signals_router
 from backend.app.strategy.routes import router as strategy_router
 from backend.app.support.routes import router as support_router
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
     app.include_router(revenue_router)
     app.include_router(trust_index_router)
     app.include_router(ledger_router)  # PR-093: Blockchain ledger proof routes
+    app.include_router(social_router)  # PR-094: Social verification graph routes
     app.include_router(signals_router)
     app.include_router(strategy_router)
     app.include_router(support_router)

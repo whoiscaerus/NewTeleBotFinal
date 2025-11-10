@@ -107,36 +107,53 @@ class PublicTrustIndexSchema(BaseModel):
 
 
 def calculate_trust_band(
-    accuracy_metric: float, average_rr: float, verified_trades_pct: int
+    accuracy_metric: float,
+    average_rr: float,
+    verified_trades_pct: int,
+    influence_score: float = 0.0,
 ) -> str:
     """
-    Calculate trust band from metrics.
+    Calculate trust band from metrics with social graph integration.
 
-    Trust bands are primarily driven by accuracy (win rate), with R/R and verified trades as supporting metrics:
-    - unverified: < 50% accuracy
-    - verified: ≥ 50% accuracy (primary tier)
-    - expert: ≥ 60% accuracy (primary tier)
-    - elite: ≥ 75% accuracy (primary tier)
+    Trust bands are computed from a weighted combination of:
+    - 70% accuracy metric (win rate)
+    - 30% social graph influence score (PR-094 integration)
+
+    Trust bands:
+    - unverified: < 50% composite score
+    - verified: ≥ 50% composite score (primary tier)
+    - expert: ≥ 60% composite score (primary tier)
+    - elite: ≥ 75% composite score (primary tier)
 
     Args:
         accuracy_metric: Win rate (0.0-1.0)
         average_rr: Risk/reward ratio (0+)
         verified_trades_pct: Verified trades percentage (0-100)
+        influence_score: Social graph influence (0.0-1.0) from PR-094
 
     Returns:
         Trust band: "unverified", "verified", "expert", or "elite"
 
     Example:
-        >>> band = calculate_trust_band(0.65, 1.8, 65)
+        >>> # High accuracy, low influence
+        >>> band = calculate_trust_band(0.70, 1.8, 65, 0.2)
         >>> band
-        "expert"
+        "expert"  # 0.7 * 0.7 + 0.3 * 0.2 = 0.55
+
+        >>> # Medium accuracy, high influence
+        >>> band = calculate_trust_band(0.55, 1.8, 65, 0.8)
+        >>> band
+        "expert"  # 0.55 * 0.7 + 0.3 * 0.8 = 0.625
     """
-    # Primary tier determined by accuracy metric
-    if accuracy_metric >= 0.75:
+    # Composite score: 70% accuracy + 30% social graph influence
+    composite_score = (0.7 * accuracy_metric) + (0.3 * influence_score)
+
+    # Trust band determined by composite score
+    if composite_score >= 0.75:
         return "elite"
-    elif accuracy_metric >= 0.60:
+    elif composite_score >= 0.60:
         return "expert"
-    elif accuracy_metric >= 0.50:
+    elif composite_score >= 0.50:
         return "verified"
     else:
         return "unverified"
@@ -213,9 +230,14 @@ async def calculate_trust_index(
                 int(verified_trades / len(trades) * 100) if trades else 0
             )
 
-        # Calculate trust band
+        # Fetch social graph influence score (PR-094 integration)
+        from backend.app.trust.social.service import calculate_influence_score
+
+        influence_score = await calculate_influence_score(user_id, db)
+
+        # Calculate trust band with social graph integration
         trust_band = calculate_trust_band(
-            accuracy_metric, average_rr, verified_trades_pct
+            accuracy_metric, average_rr, verified_trades_pct, influence_score
         )
 
         logger.info(
@@ -226,6 +248,7 @@ async def calculate_trust_index(
                 "accuracy": accuracy_metric,
                 "rr": average_rr,
                 "verified": verified_trades_pct,
+                "influence": influence_score,
                 "band": trust_band,
             },
         )

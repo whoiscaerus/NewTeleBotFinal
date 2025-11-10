@@ -106,6 +106,32 @@ class User(Base):
         lazy="select",
         cascade="all, delete-orphan",
     )
+    given_verifications: Mapped[list] = relationship(
+        "VerificationEdge",
+        foreign_keys="VerificationEdge.verifier_id",
+        back_populates="verifier",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+    received_verifications: Mapped[list] = relationship(
+        "VerificationEdge",
+        foreign_keys="VerificationEdge.verified_id",
+        back_populates="verified",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+    recommendations: Mapped[list] = relationship(
+        "Recommendation",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+    exposures: Mapped[list] = relationship(
+        "Exposure",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
 
     def __init__(self, **kwargs):
         """Initialize User with default role."""

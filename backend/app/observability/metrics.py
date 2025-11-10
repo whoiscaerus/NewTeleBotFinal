@@ -378,6 +378,36 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Social verification metrics (PR-094)
+        self.social_verifications_total = Counter(
+            "social_verifications_total",
+            "Total verification edges created in social graph",
+            ["status"],  # success, self_verification, duplicate, rate_limit, anti_sybil
+            registry=self.registry,
+        )
+
+        self.social_influence_score_gauge = Gauge(
+            "social_influence_score_gauge",
+            "User influence scores from social verification graph",
+            ["user_id"],
+            registry=self.registry,
+        )
+
+        # Public trust index metrics (PR-095)
+        self.public_trust_index_views_total = Counter(
+            "public_trust_index_views_total",
+            "Total public trust index API views",
+            ["trust_band"],  # unverified, verified, expert, elite
+            registry=self.registry,
+        )
+
+        self.public_trust_index_calculated_total = Counter(
+            "public_trust_index_calculated_total",
+            "Total trust index calculations (includes social graph integration)",
+            ["trust_band"],
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",
