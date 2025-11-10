@@ -5,7 +5,7 @@ PR-094: Core verification logic with anti-sybil protections.
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import func, select
@@ -56,8 +56,8 @@ class AntiSybilError(VerificationError):
 async def anti_sybil_checks(
     verifier_id: str,
     verified_id: str,
-    ip_address: Optional[str],
-    device_fingerprint: Optional[str],
+    ip_address: str | None,
+    device_fingerprint: str | None,
     db: AsyncSession,
 ) -> None:
     """
@@ -111,7 +111,7 @@ async def anti_sybil_checks(
         & (VerificationEdge.created_at >= one_hour_ago)
     )
     result = await db.execute(stmt)
-    hourly_count = result.scalar()
+    hourly_count = result.scalar() or 0
 
     if hourly_count >= MAX_VERIFICATIONS_PER_HOUR:
         raise RateLimitError(
@@ -125,7 +125,7 @@ async def anti_sybil_checks(
         & (VerificationEdge.created_at >= one_day_ago)
     )
     result = await db.execute(stmt)
-    daily_count = result.scalar()
+    daily_count = result.scalar() or 0
 
     if daily_count >= MAX_VERIFICATIONS_PER_DAY:
         raise RateLimitError(
@@ -139,7 +139,7 @@ async def anti_sybil_checks(
             & (VerificationEdge.created_at >= one_day_ago)
         )
         result = await db.execute(stmt)
-        ip_count = result.scalar()
+        ip_count = result.scalar() or 0
 
         if ip_count >= MAX_VERIFICATIONS_PER_IP_PER_DAY:
             raise AntiSybilError(
@@ -153,7 +153,7 @@ async def anti_sybil_checks(
             & (VerificationEdge.created_at >= one_day_ago)
         )
         result = await db.execute(stmt)
-        device_count = result.scalar()
+        device_count = result.scalar() or 0
 
         if device_count >= MAX_VERIFICATIONS_PER_DEVICE_PER_DAY:
             raise AntiSybilError(
@@ -193,9 +193,9 @@ async def anti_sybil_checks(
 async def verify_peer(
     verifier_id: str,
     verified_id: str,
-    ip_address: Optional[str],
-    device_fingerprint: Optional[str],
-    notes: Optional[str],
+    ip_address: str | None,
+    device_fingerprint: str | None,
+    notes: str | None,
     db: AsyncSession,
 ) -> VerificationEdge:
     """
@@ -277,7 +277,7 @@ async def verify_peer(
 
 async def get_user_verifications(
     user_id: str, db: AsyncSession
-) -> dict[str, List[VerificationEdge]]:
+) -> dict[str, list[VerificationEdge]]:
     """
     Get all verifications for a user (given and received).
 
@@ -356,12 +356,12 @@ async def calculate_influence_score(user_id: str, db: AsyncSession) -> float:
         return 0.0
 
     # Calculate weighted sum of verifications
-    weighted_sum = sum(edge.weight for edge in received)
-    received_count = len(received)
+    weighted_sum: float = sum(edge.weight for edge in received)
+    received_count: int = len(received)
 
     # Normalize to 0-1 range using formula: weighted_sum / (1 + received_count)
     # This creates an asymptotic curve approaching 1.0
-    influence_score = weighted_sum / (1 + received_count)
+    influence_score: float = weighted_sum / (1 + received_count)
 
     logger.info(
         f"Calculated influence score for {user_id}",

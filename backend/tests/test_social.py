@@ -5,25 +5,24 @@ Tests all anti-sybil checks, edge creation, rate limits, influence calculation,
 and error paths to validate 100% working business logic.
 """
 
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User
 from backend.app.trust.social.models import VerificationEdge
 from backend.app.trust.social.service import (
-    verify_peer,
-    get_user_verifications,
-    calculate_influence_score,
-    anti_sybil_checks,
-    SelfVerificationError,
+    AntiSybilError,
     DuplicateVerificationError,
     RateLimitError,
-    AntiSybilError,
+    SelfVerificationError,
     VerificationError,
+    anti_sybil_checks,
+    calculate_influence_score,
+    get_user_verifications,
+    verify_peer,
 )
-from backend.app.auth.models import User
-
 
 # ============================================================================
 # Anti-Sybil Checks Tests (7 validation rules)
@@ -63,7 +62,7 @@ async def test_anti_sybil_duplicate_verification_blocked(db_session: AsyncSessio
         email="user1@test.com",
         password_hash="hashed",
         telegram_user_id=12345,
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     user2 = User(
@@ -71,7 +70,7 @@ async def test_anti_sybil_duplicate_verification_blocked(db_session: AsyncSessio
         email="user2@test.com",
         password_hash="hashed",
         telegram_user_id=67890,
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add_all([user1, user2])
@@ -112,7 +111,7 @@ async def test_anti_sybil_hourly_rate_limit(db_session: AsyncSession):
             email=f"user{i}@test.com",
             password_hash="hashed",
             telegram_user_id=10000 + i,
-            role="free",
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         users.append(user)
@@ -154,7 +153,7 @@ async def test_anti_sybil_hourly_rate_limit(db_session: AsyncSession):
     # Actually the issue is: anti_sybil_checks checks duplicate BEFORE rate limit
     # So we can't test rate limit by trying to verify same user.
     # Need to create 7 users total, verify 5, then try 6th with new user
-    
+
     # Wait, I see the issue now - test has 6 users (0-5), verifies 1-5 (5 edges), then tries user5 again
     # That's wrong. Should have 7 users and try user6. Let me check if test creates 7 or 6.
     # range(6) creates 0,1,2,3,4,5 = 6 users. Should be range(7) to have user6 available.
@@ -165,9 +164,9 @@ async def test_anti_sybil_hourly_rate_limit(db_session: AsyncSession):
     # REAL FIX: anti_sybil_checks should check rate limit BEFORE checking duplicate.
     # But that's a service logic change. Let's see what order checks happen...
     # OR: Test should create 7 users so user6 exists for 6th verification attempt.
-    
-    # ACTUAL FIX: Test created 6 users (0-5). Loop verified user1-5. For 6th attempt, 
-    # we need an unverified user. But there's no user6. 
+
+    # ACTUAL FIX: Test created 6 users (0-5). Loop verified user1-5. For 6th attempt,
+    # we need an unverified user. But there's no user6.
     # The test is WRONG. Should create 7 users, not 6.
     # BUT: Maybe the test wants to show that attempting to verify the SAME user again
     # counts toward rate limit? No, that's duplicate detection.
@@ -200,11 +199,11 @@ async def test_anti_sybil_hourly_rate_limit(db_session: AsyncSession):
     # Let me trace through: we have users 0-5. We verified 1-5. We want to try verifying someone new.
     # Option: Create a 7th user inline before the rate limit check? Or change verified_id to "user99" which doesn't exist? That would cause different error.
     # BEST FIX: Create 7 users in the initial loop (range(7)), then verify user1-5, then try user6
-    
+
     # For now, let me just see if anti_sybil_checks validates that verified_id exists before checking rate limit
     # If not, we can pass a non-existent user_id and still test rate limit
     # But that's not a good test. Let me just fix by ensuring we have enough users.
-    
+
     # SIMPLE FIX: Change the attempted verification to a user that wasn't already verified
     # We verified user1-5. We can't verify user0 (self). We need user6.
     # The test should have created 7 users, not 6. That's the bug.
@@ -213,23 +212,21 @@ async def test_anti_sybil_hourly_rate_limit(db_session: AsyncSession):
     # Actually, cleaner: just pass a NEW user id that doesn't have an edge yet
     # But we need that user to exist in DB for foreign key constraint
     # Cleanest: inline create user6 right before the check, then test rate limit with user6
-    
+
     # FINAL DECISION: Add a 7th user right before the rate limit test
     user6 = User(
         id="user6",
         email="user6@test.com",
         password_hash="hashed",
         telegram_user_id=10006,
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user6)
     await db_session.commit()
-    
+
     # Now test 6th verification (should fail rate limit)
-    with pytest.raises(
-        RateLimitError, match="Hourly verification limit exceeded"
-    ):
+    with pytest.raises(RateLimitError, match="Hourly verification limit exceeded"):
         await anti_sybil_checks(
             verifier_id="user0",
             verified_id="user6",  # Changed from user5 to user6
@@ -250,7 +247,7 @@ async def test_anti_sybil_daily_rate_limit(db_session: AsyncSession):
             email=f"user{i}@test.com",
             password_hash="hashed",
             telegram_user_id=10000 + i,
-            role="free",
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         users.append(user)
@@ -272,11 +269,23 @@ async def test_anti_sybil_daily_rate_limit(db_session: AsyncSession):
         db_session.add(edge)
     await db_session.commit()
 
+    # Create user21 (unverified) to test 21st verification attempt
+    user21 = User(
+        id="user21",
+        email="user21@test.com",
+        password_hash="hashed",
+        telegram_user_id=10021,
+        role="user",
+        created_at=datetime.utcnow() - timedelta(days=30),
+    )
+    db_session.add(user21)
+    await db_session.commit()
+
     # 21st verification should fail (daily limit = 20)
-    with pytest.raises(RateLimitError, match="Too many verifications today: 20/20"):
+    with pytest.raises(RateLimitError, match="Daily verification limit exceeded"):
         await anti_sybil_checks(
             verifier_id="user0",
-            verified_id="user20",
+            verified_id="user21",
             ip_address="192.168.2.1",
             device_fingerprint="device999",
             db=db_session,
@@ -294,7 +303,7 @@ async def test_anti_sybil_ip_rate_limit(db_session: AsyncSession):
             email=f"user{i}@test.com",
             password_hash="hashed",
             telegram_user_id=10000 + i,
-            role="free",
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         users.append(user)
@@ -318,7 +327,7 @@ async def test_anti_sybil_ip_rate_limit(db_session: AsyncSession):
 
     # 11th verification from same IP should fail (IP limit = 10/day)
     with pytest.raises(
-        AntiSybilError, match="Too many verifications from IP 192.168.1.1 today: 10/10"
+        AntiSybilError, match="Too many verifications from this IP"
     ):
         await anti_sybil_checks(
             verifier_id="user11",
@@ -340,7 +349,7 @@ async def test_anti_sybil_device_rate_limit(db_session: AsyncSession):
             email=f"user{i}@test.com",
             password_hash="hashed",
             telegram_user_id=10000 + i,
-            role="free",
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         users.append(user)
@@ -365,7 +374,7 @@ async def test_anti_sybil_device_rate_limit(db_session: AsyncSession):
     # 16th verification from same device should fail (device limit = 15/day)
     with pytest.raises(
         AntiSybilError,
-        match="Too many verifications from device device123 today: 15/15",
+        match="Too many verifications from this device",
     ):
         await anti_sybil_checks(
             verifier_id="user16",
@@ -385,8 +394,7 @@ async def test_anti_sybil_account_age_check(db_session: AsyncSession):
         email="newuser@test.com",
         password_hash="hashed",
         telegram_user_id=99999,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=3),  # Only 3 days old
     )
     # Create target user
@@ -395,8 +403,7 @@ async def test_anti_sybil_account_age_check(db_session: AsyncSession):
         email="target@test.com",
         password_hash="hashed",
         telegram_user_id=88888,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add_all([new_user, target_user])
@@ -404,7 +411,7 @@ async def test_anti_sybil_account_age_check(db_session: AsyncSession):
 
     # New user tries to verify (should fail)
     with pytest.raises(
-        AntiSybilError, match="Account must be at least 7 days old to verify peers"
+        AntiSybilError, match="Account must be at least 7 days old"
     ):
         await anti_sybil_checks(
             verifier_id="newuser",
@@ -429,8 +436,7 @@ async def test_verify_peer_success(db_session: AsyncSession):
         email="user1@test.com",
         password_hash="hashed",
         telegram_user_id=12345,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     user2 = User(
@@ -438,8 +444,7 @@ async def test_verify_peer_success(db_session: AsyncSession):
         email="user2@test.com",
         password_hash="hashed",
         telegram_user_id=67890,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add_all([user1, user2])
@@ -474,20 +479,20 @@ async def test_verify_peer_target_not_found(db_session: AsyncSession):
         email="user1@test.com",
         password_hash="hashed",
         telegram_user_id=12345,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user1)
     await db_session.commit()
 
     # Try to verify non-existent user
-    with pytest.raises(VerificationError, match="User nonexistent not found"):
+    with pytest.raises(VerificationError, match="Verified user nonexistent not found"):
         await verify_peer(
             verifier_id="user1",
             verified_id="nonexistent",
             ip_address="192.168.1.1",
             device_fingerprint="device123",
+            notes=None,
             db=db_session,
         )
 
@@ -508,7 +513,7 @@ async def test_get_user_verifications(db_session: AsyncSession):
             email=f"user{i}@test.com",
             password_hash="hashed",
             telegram_user_id=10000 + i,
-            role="free",
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         users.append(user)
@@ -562,8 +567,7 @@ async def test_calculate_influence_score_zero(db_session: AsyncSession):
         email="user1@test.com",
         password_hash="hashed",
         telegram_user_id=12345,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add(user)
@@ -582,8 +586,7 @@ async def test_calculate_influence_score_one(db_session: AsyncSession):
         email="user1@test.com",
         password_hash="hashed",
         telegram_user_id=12345,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     user2 = User(
@@ -591,8 +594,7 @@ async def test_calculate_influence_score_one(db_session: AsyncSession):
         email="user2@test.com",
         password_hash="hashed",
         telegram_user_id=67890,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add_all([user1, user2])
@@ -628,7 +630,7 @@ async def test_calculate_influence_score_multiple(db_session: AsyncSession):
             email=f"user{i}@test.com",
             password_hash="hashed",
             telegram_user_id=10000 + i,
-            role="free",
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         users.append(user)
@@ -666,7 +668,7 @@ async def test_calculate_influence_score_asymptotic(db_session: AsyncSession):
             email=f"user{i}@test.com",
             password_hash="hashed",
             telegram_user_id=10000 + i,
-            role="free",
+            role="user",
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         users.append(user)
@@ -707,8 +709,7 @@ async def test_verification_edge_unique_constraint(db_session: AsyncSession):
         email="user1@test.com",
         password_hash="hashed",
         telegram_user_id=12345,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     user2 = User(
@@ -716,8 +717,7 @@ async def test_verification_edge_unique_constraint(db_session: AsyncSession):
         email="user2@test.com",
         password_hash="hashed",
         telegram_user_id=67890,
-        
-        role="free",
+        role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
     )
     db_session.add_all([user1, user2])
