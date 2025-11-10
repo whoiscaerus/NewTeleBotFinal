@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>We'd Love to Have You Back</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .offer-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .offer-code {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>We Miss You!</h1>
+        <p>Come back and save 30%</p>
+    </div>
+    
+    <div class="content">
+        <p>Hi {{ user_name }},</p>
+        
+        <p>We noticed you cancelled your subscription, and we'd love to have you back!</p>
+        
+        <p>As a special welcome-back offer, we're giving you <strong>30% off for the next 3 months</strong>.</p>
+        
+        <div class="offer-box">
+            <p><strong>Your Exclusive Discount Code:</strong></p>
+            <div class="offer-code">{{ discount_code }}</div>
+            <p style="margin-top: 10px;">Valid for 7 days • One-time use</p>
+        </div>
+        
+        <p><strong>What you'll get back:</strong></p>
+        <ul>
+            <li>Real-time trading signals</li>
+            <li>24/7 performance tracking</li>
+            <li>Copy trading automation</li>
+            <li>Risk management tools</li>
+        </ul>
+        
+        <center>
+            <a href="{{ resubscribe_url }}" class="cta-button">Reactivate Subscription</a>
+        </center>
+        
+        <p style="margin-top: 30px;">Questions? Our support team is here to help.</p>
+        
+        <p>Best regards,<br>Trading Signals Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>This offer expires in 7 days. Discount applies to your first 3 months after reactivation.</p>
+        <p>If you don't wish to receive winback offers, <a href="{{ unsubscribe_url }}">click here</a>.</p>
+    </div>
+</body>
+</html>

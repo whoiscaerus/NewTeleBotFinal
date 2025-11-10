@@ -14,6 +14,7 @@ from backend.app.clients.devices.routes import router as devices_router
 from backend.app.clients.exec.routes import router as exec_router
 from backend.app.copy.routes import router as copy_router
 from backend.app.core.settings import get_settings
+from backend.app.crm.routes import router as crm_router
 from backend.app.ea.routes_admin import router as ea_admin_router
 from backend.app.education.routes import router as education_router
 from backend.app.exports.routes import router as exports_router
@@ -29,8 +30,8 @@ from backend.app.revenue.routes import router as revenue_router
 from backend.app.risk.routes import router as risk_router
 from backend.app.risk.routes import trading_router
 from backend.app.signals.routes import router as signals_router
-from backend.app.trust.routes import router as trust_router
 from backend.app.trust.ledger.routes import router as ledger_router
+from backend.app.trust.routes import router as trust_router
 from backend.app.web.routes import router as web_router
 
 try:
@@ -70,7 +71,9 @@ app.include_router(affiliates_router, prefix="/api/v1/affiliates", tags=["affili
 app.include_router(approvals_router, prefix="/api/v1", tags=["approvals"])
 app.include_router(performance_router, tags=["public"])
 app.include_router(trust_index_router, tags=["public"])
-app.include_router(ledger_router, tags=["public"])  # PR-093: Blockchain ledger proof routes
+app.include_router(
+    ledger_router, tags=["public"]
+)  # PR-093: Blockchain ledger proof routes
 app.include_router(polling_v2_router, tags=["polling-v2"])
 app.include_router(prefs_router, tags=["preferences"])
 app.include_router(profile_router, tags=["profile"])  # PR-090: Theme settings
@@ -89,6 +92,9 @@ app.include_router(messaging_router, tags=["messaging"])
 app.include_router(privacy_router, tags=["privacy"])
 app.include_router(copy_router, tags=["copy"])
 app.include_router(web_router, tags=["web-telemetry"])  # PR-084
+app.include_router(
+    crm_router, tags=["crm"]
+)  # PR-098: Smart CRM & Retention Automations
 
 
 @app.get("/")

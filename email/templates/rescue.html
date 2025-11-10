@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Update Required</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Payment Update Required</h2>
+    </div>
+    
+    <div class="content">
+        <p>Hi there,</p>
+        
+        <p>We attempted to process your subscription payment of <strong>£{{ amount }}</strong>, but it was unsuccessful.</p>
+        
+        <p>This could be due to:</p>
+        <ul>
+            <li>Expired card</li>
+            <li>Insufficient funds</li>
+            <li>Card issuer declined</li>
+        </ul>
+        
+        <p>To continue your subscription and avoid service interruption, please update your payment method:</p>
+        
+        <a href="{{ payment_update_url }}" class="cta-button">Update Payment Method</a>
+        
+        <p>If you have any questions or need assistance, please don't hesitate to reach out to our support team.</p>
+        
+        <p>Best regards,<br>Trading Signals Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>This is an automated message. If you believe you received this in error, please contact support.</p>
+    </div>
+</body>
+</html>

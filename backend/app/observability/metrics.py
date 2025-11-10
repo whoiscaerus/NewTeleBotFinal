@@ -131,6 +131,22 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # CRM metrics (PR-098)
+        self.crm_playbook_fired_total = Counter(
+            "crm_playbook_fired_total",
+            "Total CRM playbooks started (PR-098: lifecycle automations)",
+            [
+                "name"
+            ],  # payment_failed_rescue, trial_ending, inactivity_nudge, winback, milestone_congrats, churn_risk
+            registry=self.registry,
+        )
+
+        self.crm_rescue_recovered_total = Counter(
+            "crm_rescue_recovered_total",
+            "Total payment rescues successful (PR-098: payment_failed_rescue conversions)",
+            registry=self.registry,
+        )
+
         # Business metrics (placeholders for trading domains)
         self.signals_ingested_total = Counter(
             "signals_ingested_total",
@@ -1030,3 +1046,7 @@ messages_sent_total = metrics.messages_sent_total
 message_fail_total = metrics.message_fail_total
 message_send_duration_seconds = metrics.message_send_duration_seconds
 position_failure_alerts_sent_total = metrics.position_failure_alerts_sent_total
+
+# Export CRM metrics for convenient access (PR-098)
+crm_playbook_fired_total = metrics.crm_playbook_fired_total
+crm_rescue_recovered_total = metrics.crm_rescue_recovered_total
