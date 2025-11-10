@@ -70,7 +70,14 @@ from backend.app.audit.models import AuditLog  # noqa: F401, E402
 # Import all models so they're registered with Base.metadata
 from backend.app.auth.models import User  # noqa: F401, E402
 from backend.app.billing.stripe.models import StripeEvent  # noqa: F401, E402
+from backend.app.ea.models import Execution  # noqa: F401, E402
 from backend.app.features.models import FeatureSnapshot  # noqa: F401, E402
+from backend.app.gamification.models import (  # noqa: F401, E402
+    Badge,
+    EarnedBadge,
+    LeaderboardOptIn,
+    Level,
+)
 from backend.app.paper.models import (  # noqa: F401, E402
     PaperAccount,
     PaperPosition,

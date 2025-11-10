@@ -296,6 +296,20 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Gamification metrics (PR-088)
+        self.badges_awarded_total = Counter(
+            "badges_awarded_total",
+            "Total badges awarded to users",
+            ["name"],  # first_trade, getting_started, trader, veteran, etc.
+            registry=self.registry,
+        )
+
+        self.leaderboard_optin_total = Counter(
+            "leaderboard_optin_total",
+            "Total leaderboard opt-ins",
+            registry=self.registry,
+        )
+
         # Feature quality metrics (PR-079)
         self.feature_quality_fail_total = Counter(
             "feature_quality_fail_total",

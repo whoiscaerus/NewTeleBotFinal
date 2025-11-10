@@ -93,6 +93,19 @@ class User(Base):
         lazy="select",
         cascade="all, delete-orphan",
     )
+    earned_badges: Mapped[list] = relationship(
+        "EarnedBadge",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+    leaderboard_optin: Mapped[object] = relationship(
+        "LeaderboardOptIn",
+        back_populates="user",
+        uselist=False,
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
 
     def __init__(self, **kwargs):
         """Initialize User with default role."""

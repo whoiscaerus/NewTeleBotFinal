@@ -26,6 +26,7 @@ from backend.app.core.errors import (
 from backend.app.core.middleware import RequestIDMiddleware
 from backend.app.dashboard.routes import router as dashboard_router
 from backend.app.ea.routes import router as ea_router
+from backend.app.gamification.routes import router as gamification_router
 from backend.app.kb.routes import router as kb_router
 from backend.app.messaging.routes import router as messaging_router
 from backend.app.miniapp.auth_bridge import router as miniapp_router
@@ -95,6 +96,7 @@ def create_app() -> FastAPI:
     app.include_router(devices_router)
     app.include_router(ea_router)
     app.include_router(exec_router)
+    app.include_router(gamification_router)  # PR-088: Gamified dashboard
     app.include_router(messaging_router)
     app.include_router(kb_router)
     app.include_router(performance_router)
