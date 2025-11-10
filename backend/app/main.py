@@ -4,6 +4,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.accounts.routes import router as accounts_router
+from backend.app.admin.routes import router as admin_router  # PR-099: Admin Portal
 from backend.app.affiliates.routes import router as affiliates_router
 from backend.app.alerts.routes import router as alerts_router
 from backend.app.alerts.routes_smart import router as smart_alerts_router
@@ -62,6 +63,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(admin_router, tags=["admin"])  # PR-099: Admin Portal
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(alerts_router, prefix="/api/v1", tags=["alerts"])
 app.include_router(smart_alerts_router, tags=["smart-alerts"])
