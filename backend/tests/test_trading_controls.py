@@ -21,7 +21,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from backend.app.observability.metrics import MetricsService
+from backend.app.observability.metrics import MetricsCollector
 from backend.app.risk.trading_controls import TradingControl, TradingControlService
 
 # ============================================================================
@@ -163,7 +163,7 @@ async def test_pause_trading_increments_telemetry(
     def mock_inc():
         metric_calls.append("paused")
 
-    metrics = MetricsService()
+    metrics = MetricsCollector()
     monkeypatch.setattr(
         metrics.trading_paused_total.labels(actor="user"), "inc", lambda: mock_inc()
     )
@@ -319,7 +319,7 @@ async def test_resume_trading_increments_telemetry(
     def mock_inc():
         metric_calls.append("resumed")
 
-    metrics = MetricsService()
+    metrics = MetricsCollector()
     monkeypatch.setattr(
         metrics.trading_resumed_total.labels(actor="user"), "inc", lambda: mock_inc()
     )
@@ -540,7 +540,7 @@ async def test_update_position_size_increments_telemetry(
     def mock_inc():
         metric_calls.append("size_changed")
 
-    metrics = MetricsService()
+    metrics = MetricsCollector()
     monkeypatch.setattr(metrics.trading_size_changed_total, "inc", lambda: mock_inc())
 
     await TradingControlService.update_position_size(
@@ -578,7 +578,7 @@ async def test_update_position_size_no_telemetry_when_unchanged(
     def mock_inc():
         metric_calls.append("size_changed")
 
-    metrics = MetricsService()
+    metrics = MetricsCollector()
     monkeypatch.setattr(metrics.trading_size_changed_total, "inc", lambda: mock_inc())
 
     # Set to same value

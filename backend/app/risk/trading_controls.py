@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from backend.app.core.db import Base
-from backend.app.observability.metrics import MetricsService
+from backend.app.observability.metrics import MetricsCollector
 
 
 class TradingControl(Base):
@@ -155,7 +155,7 @@ class TradingControlService:
         await db.refresh(control)
 
         # Record telemetry
-        metrics = MetricsService()
+        metrics = MetricsCollector()
         metrics.trading_paused_total.labels(actor=actor).inc()
 
         return control
@@ -202,7 +202,7 @@ class TradingControlService:
         await db.refresh(control)
 
         # Record telemetry
-        metrics = MetricsService()
+        metrics = MetricsCollector()
         metrics.trading_resumed_total.labels(actor=actor).inc()
 
         return control
@@ -253,7 +253,7 @@ class TradingControlService:
 
         # Record telemetry
         if old_size != control.position_size_override:
-            metrics = MetricsService()
+            metrics = MetricsCollector()
             metrics.trading_size_changed_total.inc()
 
         return control
