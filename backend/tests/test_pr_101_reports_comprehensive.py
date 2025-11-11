@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.reports.generator import ReportGenerator
 from backend.app.reports.models import Report, ReportPeriod, ReportStatus, ReportType
 from backend.app.trading.store.models import Trade
+from backend.app.users.models import User
 
 
 # Fixtures
