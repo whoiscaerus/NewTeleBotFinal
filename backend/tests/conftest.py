@@ -183,7 +183,17 @@ async def db_postgres() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create in-memory SQLite session for unit tests."""
+    """Create in-memory SQLite session for unit tests with proper cleanup.
+
+    Each test gets a fresh database session with clean state:
+    - Creates new in-memory database for each test
+    - All tables created fresh
+    - After test: engine disposed to clear all data
+
+    This ensures complete test isolation - no data leaks between tests.
+    """
+    from sqlalchemy import text
+
     from backend.app.core.db import Base
 
     engine = create_async_engine(
@@ -201,7 +211,14 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         yield session
 
-    # Cleanup
+        # After test: clear all data from tables to ensure isolation
+        # This is critical for test isolation in suite runs
+        async with session.begin():
+            for table in reversed(Base.metadata.sorted_tables):
+                await session.execute(text(f"DELETE FROM {table.name}"))
+            await session.commit()
+
+    # Cleanup: dispose engine to release all resources
     await engine.dispose()
 
 
