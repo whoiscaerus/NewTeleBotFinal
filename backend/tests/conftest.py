@@ -64,53 +64,76 @@ os.environ["PROMETHEUS_ENABLED"] = "false"
 os.environ["MEDIA_DIR"] = "test_media"
 os.environ["HMAC_PRODUCER_ENABLED"] = "false"
 
-from backend.app.accounts.models import AccountLink  # noqa: F401, E402
-from backend.app.approvals.models import Approval  # noqa: F401, E402
-from backend.app.audit.models import AuditLog  # noqa: F401, E402
 
-# Import all models so they're registered with Base.metadata
+def pytest_configure(config):
+    """Import all models BEFORE test collection to ensure consistent Base.metadata.
+
+    Problem: Test files import models at module level (top of file).
+    When pytest collects tests, it imports all test files.
+    If test file imports model before conftest, model registers with Base.metadata twice.
+    Result: "index already exists" errors during table creation.
+
+    Solution: pytest_configure runs BEFORE test collection.
+    Import all models here so they're in Base.metadata before ANY test file imports them.
+    """
+    print("[ROOT CONFTEST] pytest_configure called")
+    print("[ROOT CONFTEST] Importing minimal models...")
+
+    # Import all models to register with Base.metadata BEFORE test collection
+    from backend.app.accounts.models import AccountLink  # noqa: F401
+    from backend.app.approvals.models import Approval  # noqa: F401
+    from backend.app.audit.models import AuditLog  # noqa: F401
+    from backend.app.auth.models import User  # noqa: F401
+    from backend.app.billing.stripe.models import StripeEvent  # noqa: F401
+    from backend.app.clients.models import Client, Device  # noqa: F401
+
+    # Debug: Show which tables are registered
+    from backend.app.core.db import Base
+    from backend.app.ea.models import Execution  # noqa: F401
+    from backend.app.features.models import FeatureSnapshot  # noqa: F401
+    from backend.app.fraud.models import AnomalyEvent  # noqa: F401
+    from backend.app.gamification.models import (  # noqa: F401
+        Badge,
+        EarnedBadge,
+        LeaderboardOptIn,
+        Level,
+    )
+    from backend.app.paper.models import (  # noqa: F401
+        PaperAccount,
+        PaperPosition,
+        PaperTrade,
+    )
+    from backend.app.prefs.models import UserPreferences  # noqa: F401
+    from backend.app.strategy.logs.models import DecisionLog  # noqa: F401
+    from backend.app.strategy.models import (  # noqa: F401
+        CanaryConfig,
+        ShadowDecisionLog,
+        StrategyVersion,
+    )
+    from backend.app.trading.positions.close_commands import CloseCommand  # noqa: F401
+    from backend.app.trading.positions.models import OpenPosition  # noqa: F401
+    from backend.app.trading.store.models import (  # noqa: F401
+        EquityPoint,
+        Position,
+        Trade,
+        ValidationLog,
+    )
+    from backend.app.trust.models import Endorsement, UserTrustScore  # noqa: F401
+    from backend.app.trust.social.models import VerificationEdge  # noqa: F401
+    from backend.app.upsell.models import (  # noqa: F401
+        Experiment,
+        Exposure,
+        Recommendation,
+        Variant,
+    )
+
+    print(f"[ROOT CONFTEST] Base.metadata.tables: {list(Base.metadata.tables.keys())}")
+
+
+# Import models again at module level so fixtures can use them
+# These imports happen AFTER pytest_configure, so models already registered
 from backend.app.auth.models import User  # noqa: F401, E402
-from backend.app.billing.stripe.models import StripeEvent  # noqa: F401, E402
 from backend.app.clients.models import Client, Device  # noqa: F401, E402
-from backend.app.ea.models import Execution  # noqa: F401, E402
-from backend.app.features.models import FeatureSnapshot  # noqa: F401, E402
-from backend.app.fraud.models import AnomalyEvent  # noqa: F401, E402
-from backend.app.gamification.models import (  # noqa: F401, E402
-    Badge,
-    EarnedBadge,
-    LeaderboardOptIn,
-    Level,
-)
-from backend.app.paper.models import (  # noqa: F401, E402
-    PaperAccount,
-    PaperPosition,
-    PaperTrade,
-)
-from backend.app.prefs.models import UserPreferences  # noqa: F401, E402
-from backend.app.strategy.logs.models import DecisionLog  # noqa: F401, E402
-from backend.app.strategy.models import (  # noqa: F401, E402
-    CanaryConfig,
-    ShadowDecisionLog,
-    StrategyVersion,
-)
-from backend.app.trading.positions.close_commands import (  # noqa: F401, E402
-    CloseCommand,
-)
-from backend.app.trading.positions.models import OpenPosition  # noqa: F401, E402
-from backend.app.trading.store.models import (  # noqa: F401, E402
-    EquityPoint,
-    Position,
-    Trade,
-    ValidationLog,
-)
-from backend.app.trust.models import Endorsement, UserTrustScore  # noqa: F401, E402
-from backend.app.trust.social.models import VerificationEdge  # noqa: F401, E402
-from backend.app.upsell.models import (  # noqa: F401, E402
-    Experiment,
-    Exposure,
-    Recommendation,
-    Variant,
-)
 
 
 @pytest.fixture(scope="session", autouse=True)
