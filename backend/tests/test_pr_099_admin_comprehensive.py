@@ -18,8 +18,8 @@ from backend.app.admin.service import (
     process_refund,
     resolve_fraud_event,
 )
-from backend.app.devices.models import Device
-from backend.app.fraud.models import FraudEvent
+from backend.app.clients.devices.models import Device
+from backend.app.fraud.models import AnomalyEvent
 from backend.app.kb.models import Article
 from backend.app.support.models import Ticket
 from backend.app.users.models import User
@@ -88,9 +88,9 @@ async def regular_user(db_session: AsyncSession) -> User:
 
 
 @pytest.fixture
-async def fraud_event(db_session: AsyncSession, regular_user: User) -> FraudEvent:
+async def fraud_event(db_session: AsyncSession, regular_user: User) -> AnomalyEvent:
     """Create fraud event for testing."""
-    event = FraudEvent(
+    event = AnomalyEvent(
         id="fraud_123",
         user_id=regular_user.id,
         event_type="suspicious_slippage",
@@ -511,7 +511,7 @@ async def test_refund_validation(
 async def test_list_fraud_events_with_filters(
     client: AsyncClient,
     auth_headers_owner: dict,
-    fraud_event: FraudEvent,
+    fraud_event: AnomalyEvent,
 ):
     """Test listing fraud events with status/severity filters."""
     # Filter by status
@@ -538,7 +538,7 @@ async def test_list_fraud_events_with_filters(
 async def test_resolve_fraud_event_false_positive(
     db_session: AsyncSession,
     owner_user: User,
-    fraud_event: FraudEvent,
+    fraud_event: AnomalyEvent,
 ):
     """Test resolving fraud event as false positive."""
     resolved_event = await resolve_fraud_event(
@@ -560,7 +560,7 @@ async def test_resolve_fraud_event_false_positive(
 async def test_resolve_fraud_event_confirmed_suspends_user(
     db_session: AsyncSession,
     owner_user: User,
-    fraud_event: FraudEvent,
+    fraud_event: AnomalyEvent,
     regular_user: User,
 ):
     """Test resolving fraud as confirmed suspends the user."""
@@ -583,7 +583,7 @@ async def test_resolve_fraud_event_confirmed_suspends_user(
 async def test_fraud_event_cannot_be_resolved_twice(
     db_session: AsyncSession,
     owner_user: User,
-    fraud_event: FraudEvent,
+    fraud_event: AnomalyEvent,
 ):
     """Test fraud event resolution is idempotent."""
     # First resolution
