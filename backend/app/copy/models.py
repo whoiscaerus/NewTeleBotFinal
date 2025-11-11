@@ -168,7 +168,8 @@ class CopyVariant(Base):
     __table_args__ = (
         Index("ix_copy_variants_entry_locale", "entry_id", "locale"),
         Index("ix_copy_variants_entry_ab", "entry_id", "ab_group"),
-        Index("ix_copy_variants_locale", "locale"),
+        # Note: "locale" column already has index from index=True
+        # Note: "ab_group" column already has index from index=True
         {"extend_existing": True},
     )
 
