@@ -408,7 +408,7 @@ async def list_user_journeys(
                 current_step_id=uj.current_step_id,
                 started_at=uj.started_at.isoformat(),
                 completed_at=uj.completed_at.isoformat() if uj.completed_at else None,
-                metadata=uj.metadata,
+                metadata=uj.journey_metadata,
             )
         )
 

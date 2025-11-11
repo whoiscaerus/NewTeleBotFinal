@@ -170,7 +170,7 @@ class UserJourney(Base):
     completed_at = Column(DateTime, nullable=True)
     failed_at = Column(DateTime, nullable=True)
     failure_reason = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=False, default=dict)  # Journey-specific context
+    journey_metadata = Column("metadata", JSON, nullable=False, default=dict)  # Journey-specific context
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow

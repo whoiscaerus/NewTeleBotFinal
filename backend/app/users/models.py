@@ -10,6 +10,7 @@ class User(Base):
     """User model."""
 
     __tablename__ = "users"
+    __table_args__ = ({"extend_existing": True},)
 
     id = Column(String, primary_key=True)
     email = Column(String, nullable=False, unique=True)

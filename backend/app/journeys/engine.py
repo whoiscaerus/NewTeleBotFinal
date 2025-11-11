@@ -203,7 +203,7 @@ class JourneyEngine:
 
             # Check condition
             if step.condition:
-                if not self._evaluate_condition(step.condition, user_journey.metadata):
+                if not self._evaluate_condition(step.condition, user_journey.journey_metadata):
                     logger.debug(
                         f"Step {step.name} condition not met",
                         extra={"step_id": step.id, "condition": step.condition},

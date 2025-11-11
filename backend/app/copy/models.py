@@ -81,6 +81,7 @@ class CopyEntry(Base):
     __table_args__ = (
         Index("ix_copy_entries_type_status", "type", "status"),
         Index("ix_copy_entries_key", "key"),
+        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -168,6 +169,7 @@ class CopyVariant(Base):
         Index("ix_copy_variants_entry_locale", "entry_id", "locale"),
         Index("ix_copy_variants_entry_ab", "entry_id", "ab_group"),
         Index("ix_copy_variants_locale", "locale"),
+        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:

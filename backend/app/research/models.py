@@ -12,7 +12,7 @@ Each transition requires passing validation thresholds.
 import enum
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Enum, Float, Integer, String
+from sqlalchemy import JSON, Column, DateTime, Enum, Float, Index, Integer, String
 
 from backend.app.core.db import Base
 
@@ -174,6 +174,7 @@ class PaperTrade(Base):
     """
 
     __tablename__ = "paper_trades"
+    __table_args__ = ({"extend_existing": True},)
 
     id = Column(String(36), primary_key=True)
     strategy_name = Column(String(50), nullable=False, index=True)

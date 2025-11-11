@@ -54,7 +54,7 @@ class PaperAccount(Base):
     )
 
     # Indexes
-    __table_args__ = (Index("ix_paper_accounts_user_id", "user_id"),)
+    __table_args__ = (Index("ix_paper_accounts_user_id", "user_id"), {"extend_existing": True})
 
     def __repr__(self):
         return f"<PaperAccount {self.id}: user={self.user_id} balance={self.balance} enabled={self.enabled}>"
@@ -90,6 +90,7 @@ class PaperPosition(Base):
     # Indexes
     __table_args__ = (
         Index("ix_paper_positions_account_symbol", "account_id", "symbol"),
+        {"extend_existing": True},
     )
 
     def __repr__(self):
@@ -130,6 +131,7 @@ class PaperTrade(Base):
     __table_args__ = (
         Index("ix_paper_trades_account_filled", "account_id", "filled_at"),
         Index("ix_paper_trades_symbol", "symbol"),
+        {"extend_existing": True},
     )
 
     def __repr__(self):
