@@ -30,10 +30,10 @@ from backend.app.admin.schemas import (
     UserUpdateRequest,
 )
 from backend.app.admin.service import approve_kyc, process_refund, resolve_fraud_event
-from backend.app.audit.service import create_audit_log
+from backend.app.audit.service import AuditService
 from backend.app.core.db import get_db
 from backend.app.devices.models import Device
-from backend.app.fraud.models import FraudEvent
+from backend.app.fraud.models import AnomalyEvent
 from backend.app.kb.models import Article
 from backend.app.support.models import Ticket
 from backend.app.users.models import User
@@ -198,13 +198,13 @@ async def update_user(
         user.kyc_status = request.kyc_status
 
     # Audit log
-    await create_audit_log(
+    await AuditService.record(
         db=db,
-        user_id=admin.id,
+        actor_id=admin.id,
         action="user_updated",
-        resource_type="user",
-        resource_id=user_id,
-        details={
+        target="user",
+        target_id=user_id,
+        meta={
             "tier": request.tier,
             "status": request.status,
             "kyc_status": request.kyc_status,
@@ -353,13 +353,13 @@ async def revoke_device(
     device.revoke_reason = reason
 
     # Audit log
-    await create_audit_log(
+    await AuditService.record(
         db=db,
-        user_id=admin.id,
+        actor_id=admin.id,
         action="device_revoked",
-        resource_type="device",
-        resource_id=device_id,
-        details={
+        target="device",
+        target_id=device_id,
+        meta={
             "user_id": device.user_id,
             "reason": reason,
         },
@@ -535,15 +535,15 @@ async def get_fraud_events(
     Requires: Admin or Owner role
     """
     try:
-        query = select(FraudEvent)
+        query = select(AnomalyEvent)
 
         if status:
-            query = query.where(FraudEvent.status == status)
+            query = query.where(AnomalyEvent.status == status)
 
         if severity:
-            query = query.where(FraudEvent.severity == severity)
+            query = query.where(AnomalyEvent.severity == severity)
 
-        query = query.order_by(FraudEvent.created_at.desc())
+        query = query.order_by(AnomalyEvent.created_at.desc())
         query = query.offset(offset).limit(limit)
 
         result = await db.execute(query)
@@ -685,13 +685,13 @@ async def update_ticket(
             ticket.assigned_at = datetime.now(UTC)
 
         # Audit log
-        await create_audit_log(
+        await AuditService.record(
             db=db,
-            user_id=admin.id,
+            actor_id=admin.id,
             action="ticket_updated",
-            resource_type="support",
-            resource_id=ticket_id,
-            details={
+            target="support",
+            target_id=ticket_id,
+            meta={
                 "status": request.status,
                 "assigned_to": request.assigned_to,
                 "response": request.response,
@@ -787,13 +787,13 @@ async def publish_article(
             article.published_at = None
 
         # Audit log
-        await create_audit_log(
+        await AuditService.record(
             db=db,
-            user_id=admin.id,
+            actor_id=admin.id,
             action="article_publish" if publish else "article_unpublish",
-            resource_type="kb",
-            resource_id=article_id,
-            details={
+            target="kb",
+            target_id=article_id,
+            meta={
                 "title": article.title,
                 "locale": article.locale,
             },
