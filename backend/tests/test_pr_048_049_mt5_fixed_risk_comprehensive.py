@@ -411,8 +411,7 @@ class TestPositionSizingFixedRisk:
 
         # Verify total SL within 3% budget
         summary = result["summary"]
-        assert summary["global_risk_percent"]] == 3.0  # Global fixed risk
-        assert summary["global_risk_percent"]] == 3.0
+        assert summary["global_risk_percent"] == 3.0  # Global fixed risk
         assert summary["account_balance"] == 50000.0
         assert summary["allocated_risk_amount"] == 1500.0  # 3% of 50k
 
@@ -445,14 +444,14 @@ class TestPositionSizingFixedRisk:
         assert risk_log.entry_3_size_lots is not None
 
     @pytest.mark.asyncio
-    async def test_calculate_sizes_premium_tier_5_percent(
+    async def test_calculate_sizes_global_fixed_risk_applies_equally(
         self,
         db_session_test,
         user_fixture,
         copy_settings_fixture,
         mt5_account_standard,
     ):
-        """Test: Calculate position sizes for premium tier (5% risk budget)."""
+        """Test: Global fixed risk (3%) applies to ALL users equally (no tiers)."""
         setup = {
             "setup_id": "setup-002",
             "instrument": "GOLD",
@@ -471,18 +470,17 @@ class TestPositionSizingFixedRisk:
         # Verify validation approved
         assert result["validation_status"] == "approved"
 
-        # Verify allocated risk is 5% (premium tier)
+        # Verify allocated risk is 3% (global fixed risk for ALL users)
         summary = result["summary"]
-        assert summary["global_risk_percent"]] == 3.0  # Global fixed risk
-        assert summary["global_risk_percent"]] == 3.0
-        assert summary["allocated_risk_amount"] == 2500.0  # 5% of 50k
+        assert summary["global_risk_percent"] == 3.0  # Global fixed risk
+        assert summary["allocated_risk_amount"] == 1500.0  # 3% of 50k
 
-        # Total SL should be ≈ £2500 (5%)
-        assert summary["total_sl_amount"] <= 2500.0
-        assert summary["total_sl_percent"] <= 5.0
+        # Total SL should be ≈ £1500 (3%)
+        assert summary["total_sl_amount"] <= 1500.0
+        assert summary["total_sl_percent"] <= 3.0
 
-        # Premium tier should have larger position sizes than standard
-        # (for same setup)
+        # Verify no user tier differentiation - all users get same 3%
+        # Owner can change this globally via API, but default is 3%
 
     @pytest.mark.asyncio
     async def test_auto_size_positions_within_risk_budget(
@@ -529,9 +527,9 @@ class TestPositionSizingFixedRisk:
         # Verify total SL is WITHIN budget
         summary = result["summary"]
         assert summary["total_sl_amount"] <= summary["allocated_risk_amount"]
-        assert summary["total_sl_percent"] <= summary["allocated_risk_percent"]
+        assert summary["total_sl_percent"] <= summary["global_risk_percent"]
 
-        # Verify actual total SL ≤ £1,500
+        # Verify actual total SL ≤ £1,500 (3% of £50k)
         assert summary["total_sl_amount"] <= 1500.0
 
         # Verify risk log shows approval
@@ -702,14 +700,15 @@ class TestFixedRiskEdgeCases:
         copy_settings_fixture,
         mt5_account_standard,
     ):
-        """Test: Global risk config applies to all users."""
-        # Verify global config values
-        assert GLOBAL_RISK_CONFIG["tier_risk_budgets"]["standard"] == 3.0
-        assert GLOBAL_RISK_CONFIG["tier_risk_budgets"]["premium"] == 5.0
-        assert GLOBAL_RISK_CONFIG["tier_risk_budgets"]["elite"] == 7.0
-        assert GLOBAL_RISK_CONFIG["entry_splits"]["entry_1_percent"] == 0.50
-        assert GLOBAL_RISK_CONFIG["entry_splits"]["entry_2_percent"] == 0.35
-        assert GLOBAL_RISK_CONFIG["entry_splits"]["entry_3_percent"] == 0.15
+        """Test: Global fixed risk config applies to all users (no tiers)."""
+        # Verify global config values (NEW MODEL: fixed % for ALL users)
+        assert (
+            GLOBAL_RISK_CONFIG["fixed_risk_percent"] == 3.0
+        )  # Default 3% for ALL users
+        assert GLOBAL_RISK_CONFIG["entry_splits"]["entry_1_percent"] == 0.50  # 50%
+        assert GLOBAL_RISK_CONFIG["entry_splits"]["entry_2_percent"] == 0.35  # 35%
+        assert GLOBAL_RISK_CONFIG["entry_splits"]["entry_3_percent"] == 0.15  # 15%
+        assert GLOBAL_RISK_CONFIG["margin_buffer_percent"] == 20.0  # 20% safety margin
 
         setup = {
             "setup_id": "setup-009",

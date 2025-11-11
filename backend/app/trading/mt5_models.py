@@ -203,3 +203,41 @@ class TradeSetupRiskLog(Base):
         Index("ix_risk_log_setup", "setup_id"),
         Index("ix_risk_log_created", "created_at"),
     )
+
+
+class RiskConfiguration(Base):
+    """
+    Global risk configuration (single row table).
+
+    Owner-controlled risk parameters that apply to ALL users equally:
+    - fixed_risk_percent: Global risk % (default 3.0%)
+    - entry_splits: % allocation per entry (50%/35%/15%)
+    - margin_buffer: Safety margin % (default 20%)
+
+    Owner can update via API, changes apply immediately to all position sizing.
+    """
+
+    __tablename__ = "risk_configuration"
+
+    id = Column(Integer, primary_key=True, default=1)  # Single row table (always id=1)
+
+    # Global Fixed Risk (applies to ALL users)
+    fixed_risk_percent = Column(
+        Float, nullable=False, default=3.0
+    )  # Default 3% for all users
+
+    # Entry Splits (% of risk budget per entry)
+    entry_1_percent = Column(Float, nullable=False, default=0.50)  # Entry 1: 50%
+    entry_2_percent = Column(Float, nullable=False, default=0.35)  # Entry 2: 35%
+    entry_3_percent = Column(Float, nullable=False, default=0.15)  # Entry 3: 15%
+
+    # Margin Buffer
+    margin_buffer_percent = Column(
+        Float, nullable=False, default=20.0
+    )  # Reserve 20% margin
+
+    # Audit Fields
+    updated_by = Column(String(36), nullable=True)  # User ID who last updated (owner)
+    updated_at = Column(DateTime, nullable=True)  # Last update timestamp
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

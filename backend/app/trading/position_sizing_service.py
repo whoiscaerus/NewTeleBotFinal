@@ -44,8 +44,9 @@ class PositionSizingService:
     - Incremental position sizing (3 entries per setup)
     - Total stop loss validation
     - Margin requirement validation
-    """ @ staticmethod
+    """
 
+    @staticmethod
     async def calculate_setup_position_sizes(
         db: AsyncSession,
         user_id: str,

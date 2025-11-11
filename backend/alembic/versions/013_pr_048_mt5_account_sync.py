@@ -156,9 +156,29 @@ def upgrade() -> None:
         "ix_risk_log_created", "trade_setup_risk_logs", ["created_at"], unique=False
     )
 
+    # Step 4: Create risk_configuration table (single row - owner-controlled global config)
+    op.create_table(
+        "risk_configuration",
+        sa.Column("id", sa.Integer, primary_key=True, server_default="1"),
+        sa.Column("fixed_risk_percent", sa.Float, nullable=False, server_default="3.0"),
+        sa.Column("entry_1_percent", sa.Float, nullable=False, server_default="0.50"),
+        sa.Column("entry_2_percent", sa.Float, nullable=False, server_default="0.35"),
+        sa.Column("entry_3_percent", sa.Float, nullable=False, server_default="0.15"),
+        sa.Column(
+            "margin_buffer_percent", sa.Float, nullable=False, server_default="20.0"
+        ),
+        sa.Column("updated_by", sa.String(36), nullable=True),
+        sa.Column("updated_at", sa.DateTime, nullable=True),
+        sa.Column(
+            "created_at", sa.DateTime, nullable=False, server_default=sa.func.now()
+        ),
+    )
+
 
 def downgrade() -> None:
     """Revert PR-048 migrations."""
+    op.drop_table("risk_configuration")
+
     op.drop_index("ix_risk_log_created", "trade_setup_risk_logs")
     op.drop_index("ix_risk_log_setup", "trade_setup_risk_logs")
     op.drop_index("ix_risk_log_user_status", "trade_setup_risk_logs")
