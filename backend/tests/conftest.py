@@ -101,6 +101,12 @@ from backend.app.trading.store.models import (  # noqa: F401, E402
 )
 from backend.app.trust.models import Endorsement, UserTrustScore  # noqa: F401, E402
 from backend.app.trust.social.models import VerificationEdge  # noqa: F401, E402
+from backend.app.upsell.models import (  # noqa: F401, E402
+    Experiment,
+    Exposure,
+    Recommendation,
+    Variant,
+)
 
 
 @pytest.fixture(scope="session", autouse=True)
