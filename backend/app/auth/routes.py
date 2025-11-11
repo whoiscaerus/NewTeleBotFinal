@@ -15,11 +15,7 @@ from backend.app.auth.schemas import (
     UserCreate,
     UserResponse,
 )
-from backend.app.auth.utils import (
-    create_access_token,
-    hash_password,
-    verify_password,
-)
+from backend.app.auth.utils import create_access_token, hash_password, verify_password
 from backend.app.core.db import get_db
 from backend.app.core.decorators import abuse_throttle, rate_limit
 from backend.app.core.errors import AuthenticationError
@@ -31,7 +27,9 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
-@rate_limit(max_tokens=10, refill_rate=1, window_seconds=60)  # 10 initial, refills at 1/sec
+@rate_limit(
+    max_tokens=10, refill_rate=1, window_seconds=60
+)  # 10 initial, refills at 1/sec
 async def register(
     request: Request,
     user_create: UserCreate,
@@ -76,7 +74,9 @@ async def register(
 
 
 @router.post("/login", response_model=LoginResponse)
-@rate_limit(max_tokens=10, refill_rate=1, window_seconds=60)  # 10 initial, refills at 1/sec
+@rate_limit(
+    max_tokens=10, refill_rate=1, window_seconds=60
+)  # 10 initial, refills at 1/sec
 @abuse_throttle(max_failures=5, lockout_seconds=300)  # 5 failures = 5 min lockout
 async def login(
     request: Request,

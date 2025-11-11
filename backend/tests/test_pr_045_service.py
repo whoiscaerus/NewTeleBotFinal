@@ -14,26 +14,23 @@ Coverage: 100% of service business logic
 All tests use REAL models with in-memory database (no mocks except external services)
 """
 
-from datetime import datetime, timedelta
-from uuid import uuid4
-from unittest.mock import AsyncMock
+from datetime import datetime
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User
+from backend.app.copytrading.disclosures import DisclosureService
+from backend.app.copytrading.risk import RiskEvaluator
 from backend.app.copytrading.service import (
+    CopyTradeExecution,
     CopyTradeSettings,
     CopyTradingService,
-    CopyTradeExecution,
     Disclosure,
     UserConsent,
 )
-from backend.app.copytrading.disclosures import DisclosureService
-from backend.app.copytrading.risk import RiskEvaluator
-from backend.app.auth.models import User
-
 
 # ============================================================================
 # FIXTURES - Reuse conftest db_session
@@ -100,9 +97,7 @@ class TestCopyTradingServiceEnable:
         assert result["markup_percent"] == 30.0
 
         # Verify database persistence
-        stmt = select(CopyTradeSettings).where(
-            CopyTradeSettings.user_id == user_id
-        )
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
         db_result = await db_session.execute(stmt)
         settings = db_result.scalar_one_or_none()
 
@@ -121,21 +116,15 @@ class TestCopyTradingServiceEnable:
         # First enable
         await copy_service.enable_copy_trading(db_session, user_id)
 
-        stmt = select(CopyTradeSettings).where(
-            CopyTradeSettings.user_id == user_id
-        )
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
         db_result = await db_session.execute(stmt)
         first_settings = db_result.scalar_one()
         first_id = first_settings.id
 
         # Second enable with different multiplier
-        await copy_service.enable_copy_trading(
-            db_session, user_id, risk_multiplier=0.5
-        )
+        await copy_service.enable_copy_trading(db_session, user_id, risk_multiplier=0.5)
 
-        stmt = select(CopyTradeSettings).where(
-            CopyTradeSettings.user_id == user_id
-        )
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
         db_result = await db_session.execute(stmt)
         second_settings = db_result.scalar_one()
 
@@ -159,9 +148,7 @@ class TestCopyTradingServiceEnable:
         assert result["enabled"] is False
 
         # Verify database
-        stmt = select(CopyTradeSettings).where(
-            CopyTradeSettings.user_id == user_id
-        )
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
         db_result = await db_session.execute(stmt)
         settings = db_result.scalar_one()
 
@@ -206,9 +193,9 @@ class TestCopyTradingPricing:
 
         for base_price, expected_markup in test_cases:
             result = copy_service.apply_copy_markup(base_price)
-            assert abs(result - expected_markup) < 0.01, (
-                f"Base {base_price} should markup to {expected_markup}, got {result}"
-            )
+            assert (
+                abs(result - expected_markup) < 0.01
+            ), f"Base {base_price} should markup to {expected_markup}, got {result}"
 
     @pytest.mark.asyncio
     async def test_apply_copy_markup_decimal_precision(self, copy_service):
@@ -250,7 +237,9 @@ class TestCopyTradingExecution:
     """Test copy trade execution with risk limits."""
 
     @pytest.mark.asyncio
-    async def test_can_copy_execute_enabled(self, db_session: AsyncSession, copy_service, test_user):
+    async def test_can_copy_execute_enabled(
+        self, db_session: AsyncSession, copy_service, test_user
+    ):
         """Test can_copy_execute returns True when enabled and limits OK."""
         user_id = test_user.id
         await copy_service.enable_copy_trading(db_session, user_id)
@@ -261,7 +250,9 @@ class TestCopyTradingExecution:
         assert reason == "OK"
 
     @pytest.mark.asyncio
-    async def test_can_copy_execute_disabled(self, db_session: AsyncSession, copy_service, test_user):
+    async def test_can_copy_execute_disabled(
+        self, db_session: AsyncSession, copy_service, test_user
+    ):
         """Test can_copy_execute returns False when not enabled."""
         user_id = test_user.id
         # Don't enable copy-trading
@@ -280,9 +271,7 @@ class TestCopyTradingExecution:
         # Get settings and max out trades_today
         from sqlalchemy.future import select
 
-        stmt = select(CopyTradeSettings).where(
-            CopyTradeSettings.user_id == user_id
-        )
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
         db_result = await db_session.execute(stmt)
         settings = db_result.scalar_one()
 
@@ -350,9 +339,7 @@ class TestCopyTradingExecution:
         # Verify in database
         from sqlalchemy.future import select
 
-        stmt = select(CopyTradeExecution).where(
-            CopyTradeExecution.id == execution_id
-        )
+        stmt = select(CopyTradeExecution).where(CopyTradeExecution.id == execution_id)
         db_result = await db_session.execute(stmt)
         execution = db_result.scalar_one_or_none()
 
@@ -372,16 +359,12 @@ class TestCopyTradingExecution:
 
         # Execute 3 trades
         for i in range(3):
-            copy_service.execute_copy_trade(
-                db_session, user_id, f"sig-{i}", 1.0, {}
-            )
+            copy_service.execute_copy_trade(db_session, user_id, f"sig-{i}", 1.0, {})
 
         # Check counter
         from sqlalchemy.future import select
 
-        stmt = select(CopyTradeSettings).where(
-            CopyTradeSettings.user_id == user_id
-        )
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
         db_result = await db_session.execute(stmt)
         settings = db_result.scalar_one()
 
@@ -398,9 +381,7 @@ class TestCopyTradingExecution:
         # Set small max_position_size
         from sqlalchemy.future import select
 
-        stmt = select(CopyTradeSettings).where(
-            CopyTradeSettings.user_id == user_id
-        )
+        stmt = select(CopyTradeSettings).where(CopyTradeSettings.user_id == user_id)
         db_result = await db_session.execute(stmt)
         settings = db_result.scalar_one()
         settings.max_position_size_lot = 2.0  # Cap
@@ -744,7 +725,8 @@ class TestDisclosureService:
         from sqlalchemy.future import select
 
         stmt = select(UserConsent).where(
-            (UserConsent.user_id == user_id) & (UserConsent.disclosure_version == version)
+            (UserConsent.user_id == user_id)
+            & (UserConsent.disclosure_version == version)
         )
         db_result = await db_session.execute(stmt)
         record = db_result.scalar_one_or_none()
@@ -794,9 +776,7 @@ class TestDisclosureService:
         await disclosure_service.record_consent(db_session, user_id, "1.1")
         await disclosure_service.record_consent(db_session, user_id, "2.0")
 
-        history = await disclosure_service.get_user_consent_history(
-            db_session, user_id
-        )
+        history = await disclosure_service.get_user_consent_history(db_session, user_id)
 
         assert len(history) == 3
         assert history[0]["disclosure_version"] == "1.0"

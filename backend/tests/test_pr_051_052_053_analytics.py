@@ -908,9 +908,7 @@ class TestPerformanceMetrics:
         metrics = PerformanceMetrics.__new__(PerformanceMetrics)
 
         calmar = metrics.calculate_calmar_ratio(
-            total_return=Decimal("30"),
-            max_drawdown=Decimal("0"),
-            days=90
+            total_return=Decimal("30"), max_drawdown=Decimal("0"), days=90
         )
         assert calmar == Decimal(0)
 
@@ -919,9 +917,7 @@ class TestPerformanceMetrics:
         metrics = PerformanceMetrics.__new__(PerformanceMetrics)
 
         calmar = metrics.calculate_calmar_ratio(
-            total_return=Decimal("30"),
-            max_drawdown=Decimal("-5"),
-            days=90
+            total_return=Decimal("30"), max_drawdown=Decimal("-5"), days=90
         )
         assert calmar == Decimal(0)
 
@@ -1026,8 +1022,7 @@ class TestPerformanceMetrics:
         metrics = PerformanceMetrics.__new__(PerformanceMetrics)
 
         rf = metrics.calculate_recovery_factor(
-            total_return=Decimal("50"),
-            max_drawdown=Decimal("0")
+            total_return=Decimal("50"), max_drawdown=Decimal("0")
         )
         assert rf == Decimal(0)
 
@@ -1036,8 +1031,7 @@ class TestPerformanceMetrics:
         metrics = PerformanceMetrics.__new__(PerformanceMetrics)
 
         rf = metrics.calculate_recovery_factor(
-            total_return=Decimal("50"),
-            max_drawdown=Decimal("-10")
+            total_return=Decimal("50"), max_drawdown=Decimal("-10")
         )
         assert rf == Decimal(0)
 

@@ -81,7 +81,9 @@ async def list_articles(
 
     # Convert Article models to ArticleListOut schemas
     article_schemas = [ArticleListOut.model_validate(article) for article in articles]
-    return ArticleListResponse(articles=article_schemas, total=total, skip=skip, limit=limit)
+    return ArticleListResponse(
+        articles=article_schemas, total=total, skip=skip, limit=limit
+    )
 
 
 @router.get("/articles/{slug}", response_model=ArticleDetailOut)
@@ -348,7 +350,9 @@ async def get_article_versions(
     )
 
     # Convert ArticleVersion models to ArticleVersionOut schemas
-    version_schemas = [ArticleVersionOut.model_validate(version) for version in versions]
+    version_schemas = [
+        ArticleVersionOut.model_validate(version) for version in versions
+    ]
     return ArticleVersionsResponse(
         article_id=article_id, versions=version_schemas, total=len(versions)
     )

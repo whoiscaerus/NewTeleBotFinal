@@ -78,7 +78,9 @@ class SafeMarkdownV2Message:
             >>> assert valid is True
         """
         # Pattern: special char not preceded by backslash
-        pattern = f"(?<!\\\\)[{re.escape(SafeMarkdownV2Message.MARKDOWN_V2_SPECIAL_CHARS)}]"
+        pattern = (
+            f"(?<!\\\\)[{re.escape(SafeMarkdownV2Message.MARKDOWN_V2_SPECIAL_CHARS)}]"
+        )
 
         if re.search(pattern, text):
             matches = re.findall(pattern, text)
@@ -239,7 +241,9 @@ def create_copy_trading_promo() -> str:
     msg = SafeMarkdownV2Message()
     msg.add_title("Auto Copy Trading", "💎")
     msg.add_blank_line()
-    msg.add_text("Stop missing profitable trades\\. Automatically copy professional traders\\.")
+    msg.add_text(
+        "Stop missing profitable trades\\. Automatically copy professional traders\\."
+    )
     msg.add_blank_line()
     msg.add_text("*Why copy trading?*")
     msg.add_bullet("Passive income while you sleep")

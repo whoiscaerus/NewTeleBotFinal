@@ -6,7 +6,6 @@ Implements signature verification (SIWE-compatible or simple message signing).
 import hashlib
 import re
 from datetime import UTC, datetime
-from typing import Optional
 from uuid import uuid4
 
 from eth_account.messages import encode_defunct
@@ -235,12 +234,12 @@ class WalletLinkService:
             # Recover address from signature
             from eth_account import Account
 
-            recovered_address = Account.recover_message(
+            recovered_address: str = Account.recover_message(
                 encoded_msg, signature=signature
             )
 
             # Compare addresses (case-insensitive)
-            return recovered_address.lower() == wallet_address.lower()
+            return bool(recovered_address.lower() == wallet_address.lower())
 
         except Exception:
             return False

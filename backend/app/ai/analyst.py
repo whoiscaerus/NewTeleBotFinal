@@ -14,7 +14,7 @@ Depends on:
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -23,7 +23,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.ai.models import FeatureFlag
 from backend.app.ai.schemas import CorrelationPair, OutlookReport, VolatilityZone
 from backend.app.analytics.equity import EquitySeries
-from backend.app.analytics.metrics import PerformanceMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -329,9 +328,7 @@ def _calculate_correlations(instrument: str) -> list[CorrelationPair]:
         CorrelationPair(
             instrument_a=instrument, instrument_b="US10Y", coefficient=0.42
         ),
-        CorrelationPair(
-            instrument_a=instrument, instrument_b="DXY", coefficient=-0.78
-        ),
+        CorrelationPair(instrument_a=instrument, instrument_b="DXY", coefficient=-0.78),
     ]
 
     logger.info(f"Calculated {len(correlations)} correlations for {instrument}")
@@ -461,18 +458,18 @@ def _get_volatility_commentary(zone: str, volatility_pct: float) -> str:
     """Get commentary based on volatility zone."""
     if zone == "low":
         return (
-            f"This calm environment typically supports tighter stop-losses and "
-            f"profit targets. Expect price action to remain range-bound with limited breakouts."
+            "This calm environment typically supports tighter stop-losses and "
+            "profit targets. Expect price action to remain range-bound with limited breakouts."
         )
     elif zone == "medium":
         return (
-            f"Normal trading conditions prevail. Standard risk management practices apply. "
-            f"Watch for trend development opportunities."
+            "Normal trading conditions prevail. Standard risk management practices apply. "
+            "Watch for trend development opportunities."
         )
     else:  # high
         return (
-            f"Elevated volatility demands heightened caution. Consider reducing position sizes, "
-            f"widening stop-losses, and being selective with trade entries. Major directional moves are possible."
+            "Elevated volatility demands heightened caution. Consider reducing position sizes, "
+            "widening stop-losses, and being selective with trade entries. Major directional moves are possible."
         )
 
 

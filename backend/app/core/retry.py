@@ -376,7 +376,7 @@ async def retry_async(
             )
 
             await asyncio.sleep(delay)
-    
+
     # Should never reach here due to loop logic, but satisfy mypy
     raise RetryExhaustedError(
         message=f"Retry loop exhausted for {operation_name}",

@@ -508,7 +508,9 @@ def calculate_profit_factor(trades: list[Any]) -> float:
         return 0.0
 
     gross_wins = sum(float(t.profit) for t in trades if t.profit and t.profit > 0)
-    gross_losses = sum(abs(float(t.profit)) for t in trades if t.profit and t.profit < 0)
+    gross_losses = sum(
+        abs(float(t.profit)) for t in trades if t.profit and t.profit < 0
+    )
 
     if gross_losses == 0:
         return 0.0

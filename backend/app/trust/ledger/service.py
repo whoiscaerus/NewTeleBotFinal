@@ -13,7 +13,6 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.trading.store.models import Trade
@@ -98,9 +97,7 @@ class LedgerService:
             "arbitrum": ArbitrumAdapter(),  # Stub mode by default
         }
 
-    async def submit_hash(
-        self, trade: Trade, chain: str = "polygon"
-    ) -> dict[str, Any]:
+    async def submit_hash(self, trade: Trade, chain: str = "polygon") -> dict[str, Any]:
         """Submit trade hash to blockchain.
 
         Args:
@@ -118,7 +115,9 @@ class LedgerService:
             raise ValueError(f"Cannot submit non-closed trade: {trade.status}")
 
         if chain not in self.adapters:
-            raise ValueError(f"Unknown chain: {chain}. Valid: {list(self.adapters.keys())}")
+            raise ValueError(
+                f"Unknown chain: {chain}. Valid: {list(self.adapters.keys())}"
+            )
 
         # Compute hash
         trade_hash = compute_trade_hash(trade)

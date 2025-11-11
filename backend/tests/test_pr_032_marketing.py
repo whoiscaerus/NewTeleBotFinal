@@ -12,16 +12,13 @@ Target: 100% code coverage, 100% business logic validation
 """
 
 import asyncio
-import json
-import logging
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from telegram import Bot, Update
+from telegram import Bot
 from telegram.error import TelegramError
 
 from backend.app.marketing.clicks_store import ClicksStore
@@ -29,12 +26,10 @@ from backend.app.marketing.messages import (
     SafeMarkdownV2Message,
     create_premium_signals_promo,
     create_vip_support_promo,
-    get_promo_template,
     validate_all_templates,
 )
 from backend.app.marketing.models import MarketingClick, MarketingPromoLog
 from backend.app.marketing.scheduler import MarketingScheduler
-
 
 # ============================================================================
 # FIXTURE DEFINITIONS
@@ -186,9 +181,9 @@ class TestMarkdownV2Safety:
         results = validate_all_templates()
 
         for template_name, result in results.items():
-            assert result["valid"] is True, (
-                f"Template '{template_name}' invalid: {result['error']}"
-            )
+            assert (
+                result["valid"] is True
+            ), f"Template '{template_name}' invalid: {result['error']}"
             assert result["length"] > 0, f"Template '{template_name}' is empty"
 
 
@@ -610,9 +605,7 @@ class TestPromoLogTracking:
         )
 
         # Verify record exists
-        query = select(MarketingPromoLog).where(
-            MarketingPromoLog.promo_id == "promo_1"
-        )
+        query = select(MarketingPromoLog).where(MarketingPromoLog.promo_id == "promo_1")
         result = await mock_db_session.execute(query)
         log = result.scalars().first()
 
@@ -648,9 +641,7 @@ class TestTelemetry:
         self, marketing_scheduler: MarketingScheduler, mock_bot: Bot
     ) -> None:
         """Test that posting records telemetry."""
-        with patch(
-            "backend.app.marketing.scheduler.get_metrics"
-        ) as mock_get_metrics:
+        with patch("backend.app.marketing.scheduler.get_metrics") as mock_get_metrics:
             mock_metrics = MagicMock()
             mock_get_metrics.return_value = mock_metrics
 
@@ -660,9 +651,7 @@ class TestTelemetry:
             assert mock_metrics.record_marketing_post.call_count > 0
 
     @pytest.mark.asyncio
-    async def test_log_click_records_telemetry(
-        self, clicks_store: ClicksStore
-    ) -> None:
+    async def test_log_click_records_telemetry(self, clicks_store: ClicksStore) -> None:
         """Test that clicking records telemetry."""
         with patch(
             "backend.app.marketing.clicks_store.get_metrics"
@@ -721,7 +710,7 @@ class TestErrorHandling:
 
     def test_create_from_env_with_valid_json(self, mock_bot: Bot) -> None:
         """Test create_from_env parses JSON correctly."""
-        json_str = '[-1001234567890, -1001234567891]'
+        json_str = "[-1001234567890, -1001234567891]"
         scheduler = MarketingScheduler.create_from_env(
             bot=mock_bot,
             promos_chat_ids_json=json_str,

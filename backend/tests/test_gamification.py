@@ -128,7 +128,13 @@ async def test_calculate_user_xp_base_only(db_session: AsyncSession, test_user: 
 
     # Create 2 rejected (should not count)
     for _ in range(2):
-        signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=test_user.id,
+            instrument="XAUUSD",
+            side=0,
+            price=1950.0,
+            status=SignalStatus.NEW.value,
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
@@ -307,7 +313,13 @@ async def test_get_user_level_silver(db_session: AsyncSession, test_user: User):
 
     # Create 150 approved trades (150 * 10 = 1500 XP)
     for _ in range(150):
-        signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=test_user.id,
+            instrument="XAUUSD",
+            side=0,
+            price=1950.0,
+            status=SignalStatus.NEW.value,
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
@@ -349,7 +361,13 @@ async def test_award_first_trade_badge(db_session: AsyncSession, test_user: User
     await seed_badges_and_levels(db_session)
 
     # Create 1 approved trade
-    signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+    signal = Signal(
+        id=str(uuid4()),
+        user_id=test_user.id,
+        instrument="XAUUSD",
+        side=0,
+        price=1950.0,
+        status=SignalStatus.NEW.value,
         created_at=datetime.now(UTC),
     )
     db_session.add(signal)
@@ -409,7 +427,13 @@ async def test_award_multiple_milestone_badges(
 
     # Create 50 approved trades
     for _ in range(50):
-        signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=test_user.id,
+            instrument="XAUUSD",
+            side=0,
+            price=1950.0,
+            status=SignalStatus.NEW.value,
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
@@ -738,7 +762,13 @@ async def test_leaderboard_privacy_only_opted_in_users(
     # Give both users activity
     for user in [test_user, user2]:
         for _ in range(10):
-            signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+            signal = Signal(
+                id=str(uuid4()),
+                user_id=test_user.id,
+                instrument="XAUUSD",
+                side=0,
+                price=1950.0,
+                status=SignalStatus.NEW.value,
                 created_at=datetime.now(UTC),
             )
             db_session.add(signal)
@@ -816,7 +846,13 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
 
     # User 1: Medium Sharpe (1.5), High XP (500)
     for _ in range(50):  # More trades = more XP
-        signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=test_user.id,
+            instrument="XAUUSD",
+            side=0,
+            price=1950.0,
+            status=SignalStatus.NEW.value,
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
@@ -850,7 +886,13 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
 
     # User 2: Low Sharpe (0.5), Medium XP (200)
     for _ in range(20):
-        signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=test_user.id,
+            instrument="XAUUSD",
+            side=0,
+            price=1950.0,
+            status=SignalStatus.NEW.value,
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
@@ -942,7 +984,13 @@ async def test_leaderboard_pagination(db_session: AsyncSession):
         trade_count = (10 - i) * 5  # User 0 has most, user 9 has least
 
         for _ in range(trade_count):
-            signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+            signal = Signal(
+                id=str(uuid4()),
+                user_id=test_user.id,
+                instrument="XAUUSD",
+                side=0,
+                price=1950.0,
+                status=SignalStatus.NEW.value,
                 created_at=datetime.now(UTC),
             )
             db_session.add(signal)
@@ -994,7 +1042,13 @@ async def test_xp_calculation_with_all_sources(
 
     # Create 10 approved trades (base XP)
     for _ in range(10):
-        signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=test_user.id,
+            instrument="XAUUSD",
+            side=0,
+            price=1950.0,
+            status=SignalStatus.NEW.value,
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
@@ -1091,7 +1145,13 @@ async def test_edge_case_diamond_level_no_upper_bound(
 
     # Create 5001 approved trades (50010 XP)
     for _ in range(5001):
-        signal = Signal(id=str(uuid4()), user_id=test_user.id, instrument="XAUUSD", side=0, price=1950.0, status=SignalStatus.NEW.value,
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=test_user.id,
+            instrument="XAUUSD",
+            side=0,
+            price=1950.0,
+            status=SignalStatus.NEW.value,
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
@@ -1133,4 +1193,3 @@ async def test_edge_case_empty_leaderboard(db_session: AsyncSession):
     leaderboard = await service.get_leaderboard(limit=100, offset=0)
 
     assert leaderboard == []
-

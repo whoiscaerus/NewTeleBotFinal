@@ -12,7 +12,7 @@ Smart rule conditions beyond simple price triggers:
 """
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any, Optional
 from uuid import uuid4
@@ -313,9 +313,7 @@ class SmartRuleEvaluator:
             return False, "Insufficient historical data"
 
         # Find price at start of window
-        cutoff_time = datetime.now(UTC) - timedelta(
-            minutes=rule.window_minutes
-        )
+        cutoff_time = datetime.now(UTC) - timedelta(minutes=rule.window_minutes)
         window_start_price = None
 
         for timestamp, price in historical_prices:

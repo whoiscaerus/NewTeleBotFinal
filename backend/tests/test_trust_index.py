@@ -143,7 +143,9 @@ def test_trust_band_zero_influence_accuracy_only():
 async def test_calculate_trust_index_no_trades(db_session: AsyncSession):
     """Test calculate_trust_index with user who has no trades."""
     user = User(
-        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        id="user1",
+        email="user1@test.com",
+        password_hash="hashed_pwd",
         telegram_user_id=12345,
         role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
@@ -166,7 +168,9 @@ async def test_calculate_trust_index_no_trades(db_session: AsyncSession):
 async def test_calculate_trust_index_with_trades(db_session: AsyncSession):
     """Test calculate_trust_index with user who has closed trades."""
     user = User(
-        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        id="user1",
+        email="user1@test.com",
+        password_hash="hashed_pwd",
         telegram_user_id=12345,
         role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
@@ -226,7 +230,9 @@ async def test_calculate_trust_index_integrates_social_graph(db_session: AsyncSe
     """Test calculate_trust_index integrates PR-094 social graph influence."""
     # Create user with trades
     user1 = User(
-        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        id="user1",
+        email="user1@test.com",
+        password_hash="hashed_pwd",
         telegram_user_id=12345,
         role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
@@ -312,7 +318,9 @@ async def test_calculate_trust_index_high_influence_boosts_to_elite(
     """Test high social influence boosts trust band to elite tier."""
     # Create user with good trades (75% accuracy)
     user1 = User(
-        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        id="user1",
+        email="user1@test.com",
+        password_hash="hashed_pwd",
         telegram_user_id=12345,
         role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
@@ -393,7 +401,9 @@ async def test_calculate_trust_index_high_influence_boosts_to_elite(
 async def test_calculate_trust_index_caching(db_session: AsyncSession):
     """Test calculate_trust_index returns cached record within TTL."""
     user = User(
-        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        id="user1",
+        email="user1@test.com",
+        password_hash="hashed_pwd",
         telegram_user_id=12345,
         role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
@@ -440,7 +450,9 @@ async def test_calculate_trust_index_user_not_found(db_session: AsyncSession):
 async def test_trust_index_all_losing_trades(db_session: AsyncSession):
     """Test trust index with user who has all losing trades."""
     user = User(
-        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        id="user1",
+        email="user1@test.com",
+        password_hash="hashed_pwd",
         telegram_user_id=12345,
         role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
@@ -489,7 +501,9 @@ async def test_trust_index_all_losing_trades(db_session: AsyncSession):
 async def test_trust_index_all_verified_trades(db_session: AsyncSession):
     """Test trust index with user who has 100% verified trades."""
     user = User(
-        id="user1", email="user1@test.com", password_hash="hashed_pwd",
+        id="user1",
+        email="user1@test.com",
+        password_hash="hashed_pwd",
         telegram_user_id=12345,
         role="user",
         created_at=datetime.utcnow() - timedelta(days=30),
@@ -535,6 +549,3 @@ async def test_trust_index_all_verified_trades(db_session: AsyncSession):
     assert index.accuracy_metric == 0.8  # 80% accuracy
     # 80% accuracy, 0% influence → 0.8 * 0.7 = 0.56 ≥ 0.50 (verified)
     assert index.trust_band == "verified"
-
-
-

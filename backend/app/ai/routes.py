@@ -182,7 +182,9 @@ async def get_session(
     Returns all messages with citations and metadata.
     """
     try:
-        history = await _assistant.get_session_history(db, UUID(str(current_user.id)), session_id)
+        history = await _assistant.get_session_history(
+            db, UUID(str(current_user.id)), session_id
+        )
 
         logger.info(
             "Session retrieved",
@@ -365,6 +367,8 @@ async def index_status(
 
 from datetime import date
 
+from sqlalchemy import select, update
+
 from backend.app.ai.analyst import (
     FeatureDisabledError,
     build_outlook,
@@ -372,12 +376,7 @@ from backend.app.ai.analyst import (
     is_analyst_owner_only,
 )
 from backend.app.ai.models import FeatureFlag
-from backend.app.ai.schemas import (
-    FeatureFlagOut,
-    FeatureFlagUpdateIn,
-    OutlookReport,
-)
-from sqlalchemy import select, update
+from backend.app.ai.schemas import FeatureFlagOut, FeatureFlagUpdateIn, OutlookReport
 
 
 @router.post("/analyst/toggle", response_model=FeatureFlagOut)

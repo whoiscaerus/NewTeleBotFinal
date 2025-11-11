@@ -326,9 +326,7 @@ async def test_anti_sybil_ip_rate_limit(db_session: AsyncSession):
     await db_session.commit()
 
     # 11th verification from same IP should fail (IP limit = 10/day)
-    with pytest.raises(
-        AntiSybilError, match="Too many verifications from this IP"
-    ):
+    with pytest.raises(AntiSybilError, match="Too many verifications from this IP"):
         await anti_sybil_checks(
             verifier_id="user11",
             verified_id="user0",
@@ -410,9 +408,7 @@ async def test_anti_sybil_account_age_check(db_session: AsyncSession):
     await db_session.commit()
 
     # New user tries to verify (should fail)
-    with pytest.raises(
-        AntiSybilError, match="Account must be at least 7 days old"
-    ):
+    with pytest.raises(AntiSybilError, match="Account must be at least 7 days old"):
         await anti_sybil_checks(
             verifier_id="newuser",
             verified_id="target",
@@ -753,4 +749,3 @@ async def test_verification_edge_unique_constraint(db_session: AsyncSession):
 
     with pytest.raises(IntegrityError):
         await db_session.commit()
-

@@ -8,7 +8,6 @@ distributed tracing, and observability patterns.
 from uuid import uuid4
 
 
-
 class TestPrometheusMetrics:
     """Test Prometheus metrics collection."""
 

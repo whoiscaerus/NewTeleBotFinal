@@ -10,30 +10,25 @@ Test Coverage:
 Total: 29 tests
 """
 
-import pytest
 from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock, patch
-from sqlalchemy.ext.asyncio import AsyncSession
+
+import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.ai.analyst import (
     FeatureDisabledError,
     build_outlook,
     is_analyst_enabled,
     is_analyst_owner_only,
-    _calculate_volatility_zones,
-    _calculate_correlations,
-    _generate_narrative,
 )
-from backend.app.ai.models import FeatureFlag
-from backend.app.ai.schemas import OutlookReport, VolatilityZone, CorrelationPair
-from backend.app.auth.models import User, UserRole
+from backend.app.ai.schemas import CorrelationPair, OutlookReport, VolatilityZone
 from backend.app.messaging.templates import (
     render_daily_outlook_email,
     render_daily_outlook_telegram,
 )
-
 
 # ========================================
 # Toggle Tests (8 tests)
@@ -101,9 +96,7 @@ class TestAnalystToggle:
         enabled = await is_analyst_enabled(db_session)
         assert enabled is False
 
-    async def test_toggle_requires_admin(
-        self, client: AsyncClient, auth_headers: dict
-    ):
+    async def test_toggle_requires_admin(self, client: AsyncClient, auth_headers: dict):
         """Test only admin can toggle AI Analyst."""
         response = await client.post(
             "/api/v1/ai/analyst/toggle",
@@ -140,13 +133,9 @@ class TestAnalystToggle:
         owner_only = await is_analyst_owner_only(db_session)
         assert owner_only is False
 
-    async def test_get_analyst_status(
-        self, client: AsyncClient, auth_headers: dict
-    ):
+    async def test_get_analyst_status(self, client: AsyncClient, auth_headers: dict):
         """Test any user can view analyst status."""
-        response = await client.get(
-            "/api/v1/ai/analyst/status", headers=auth_headers
-        )
+        response = await client.get("/api/v1/ai/analyst/status", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -184,9 +173,7 @@ class TestAnalystToggle:
 class TestOutlookGeneration:
     """Test outlook generation business logic."""
 
-    async def test_outlook_generation_requires_enabled(
-        self, db_session: AsyncSession
-    ):
+    async def test_outlook_generation_requires_enabled(self, db_session: AsyncSession):
         """Test outlook generation fails if feature disabled."""
         # Ensure disabled
         # (default state from migration)
@@ -236,17 +223,16 @@ class TestOutlookGeneration:
                 outlook = await build_outlook(db_session, target_date=date.today())
 
                 assert outlook is not None
-                assert "extreme" in outlook.narrative.lower() or "ALERT" in outlook.narrative
+                assert (
+                    "extreme" in outlook.narrative.lower()
+                    or "ALERT" in outlook.narrative
+                )
                 assert len(outlook.narrative) > 200
 
-    async def test_zero_trades_handled(
-        self, db_session: AsyncSession, enable_analyst
-    ):
+    async def test_zero_trades_handled(self, db_session: AsyncSession, enable_analyst):
         """Test outlook handles zero trades gracefully."""
         # Mock no equity data
-        with patch(
-            "backend.app.ai.analyst._fetch_equity_series", return_value=None
-        ):
+        with patch("backend.app.ai.analyst._fetch_equity_series", return_value=None):
             with patch(
                 "backend.app.ai.analyst._fetch_performance_metrics",
                 return_value={
@@ -290,9 +276,7 @@ class TestOutlookGeneration:
             assert corr.instrument_a == "GOLD"
             assert -1.0 <= corr.coefficient <= 1.0
 
-    async def test_narrative_coherence(
-        self, db_session: AsyncSession, enable_analyst
-    ):
+    async def test_narrative_coherence(self, db_session: AsyncSession, enable_analyst):
         """Test narrative meets minimum length and structure."""
         outlook = await build_outlook(db_session, target_date=date.today())
 
@@ -310,7 +294,9 @@ class TestOutlookGeneration:
         import re
 
         email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-        assert not re.search(email_pattern, outlook.narrative), "Email found in narrative"
+        assert not re.search(
+            email_pattern, outlook.narrative
+        ), "Email found in narrative"
 
         # Check for API key patterns
         api_key_pattern = r"(api[_-]?key|token|secret)[:\s]*['\"]?[A-Za-z0-9_-]{20,}"
@@ -320,7 +306,9 @@ class TestOutlookGeneration:
 
         # Check for credit card patterns (simple check)
         cc_pattern = r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b"
-        assert not re.search(cc_pattern, outlook.narrative), "Credit card found in narrative"
+        assert not re.search(
+            cc_pattern, outlook.narrative
+        ), "Credit card found in narrative"
 
     async def test_timestamps_utc(self, db_session: AsyncSession, enable_analyst):
         """Test all timestamps are in UTC."""
@@ -331,9 +319,7 @@ class TestOutlookGeneration:
         # Or if timezone-aware:
         # assert outlook.generated_at.tzinfo == timezone.utc
 
-    async def test_instruments_covered(
-        self, db_session: AsyncSession, enable_analyst
-    ):
+    async def test_instruments_covered(self, db_session: AsyncSession, enable_analyst):
         """Test instruments_covered field is populated."""
         outlook = await build_outlook(
             db_session, target_date=date.today(), instrument="GOLD"
@@ -362,7 +348,11 @@ class TestOutlookGeneration:
             assert key in outlook.data_citations, f"Missing citation: {key}"
 
     async def test_outlook_api_endpoint_owner_only(
-        self, client: AsyncClient, admin_headers: dict, auth_headers: dict, enable_analyst
+        self,
+        client: AsyncClient,
+        admin_headers: dict,
+        auth_headers: dict,
+        enable_analyst,
     ):
         """Test owner-only mode restricts viewing to admin."""
         # Enable with owner-only
@@ -532,6 +522,7 @@ class TestTemplates:
 async def enable_analyst(db_session: AsyncSession):
     """Enable AI Analyst for testing."""
     from sqlalchemy import update
+
     from backend.app.ai.models import FeatureFlag
 
     stmt = (
@@ -556,6 +547,7 @@ async def enable_analyst(db_session: AsyncSession):
 async def enable_analyst_public(db_session: AsyncSession):
     """Enable AI Analyst in public mode for testing."""
     from sqlalchemy import update
+
     from backend.app.ai.models import FeatureFlag
 
     stmt = (
@@ -644,8 +636,12 @@ Traders should remain vigilant for continuation patterns and manage positions ac
             ),
         ],
         correlations=[
-            CorrelationPair(instrument_a="GOLD", instrument_b="USD/JPY", coefficient=-0.65),
-            CorrelationPair(instrument_a="GOLD", instrument_b="US10Y", coefficient=0.42),
+            CorrelationPair(
+                instrument_a="GOLD", instrument_b="USD/JPY", coefficient=-0.65
+            ),
+            CorrelationPair(
+                instrument_a="GOLD", instrument_b="US10Y", coefficient=0.42
+            ),
             CorrelationPair(instrument_a="GOLD", instrument_b="DXY", coefficient=-0.78),
         ],
         data_citations={

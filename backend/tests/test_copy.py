@@ -126,7 +126,7 @@ async def test_update_entry_metadata(
     """Test updating copy entry metadata."""
     update_data = CopyEntryUpdate(
         description="Updated description",
-        metadata={"section": "landing", "priority": "high"},
+        entry_metadata={"section": "landing", "priority": "high"},
     )
 
     updated = await copy_service.update_entry(
@@ -134,7 +134,7 @@ async def test_update_entry_metadata(
     )
 
     assert updated.description == "Updated description"
-    assert updated.metadata["priority"] == "high"
+    assert updated.entry_metadata["priority"] == "high"
     assert updated.updated_by == "editor-456"
 
 

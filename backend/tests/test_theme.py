@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.jwt_handler import JWTHandler
 from backend.app.observability.metrics import get_metrics
-from backend.app.profile.theme import VALID_THEMES, DEFAULT_THEME, ThemeService
+from backend.app.profile.theme import DEFAULT_THEME, VALID_THEMES, ThemeService
 from backend.app.users.models import User
 
 
@@ -37,7 +37,9 @@ class TestThemeService:
 
     async def test_get_theme_custom(self, db_session: AsyncSession):
         """Test get_theme returns user's custom theme."""
-        user = User(id="user2", email="test2@example.com", theme_preference="darkTrader")
+        user = User(
+            id="user2", email="test2@example.com", theme_preference="darkTrader"
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -49,7 +51,9 @@ class TestThemeService:
     async def test_get_theme_invalid_fallback(self, db_session: AsyncSession):
         """Test get_theme falls back to default if user has invalid theme."""
         # Simulate user with invalid theme (e.g., from old config)
-        user = User(id="user3", email="test3@example.com", theme_preference="invalidTheme")
+        user = User(
+            id="user3", email="test3@example.com", theme_preference="invalidTheme"
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -61,7 +65,9 @@ class TestThemeService:
 
     async def test_set_theme_valid(self, db_session: AsyncSession):
         """Test set_theme updates user's theme preference."""
-        user = User(id="user4", email="test4@example.com", theme_preference="professional")
+        user = User(
+            id="user4", email="test4@example.com", theme_preference="professional"
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -77,7 +83,9 @@ class TestThemeService:
 
     async def test_set_theme_invalid_raises(self, db_session: AsyncSession):
         """Test set_theme raises ValueError for invalid theme name."""
-        user = User(id="user5", email="test5@example.com", theme_preference="professional")
+        user = User(
+            id="user5", email="test5@example.com", theme_preference="professional"
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -104,13 +112,23 @@ class TestThemeService:
 
     @pytest.mark.parametrize(
         "invalid_theme",
-        ["", " ", "Professional", "DARKTRADER", "gold_minimal", "dark-trader", "invalid"],
+        [
+            "",
+            " ",
+            "Professional",
+            "DARKTRADER",
+            "gold_minimal",
+            "dark-trader",
+            "invalid",
+        ],
     )
     async def test_set_theme_invalid_formats(
         self, db_session: AsyncSession, invalid_theme: str
     ):
         """Test set_theme rejects various invalid theme formats."""
-        user = User(id=f"user_inv_{invalid_theme}", email=f"{invalid_theme}@example.com")
+        user = User(
+            id=f"user_inv_{invalid_theme}", email=f"{invalid_theme}@example.com"
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -140,7 +158,9 @@ class TestThemeRoutes:
     ):
         """Test GET /api/v1/profile/theme returns user's theme."""
         # Create user with theme
-        user = User(id="auth_user1", email="auth1@example.com", theme_preference="darkTrader")
+        user = User(
+            id="auth_user1", email="auth1@example.com", theme_preference="darkTrader"
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -163,7 +183,9 @@ class TestThemeRoutes:
     ):
         """Test PUT /api/v1/profile/theme updates user's theme."""
         # Create user
-        user = User(id="auth_user2", email="auth2@example.com", theme_preference="professional")
+        user = User(
+            id="auth_user2", email="auth2@example.com", theme_preference="professional"
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -177,9 +199,7 @@ class TestThemeRoutes:
         data = response.json()
         assert data["theme"] == "goldMinimal"
 
-    async def test_update_theme_invalid(
-        self, client: AsyncClient, auth_headers: dict
-    ):
+    async def test_update_theme_invalid(self, client: AsyncClient, auth_headers: dict):
         """Test PUT /api/v1/profile/theme rejects invalid theme."""
         response = await client.put(
             "/api/v1/profile/theme",
@@ -197,7 +217,9 @@ class TestThemeRoutes:
         metrics = get_metrics()
 
         # Get initial metric value
-        initial_value = metrics.theme_selected_total.labels(name="darkTrader")._value.get()
+        initial_value = metrics.theme_selected_total.labels(
+            name="darkTrader"
+        )._value.get()
 
         # Update theme
         response = await client.put(
@@ -350,11 +372,11 @@ class TestThemeBusinessLogic:
 
         assert theme == DEFAULT_THEME
 
-    async def test_theme_change_logged(
-        self, db_session: AsyncSession, caplog
-    ):
+    async def test_theme_change_logged(self, db_session: AsyncSession, caplog):
         """Test theme changes are logged with user_id and theme names."""
-        user = User(id="log_user", email="log@example.com", theme_preference="professional")
+        user = User(
+            id="log_user", email="log@example.com", theme_preference="professional"
+        )
         db_session.add(user)
         await db_session.commit()
 
@@ -383,10 +405,10 @@ class TestThemeBusinessLogic:
         await db_session.refresh(user)
         assert user.theme_preference == "goldMinimal"
 
-    @pytest.mark.parametrize("theme_name", ["professional", "darkTrader", "goldMinimal"])
-    async def test_all_themes_settable(
-        self, db_session: AsyncSession, theme_name: str
-    ):
+    @pytest.mark.parametrize(
+        "theme_name", ["professional", "darkTrader", "goldMinimal"]
+    )
+    async def test_all_themes_settable(self, db_session: AsyncSession, theme_name: str):
         """Test all valid themes can be set and retrieved."""
         user = User(id=f"test_{theme_name}", email=f"{theme_name}@example.com")
         db_session.add(user)

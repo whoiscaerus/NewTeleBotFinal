@@ -48,7 +48,7 @@ class CopyService:
             key=data.key,
             type=data.type,
             description=data.description,
-            metadata=data.metadata,
+            entry_metadata=data.metadata,
             created_by=user_id,
             updated_by=user_id,
         )
@@ -60,7 +60,7 @@ class CopyService:
                 ab_group=variant_data.ab_group,
                 is_control=variant_data.is_control,
                 text=variant_data.text,
-                metadata=variant_data.metadata,
+                variant_metadata=variant_data.metadata,
             )
             entry.variants.append(variant)
 
@@ -132,7 +132,7 @@ class CopyService:
         if data.description is not None:
             entry.description = data.description
         if data.metadata is not None:
-            entry.metadata = data.metadata
+            entry.entry_metadata = data.metadata
 
         entry.updated_by = user_id
 

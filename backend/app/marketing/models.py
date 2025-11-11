@@ -165,4 +165,3 @@ class MarketingPromoLog(Base):
             f"<MarketingPromoLog {self.id}: promo={self.promo_id} "
             f"posted={self.posted_to} failed={self.failed} at {self.created_at}>"
         )
-

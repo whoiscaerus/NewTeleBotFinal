@@ -329,9 +329,7 @@ async def test_delete_old_snapshots_success(db_session: AsyncSession):
         timestamp=base_time - timedelta(minutes=10),
         features={"rsi": 65.0},
     )
-    await store.put_features(
-        symbol="GOLD", timestamp=base_time, features={"rsi": 70.0}
-    )
+    await store.put_features(symbol="GOLD", timestamp=base_time, features={"rsi": 70.0})
 
     # Delete snapshots older than 7 days
     deleted_count = await store.delete_old_snapshots(

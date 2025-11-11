@@ -6,7 +6,6 @@ Behind feature flag: NFT_ACCESS_ENABLED=false by default.
 
 import os
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -57,7 +56,9 @@ class NFTMintRequest(BaseModel):
 
     user_id: str = Field(..., min_length=36, max_length=36)
     wallet_address: str = Field(..., min_length=42, max_length=42)
-    entitlement_key: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-z._]+$")
+    entitlement_key: str = Field(
+        ..., min_length=3, max_length=50, pattern=r"^[a-z._]+$"
+    )
     expires_at: datetime | None = None
     token_id: str | None = None
     contract_address: str | None = None

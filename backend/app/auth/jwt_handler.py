@@ -74,7 +74,9 @@ class JWTHandler:
         if jti:
             payload["jti"] = jti
         if theme:
-            payload["theme"] = theme  # PR-090: Include theme in JWT for SSR/CSR consistency
+            payload["theme"] = (
+                theme  # PR-090: Include theme in JWT for SSR/CSR consistency
+            )
 
         # Encode token
         token = jwt.encode(

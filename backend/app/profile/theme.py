@@ -46,7 +46,7 @@ class ThemeService:
             >>> assert theme in ["professional", "darkTrader", "goldMinimal"]
         """
         theme = user.theme_preference or DEFAULT_THEME
-        
+
         # Validate theme is still valid (in case of config changes)
         if theme not in VALID_THEMES:
             logger.warning(

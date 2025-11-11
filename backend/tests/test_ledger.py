@@ -20,7 +20,6 @@ import asyncio
 import json
 from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -34,7 +33,6 @@ from backend.app.trust.ledger.adapters import (
     PolygonAdapter,
 )
 from backend.app.trust.ledger.service import LedgerService, compute_trade_hash
-
 
 # ============================================================================
 # FIXTURES
@@ -354,7 +352,9 @@ async def test_adapter_success_on_second_try():
 
 
 @pytest.mark.asyncio
-async def test_ledger_service_submit_hash(db_session: AsyncSession, closed_trade: Trade):
+async def test_ledger_service_submit_hash(
+    db_session: AsyncSession, closed_trade: Trade
+):
     """Test LedgerService.submit_hash() with closed trade.
 
     Business Logic:
@@ -475,9 +475,7 @@ async def test_get_trade_proof_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_trade_proof_open_trade(
-    client: AsyncClient, open_trade: Trade
-):
+async def test_get_trade_proof_open_trade(client: AsyncClient, open_trade: Trade):
     """Test GET /api/v1/public/proof/{trade_id} with open trade.
 
     Business Logic:
@@ -489,9 +487,7 @@ async def test_get_trade_proof_open_trade(
 
 
 @pytest.mark.asyncio
-async def test_verify_trade_hash_endpoint(
-    client: AsyncClient, closed_trade: Trade
-):
+async def test_verify_trade_hash_endpoint(client: AsyncClient, closed_trade: Trade):
     """Test GET /api/v1/public/proof/{trade_id}/verify.
 
     Business Logic:
@@ -515,9 +511,7 @@ async def test_verify_trade_hash_endpoint(
 
 
 @pytest.mark.asyncio
-async def test_verify_trade_hash_mismatch(
-    client: AsyncClient, closed_trade: Trade
-):
+async def test_verify_trade_hash_mismatch(client: AsyncClient, closed_trade: Trade):
     """Test hash verification with incorrect hash.
 
     Business Logic:
@@ -563,9 +557,7 @@ async def test_metrics_increment_on_success(
     service = LedgerService(db_session)
     await service.submit_hash(closed_trade, chain="polygon")
 
-    final_count = metrics.ledger_submissions_total.labels(
-        chain="polygon"
-    )._value._value
+    final_count = metrics.ledger_submissions_total.labels(chain="polygon")._value._value
 
     assert final_count == initial_count + 1, "Metric should increment on success"
 
@@ -588,9 +580,7 @@ async def test_metrics_increment_on_failure():
 
     adapter.submit_hash = always_fail
 
-    initial_count = metrics.ledger_fail_total.labels(
-        chain="polygon"
-    )._value._value
+    initial_count = metrics.ledger_fail_total.labels(chain="polygon")._value._value
 
     with pytest.raises(BlockchainSubmissionError):
         await adapter.submit_with_retry(
@@ -599,9 +589,7 @@ async def test_metrics_increment_on_failure():
             closed_at=datetime.utcnow(),
         )
 
-    final_count = metrics.ledger_fail_total.labels(
-        chain="polygon"
-    )._value._value
+    final_count = metrics.ledger_fail_total.labels(chain="polygon")._value._value
 
     assert final_count == initial_count + 1, "Metric should increment on failure"
 

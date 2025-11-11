@@ -34,13 +34,17 @@ from backend.app.observability.metrics import get_metrics
 from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.revenue.routes import router as revenue_router
-from backend.app.trust.ledger.routes import router as ledger_router  # PR-093: Blockchain ledger proof routes
-from backend.app.trust.social.routes import router as social_router  # PR-094: Social verification graph routes
 from backend.app.signals.routes import router as signals_router
 from backend.app.strategy.routes import router as strategy_router
 from backend.app.support.routes import router as support_router
 from backend.app.telegram.webhook import router as telegram_router
 from backend.app.trading.routes import router as trading_router
+from backend.app.trust.ledger.routes import (
+    router as ledger_router,  # PR-093: Blockchain ledger proof routes
+)
+from backend.app.trust.social.routes import (
+    router as social_router,  # PR-094: Social verification graph routes
+)
 from backend.app.web.routes import router as web_router
 
 

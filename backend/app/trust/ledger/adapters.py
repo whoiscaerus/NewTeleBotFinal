@@ -79,9 +79,7 @@ class BlockchainAdapter(ABC):
                 result = await self.submit_hash(trade_hash, trade_id, closed_at)
 
                 # Increment success metric
-                metrics.ledger_submissions_total.labels(
-                    chain=self.chain_name
-                ).inc()
+                metrics.ledger_submissions_total.labels(chain=self.chain_name).inc()
 
                 logger.info(
                     f"Successfully submitted to {self.chain_name}",

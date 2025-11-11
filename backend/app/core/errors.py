@@ -38,7 +38,8 @@ class ProblemDetail(BaseModel):
     status: int = Field(..., description="HTTP status code")
     detail: str = Field(..., description="Detailed error message for client")
     instance: str | None = Field(
-        default=None, description="URI of problematic resource (e.g., /api/v1/users/123)"
+        default=None,
+        description="URI of problematic resource (e.g., /api/v1/users/123)",
     )
     request_id: str | None = Field(
         default=None, description="Correlation ID for tracing (from X-Request-Id)"

@@ -36,6 +36,8 @@ if spec and spec.loader:
     render_email = templates_module.render_email
     render_push = templates_module.render_push
     render_telegram = templates_module.render_telegram
+    render_daily_outlook_email = templates_module.render_daily_outlook_email
+    render_daily_outlook_telegram = templates_module.render_daily_outlook_telegram
     validate_template_vars = templates_module.validate_template_vars
 
 __all__ = [
@@ -54,5 +56,7 @@ __all__ = [
     "render_email",
     "render_push",
     "render_telegram",
+    "render_daily_outlook_email",
+    "render_daily_outlook_telegram",
     "validate_template_vars",
 ]

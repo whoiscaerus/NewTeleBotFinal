@@ -5,7 +5,6 @@ Feature flag: NFT_ACCESS_ENABLED=false by default.
 """
 
 from datetime import UTC, datetime
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import select

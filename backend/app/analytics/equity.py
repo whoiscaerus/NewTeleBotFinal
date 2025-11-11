@@ -272,7 +272,7 @@ class EquityEngine:
                 # Sum PnL for trades on this date
                 daily_pnl = sum(
                     (Decimal(str(t.net_pnl)) for t in trades_by_date[current_date]),
-                    Decimal(0)
+                    Decimal(0),
                 )
                 cumulative_pnl += daily_pnl
                 last_equity = initial_balance + cumulative_pnl

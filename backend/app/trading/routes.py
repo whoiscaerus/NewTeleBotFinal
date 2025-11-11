@@ -428,12 +428,17 @@ async def get_risk_config(
         config = await RiskConfigService.get_global_risk_config(db)
         logger.info(
             f"Risk config retrieved by user {current_user.id}",
-            extra={"user_id": current_user.id, "fixed_risk_percent": config.get("fixed_risk_percent")},
+            extra={
+                "user_id": current_user.id,
+                "fixed_risk_percent": config.get("fixed_risk_percent"),
+            },
         )
         return config
     except Exception as e:
         logger.error(f"Failed to get risk config: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to retrieve risk configuration")
+        raise HTTPException(
+            status_code=500, detail="Failed to retrieve risk configuration"
+        )
 
 
 @router.post(
@@ -443,7 +448,9 @@ async def get_risk_config(
     description="Update the global fixed risk percent that applies to all users. Owner-only endpoint.",
 )
 async def update_risk_config(
-    new_risk_percent: float = Query(..., ge=0.1, le=50.0, description="New risk percent (0.1% - 50%)"),
+    new_risk_percent: float = Query(
+        ..., ge=0.1, le=50.0, description="New risk percent (0.1% - 50%)"
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_owner),
 ) -> dict:
@@ -477,9 +484,7 @@ async def update_risk_config(
 
     try:
         result = await RiskConfigService.update_global_risk_percent(
-            db=db,
-            new_risk_percent=new_risk_percent,
-            updated_by_user_id=current_user.id
+            db=db, new_risk_percent=new_risk_percent, updated_by_user_id=current_user.id
         )
         logger.info(
             f"Risk config updated by owner {current_user.id}: {result['previous_risk_percent']}% -> {result['new_risk_percent']}%",
@@ -491,8 +496,13 @@ async def update_risk_config(
         )
         return result
     except ValueError as e:
-        logger.warning(f"Invalid risk percent: {e}", extra={"user_id": current_user.id, "new_risk_percent": new_risk_percent})
+        logger.warning(
+            f"Invalid risk percent: {e}",
+            extra={"user_id": current_user.id, "new_risk_percent": new_risk_percent},
+        )
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to update risk config: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to update risk configuration")
+        raise HTTPException(
+            status_code=500, detail="Failed to update risk configuration"
+        )
