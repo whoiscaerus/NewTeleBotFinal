@@ -192,7 +192,6 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
     This ensures complete test isolation - no data leaks between tests.
     """
-    from sqlalchemy import text
 
     from backend.app.core.db import Base
 
@@ -211,14 +210,8 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
         yield session
 
-        # After test: clear all data from tables to ensure isolation
-        # This is critical for test isolation in suite runs
-        async with session.begin():
-            for table in reversed(Base.metadata.sorted_tables):
-                await session.execute(text(f"DELETE FROM {table.name}"))
-            await session.commit()
-
-    # Cleanup: dispose engine to release all resources
+    # Cleanup: dispose engine (destroys in-memory database)
+    # Each test gets a fresh database, ensuring complete isolation
     await engine.dispose()
 
 
