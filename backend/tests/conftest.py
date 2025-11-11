@@ -93,6 +93,10 @@ from backend.app.strategy.models import (  # noqa: F401, E402
     ShadowDecisionLog,
     StrategyVersion,
 )
+from backend.app.trading.positions.close_commands import (  # noqa: F401, E402
+    CloseCommand,
+)
+from backend.app.trading.positions.models import OpenPosition  # noqa: F401, E402
 from backend.app.trading.store.models import (  # noqa: F401, E402
     EquityPoint,
     Position,
