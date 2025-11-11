@@ -56,7 +56,9 @@ class PrivacyService:
             request_type=request_data.request_type,
             status=RequestStatus.PENDING,
             created_at=datetime.utcnow(),
-            metadata={"reason": request_data.reason} if request_data.reason else {},
+            request_metadata=(
+                {"reason": request_data.reason} if request_data.reason else {}
+            ),
         )
 
         # For delete requests, set cooling-off period
@@ -137,7 +139,7 @@ class PrivacyService:
         request.status = RequestStatus.CANCELLED
         request.processed_at = datetime.utcnow()
         if reason:
-            request.metadata["cancellation_reason"] = reason
+            request.request_metadata["cancellation_reason"] = reason
 
         await self.db.commit()
         await self.db.refresh(request)
@@ -199,7 +201,7 @@ class PrivacyService:
 
         except Exception as e:
             request.status = RequestStatus.FAILED
-            request.metadata["error"] = str(e)
+            request.request_metadata["error"] = str(e)
             await self.db.commit()
             raise
 
@@ -257,7 +259,7 @@ class PrivacyService:
 
         except Exception as e:
             request.status = RequestStatus.FAILED
-            request.metadata["error"] = str(e)
+            request.request_metadata["error"] = str(e)
             await self.db.commit()
             raise
 
@@ -325,8 +327,8 @@ class PrivacyService:
             raise ValueError(f"Request {request_id} is not on hold")
 
         request.release_hold()
-        request.metadata["hold_released_by"] = admin_user_id
-        request.metadata["hold_released_at"] = datetime.utcnow().isoformat()
+        request.request_metadata["hold_released_by"] = admin_user_id
+        request.request_metadata["hold_released_at"] = datetime.utcnow().isoformat()
 
         await self.db.commit()
         await self.db.refresh(request)

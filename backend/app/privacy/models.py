@@ -44,7 +44,7 @@ class PrivacyRequest(Base):
         created_at: When request was submitted
         processed_at: When request was completed
         scheduled_deletion_at: When deletion will execute (delete requests only)
-        metadata: Additional request context (reason, admin notes, etc.)
+        request_metadata: Additional request context (reason, admin notes, etc.)
         export_url: S3/storage URL for export bundle (export requests only)
         export_expires_at: When export bundle expires
         hold_reason: Reason for admin hold (if on_hold status)
@@ -66,7 +66,9 @@ class PrivacyRequest(Base):
         DateTime, nullable=True
     )  # For delete requests: when deletion will execute
 
-    metadata = Column(JSON, nullable=False, default=dict)  # reason, admin notes, etc.
+    request_metadata = Column(
+        JSON, nullable=False, default=dict
+    )  # reason, admin notes, etc.
 
     # Export-specific fields
     export_url = Column(String(500), nullable=True)  # S3/storage URL

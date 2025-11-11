@@ -53,7 +53,7 @@ class TestPrivacyRequestCreation:
         assert request.created_at is not None
         assert request.processed_at is None
         assert request.scheduled_deletion_at is None  # Not set for export
-        assert request.metadata["reason"] == "GDPR data access request"
+        assert request.request_metadata["reason"] == "GDPR data access request"
 
     async def test_create_delete_request_sets_cooling_off_period(
         self, db_session: AsyncSession, test_user: User
@@ -328,7 +328,7 @@ class TestDataDeleter:
             event_type="signal.approved",
             action="approve_signal",
             timestamp=datetime.utcnow(),
-            metadata={"signal_id": "sig123", "user_email": "user@example.com"},
+            request_metadata={"signal_id": "sig123", "user_email": "user@example.com"},
         )
         db_session.add(audit_log)
         await db_session.commit()
@@ -445,8 +445,8 @@ class TestPrivacyServiceWorkflows:
         released_request = await service.release_hold(request.id, admin_user.id)
 
         assert released_request.status == RequestStatus.PENDING
-        assert "hold_released_by" in released_request.metadata
-        assert released_request.metadata["hold_released_by"] == admin_user.id
+        assert "hold_released_by" in released_request.request_metadata
+        assert released_request.request_metadata["hold_released_by"] == admin_user.id
 
     async def test_cancel_pending_request(
         self, db_session: AsyncSession, test_user: User
@@ -465,7 +465,7 @@ class TestPrivacyServiceWorkflows:
 
         assert cancelled.status == RequestStatus.CANCELLED
         assert cancelled.processed_at is not None
-        assert cancelled.metadata["cancellation_reason"] == "Changed my mind"
+        assert cancelled.request_metadata["cancellation_reason"] == "Changed my mind"
 
     async def test_cannot_cancel_completed_request(
         self, db_session: AsyncSession, test_user: User
@@ -519,7 +519,7 @@ class TestPrivacyRequestModel:
             status=RequestStatus.PENDING,
             created_at=datetime.utcnow(),
             scheduled_deletion_at=datetime.utcnow() + timedelta(hours=72),
-            metadata={},
+            request_metadata={},
         )
         db_session.add(request)
         await db_session.commit()
@@ -547,7 +547,7 @@ class TestPrivacyRequestModel:
             status=RequestStatus.PENDING,
             created_at=datetime.utcnow(),
             scheduled_deletion_at=future_time,
-            metadata={},
+            request_metadata={},
         )
         db_session.add(request)
         await db_session.commit()
@@ -570,7 +570,7 @@ class TestPrivacyRequestModel:
             created_at=datetime.utcnow(),
             export_url="https://storage.example.com/export.zip",
             export_expires_at=datetime.utcnow() - timedelta(hours=1),  # Expired
-            metadata={},
+            request_metadata={},
         )
         db_session.add(request)
         await db_session.commit()
@@ -650,7 +650,7 @@ class TestEdgeCasesAndErrors:
         # Verify request marked as failed
         await db_session.refresh(request)
         assert request.status == RequestStatus.FAILED
-        assert "error" in request.metadata
+        assert "error" in request.request_metadata
 
     async def test_delete_failure_marks_request_as_failed(
         self, db_session: AsyncSession, test_user: User, monkeypatch
@@ -677,7 +677,7 @@ class TestEdgeCasesAndErrors:
         # Verify request marked as failed
         await db_session.refresh(request)
         assert request.status == RequestStatus.FAILED
-        assert "error" in request.metadata
+        assert "error" in request.request_metadata
 
 
 # Fixtures
