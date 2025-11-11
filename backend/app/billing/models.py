@@ -48,6 +48,7 @@ class Subscription(Base):
     """User subscription record."""
 
     __tablename__ = "subscriptions"
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid4())

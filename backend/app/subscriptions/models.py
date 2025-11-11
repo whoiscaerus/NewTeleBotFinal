@@ -21,6 +21,7 @@ class Subscription(Base):
     """Subscription model."""
 
     __tablename__ = "subscriptions"
+    __table_args__ = {"extend_existing": True}
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False)
