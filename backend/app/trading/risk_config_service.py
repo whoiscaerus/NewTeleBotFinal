@@ -168,7 +168,7 @@ class RiskConfigService:
         )
 
         return {
-            "fixed_risk_percent": new_risk_percent,
+            "new_risk_percent": new_risk_percent,
             "previous_risk_percent": previous_risk_percent,
             "updated_at": now.isoformat(),
             "updated_by": updated_by_user_id,

@@ -31,7 +31,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.dependencies import get_current_user, require_owner
 from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.core.redis_cache import (
@@ -389,3 +389,110 @@ async def trading_health_check() -> dict:
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "service": "trading-api",
     }
+
+
+# ================================================================
+# Risk Configuration Endpoints (PR-105)
+# ================================================================
+
+
+@router.get(
+    "/risk/config",
+    status_code=200,
+    summary="Get Global Risk Configuration",
+    description="Returns current global risk configuration including fixed risk percent and entry splits.",
+)
+async def get_risk_config(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Get global risk configuration.
+
+    Available to all authenticated users (read-only).
+    Shows the current global risk % that applies to all position sizing.
+
+    Returns:
+        dict: Global risk configuration with fixed_risk_percent, entry splits, margin buffer
+
+    Example:
+        >>> response = await client.get("/api/v1/risk/config")
+        >>> assert response.status_code == 200
+        >>> data = response.json()
+        >>> assert "fixed_risk_percent" in data
+        >>> assert data["fixed_risk_percent"] == 3.0
+    """
+    from backend.app.trading.risk_config_service import RiskConfigService
+
+    try:
+        config = await RiskConfigService.get_global_risk_config(db)
+        logger.info(
+            f"Risk config retrieved by user {current_user.id}",
+            extra={"user_id": current_user.id, "fixed_risk_percent": config.get("fixed_risk_percent")},
+        )
+        return config
+    except Exception as e:
+        logger.error(f"Failed to get risk config: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve risk configuration")
+
+
+@router.post(
+    "/risk/config",
+    status_code=200,
+    summary="Update Global Risk Configuration (Owner Only)",
+    description="Update the global fixed risk percent that applies to all users. Owner-only endpoint.",
+)
+async def update_risk_config(
+    new_risk_percent: float = Query(..., ge=0.1, le=50.0, description="New risk percent (0.1% - 50%)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_owner),
+) -> dict:
+    """
+    Update global fixed risk percent (owner-only).
+
+    Only the system owner can change the global risk %.
+    Changes apply immediately to all users and persist to database.
+
+    Args:
+        new_risk_percent: New risk percent (0.1% - 50%)
+        db: Database session
+        current_user: Authenticated owner user
+
+    Returns:
+        dict: Updated configuration with previous and new values
+
+    Raises:
+        HTTPException: 403 if not owner, 400 if validation fails, 500 on error
+
+    Example:
+        >>> response = await client.post(
+        ...     "/api/v1/risk/config?new_risk_percent=2.5",
+        ...     headers={"Authorization": "Bearer owner_token"}
+        ... )
+        >>> assert response.status_code == 200
+        >>> data = response.json()
+        >>> assert data["new_risk_percent"] == 2.5
+    """
+    from backend.app.trading.risk_config_service import RiskConfigService
+
+    try:
+        result = await RiskConfigService.update_global_risk_percent(
+            db=db,
+            new_risk_percent=new_risk_percent,
+            updated_by_user_id=current_user.id
+        )
+        logger.info(
+            f"Risk config updated by owner {current_user.id}: {result['previous_risk_percent']}% -> {result['new_risk_percent']}%",
+            extra={
+                "user_id": current_user.id,
+                "previous_risk_percent": result["previous_risk_percent"],
+                "new_risk_percent": result["new_risk_percent"],
+            },
+        )
+        return result
+    except ValueError as e:
+        logger.warning(f"Invalid risk percent: {e}", extra={"user_id": current_user.id, "new_risk_percent": new_risk_percent})
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to update risk config: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update risk configuration")
