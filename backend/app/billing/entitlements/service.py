@@ -19,6 +19,12 @@ TIER_ENTITLEMENTS = {
     3: ["basic_access", "premium_signals", "copy_trading", "vip_support"],  # Enterprise
 }
 
+# Web3 NFT-based entitlements (PR-102)
+WEB3_ENTITLEMENTS = [
+    "copy.mirror",  # NFT-gated copy trading access
+    "strategy.premium",  # NFT-gated premium strategy access
+]
+
 
 class EntitlementService:
     """Service for managing user entitlements and permissions.

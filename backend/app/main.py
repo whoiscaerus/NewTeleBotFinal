@@ -39,6 +39,7 @@ from backend.app.risk.routes import trading_router
 from backend.app.signals.routes import router as signals_router
 from backend.app.trust.ledger.routes import router as ledger_router
 from backend.app.trust.routes import router as trust_router
+from backend.app.web3.routes import router as web3_router  # PR-102: NFT Access
 from backend.app.web.routes import router as web_router
 
 try:
@@ -105,6 +106,7 @@ app.include_router(
     crm_router, tags=["crm"]
 )  # PR-098: Smart CRM & Retention Automations
 app.include_router(reports_router, tags=["reports"])  # PR-101: AI-Generated Reports
+app.include_router(web3_router, tags=["web3"])  # PR-102: NFT Access
 
 
 @app.get("/")

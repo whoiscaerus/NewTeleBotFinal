@@ -40,6 +40,10 @@ hvac==1.2.1
 # Telegram Integration
 python-telegram-bot==20.0
 
+# Web3 / Ethereum (PR-102: NFT Access)
+web3==6.15.1
+eth-account==0.11.2
+
 # Code Quality
 black==23.12.1
 ruff==0.1.11
