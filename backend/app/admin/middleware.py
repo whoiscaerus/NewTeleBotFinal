@@ -4,12 +4,11 @@ PR-099: RBAC Middleware for Admin Portal
 Role-based access control dependencies for owner and admin routes.
 """
 
-from typing import Optional
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.db import get_db
 from backend.app.core.auth import get_current_user
+from backend.app.core.db import get_db
 from backend.app.users.models import User
 
 

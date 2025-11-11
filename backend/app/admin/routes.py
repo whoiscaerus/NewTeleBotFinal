@@ -5,44 +5,38 @@ Owner/admin-only endpoints for managing platform operations.
 """
 
 import logging
-from typing import List, Optional
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import select, func, and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.db import get_db
-from backend.app.users.models import User
-from backend.app.admin.middleware import require_owner, require_admin
+from backend.app.admin.middleware import require_admin, require_owner
 from backend.app.admin.schemas import (
-    UserSearchRequest,
-    UserOut,
-    UserUpdateRequest,
-    DeviceSearchRequest,
-    DeviceOut,
-    RefundRequest,
-    RefundOut,
-    FraudEventOut,
-    FraudResolutionRequest,
-    TicketOut,
-    TicketUpdateRequest,
     AnalyticsDashboardOut,
     ArticleOut,
-    ArticlePublishRequest,
+    DeviceOut,
+    DeviceSearchRequest,
+    FraudEventOut,
+    FraudResolutionRequest,
+    RefundOut,
+    RefundRequest,
+    TicketOut,
+    TicketUpdateRequest,
+    UserOut,
+    UserSearchRequest,
+    UserUpdateRequest,
 )
-from backend.app.admin.service import (
-    process_refund,
-    approve_kyc,
-    resolve_fraud_event,
-    assign_ticket,
-)
+from backend.app.admin.service import approve_kyc, process_refund, resolve_fraud_event
+from backend.app.audit.service import create_audit_log
+from backend.app.core.db import get_db
 from backend.app.devices.models import Device
 from backend.app.fraud.models import FraudEvent
-from backend.app.support.models import Ticket
 from backend.app.kb.models import Article
-from backend.app.audit.service import create_audit_log
+from backend.app.support.models import Ticket
+from backend.app.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +53,7 @@ admin_actions_total = Counter(
 # ===== User Management =====
 
 
-@router.post("/users/search", response_model=List[UserOut])
+@router.post("/users/search", response_model=list[UserOut])
 async def search_users(
     request: UserSearchRequest,
     db: AsyncSession = Depends(get_db),
@@ -281,7 +275,7 @@ async def approve_user_kyc(
 # ===== Device Management =====
 
 
-@router.post("/devices/search", response_model=List[DeviceOut])
+@router.post("/devices/search", response_model=list[DeviceOut])
 async def search_devices(
     request: DeviceSearchRequest,
     db: AsyncSession = Depends(get_db),
@@ -354,7 +348,7 @@ async def revoke_device(
         )
 
     device.status = "revoked"
-    device.revoked_at = datetime.now(timezone.utc)
+    device.revoked_at = datetime.now(UTC)
     device.revoked_by = admin.id
     device.revoke_reason = reason
 
@@ -475,13 +469,13 @@ async def get_analytics_dashboard(
         total_users_result = await db.execute(select(func.count(User.id)))
         total_users = total_users_result.scalar() or 0
 
-        active_threshold = datetime.now(timezone.utc) - timedelta(days=7)
+        active_threshold = datetime.now(UTC) - timedelta(days=7)
         active_users_result = await db.execute(
             select(func.count(User.id)).where(User.last_active_at >= active_threshold)
         )
         active_users_last_7d = active_users_result.scalar() or 0
 
-        signup_threshold = datetime.now(timezone.utc) - timedelta(hours=24)
+        signup_threshold = datetime.now(UTC) - timedelta(hours=24)
         new_signups_result = await db.execute(
             select(func.count(User.id)).where(User.created_at >= signup_threshold)
         )
@@ -526,7 +520,7 @@ async def get_analytics_dashboard(
 # ===== Fraud Management =====
 
 
-@router.get("/fraud/events", response_model=List[FraudEventOut])
+@router.get("/fraud/events", response_model=list[FraudEventOut])
 async def get_fraud_events(
     status: Optional[str] = Query(None, pattern="^(open|resolved)$"),
     severity: Optional[str] = Query(None, pattern="^(low|medium|high|critical)$"),
@@ -617,7 +611,7 @@ async def resolve_fraud(
 # ===== Support Tickets =====
 
 
-@router.get("/support/tickets", response_model=List[TicketOut])
+@router.get("/support/tickets", response_model=list[TicketOut])
 async def get_tickets(
     status: Optional[str] = Query(None, pattern="^(open|assigned|resolved|closed)$"),
     severity: Optional[str] = Query(None, pattern="^(low|medium|high|critical)$"),
@@ -684,11 +678,11 @@ async def update_ticket(
         if request.status:
             ticket.status = request.status
             if request.status == "resolved":
-                ticket.resolved_at = datetime.now(timezone.utc)
+                ticket.resolved_at = datetime.now(UTC)
 
         if request.assigned_to:
             ticket.assigned_to = request.assigned_to
-            ticket.assigned_at = datetime.now(timezone.utc)
+            ticket.assigned_at = datetime.now(UTC)
 
         # Audit log
         await create_audit_log(
@@ -722,7 +716,7 @@ async def update_ticket(
 # ===== Knowledge Base CMS =====
 
 
-@router.get("/kb/articles", response_model=List[ArticleOut])
+@router.get("/kb/articles", response_model=list[ArticleOut])
 async def get_articles(
     status: Optional[str] = Query(None, pattern="^(draft|published)$"),
     locale: Optional[str] = None,
@@ -787,7 +781,7 @@ async def publish_article(
 
         if publish:
             article.status = "published"
-            article.published_at = datetime.now(timezone.utc)
+            article.published_at = datetime.now(UTC)
         else:
             article.status = "draft"
             article.published_at = None

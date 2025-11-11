@@ -19,6 +19,9 @@ from backend.app.crm.routes import router as crm_router
 from backend.app.ea.routes_admin import router as ea_admin_router
 from backend.app.education.routes import router as education_router
 from backend.app.exports.routes import router as exports_router
+from backend.app.health.routes import (
+    router as health_router,  # PR-100: Health Monitoring
+)
 from backend.app.journeys.routes import router as journeys_router
 from backend.app.messaging.routes import router as messaging_router
 from backend.app.polling.routes import router as polling_v2_router
@@ -64,6 +67,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(admin_router, tags=["admin"])  # PR-099: Admin Portal
+app.include_router(health_router, tags=["health"])  # PR-100: Health Monitoring
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
 app.include_router(alerts_router, prefix="/api/v1", tags=["alerts"])
 app.include_router(smart_alerts_router, tags=["smart-alerts"])

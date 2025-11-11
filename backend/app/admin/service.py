@@ -5,18 +5,18 @@ Business logic for admin operations: refunds, KYC, fraud resolution, etc.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from datetime import UTC, datetime
+from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 import stripe
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.users.models import User
 from backend.app.audit.service import create_audit_log
 from backend.app.fraud.models import FraudEvent
 from backend.app.support.models import Ticket
+from backend.app.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ async def process_refund(
     reason: str,
     admin_user: User,
     stripe_payment_intent_id: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Process a refund for a user with Stripe integration and audit logging.
 
@@ -106,7 +106,7 @@ async def process_refund(
         await db.commit()
 
         logger.info(
-            f"Refund processed",
+            "Refund processed",
             extra={
                 "refund_id": refund_id,
                 "user_id": user_id,
@@ -122,7 +122,7 @@ async def process_refund(
             "amount": amount,
             "status": status,
             "stripe_refund_id": stripe_refund_id,
-            "processed_at": datetime.now(timezone.utc),
+            "processed_at": datetime.now(UTC),
             "processed_by": admin_user.id,
         }
 
@@ -168,7 +168,7 @@ async def approve_kyc(
 
     # Update KYC status
     user.kyc_status = "approved"
-    user.kyc_approved_at = datetime.now(timezone.utc)
+    user.kyc_approved_at = datetime.now(UTC)
     user.kyc_approved_by = admin_user.id
 
     # Audit log
@@ -188,7 +188,7 @@ async def approve_kyc(
     await db.refresh(user)
 
     logger.info(
-        f"KYC approved",
+        "KYC approved",
         extra={
             "user_id": user_id,
             "admin_id": admin_user.id,
@@ -241,13 +241,15 @@ async def resolve_fraud_event(
     # Validate resolution
     valid_resolutions = ["false_positive", "confirmed_fraud", "needs_review"]
     if resolution not in valid_resolutions:
-        raise ValueError(f"Invalid resolution: {resolution}. Must be one of {valid_resolutions}")
+        raise ValueError(
+            f"Invalid resolution: {resolution}. Must be one of {valid_resolutions}"
+        )
 
     # Update event
     event.status = "resolved"
     event.resolution = resolution
     event.action_taken = action_taken
-    event.resolved_at = datetime.now(timezone.utc)
+    event.resolved_at = datetime.now(UTC)
     event.resolved_by = admin_user.id
     event.admin_notes = notes
 
@@ -258,7 +260,7 @@ async def resolve_fraud_event(
         if user:
             user.status = "suspended"
             logger.warning(
-                f"User suspended due to confirmed fraud",
+                "User suspended due to confirmed fraud",
                 extra={"user_id": user.id, "event_id": event_id},
             )
 
@@ -281,7 +283,7 @@ async def resolve_fraud_event(
     await db.refresh(event)
 
     logger.info(
-        f"Fraud event resolved",
+        "Fraud event resolved",
         extra={
             "event_id": event_id,
             "resolution": resolution,
@@ -332,7 +334,7 @@ async def assign_ticket(
     # Update ticket
     ticket.assigned_to = assigned_to
     ticket.status = "assigned"
-    ticket.assigned_at = datetime.now(timezone.utc)
+    ticket.assigned_at = datetime.now(UTC)
 
     # Audit log
     await create_audit_log(
@@ -351,7 +353,7 @@ async def assign_ticket(
     await db.refresh(ticket)
 
     logger.info(
-        f"Ticket assigned",
+        "Ticket assigned",
         extra={
             "ticket_id": ticket_id,
             "assigned_to": assigned_to,

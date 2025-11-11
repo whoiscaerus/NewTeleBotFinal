@@ -5,16 +5,19 @@ Request/response models for admin API endpoints.
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
+
 from pydantic import BaseModel, Field, validator
 
-
 # ===== User Management =====
+
 
 class UserSearchRequest(BaseModel):
     """Request schema for searching users."""
 
-    query: Optional[str] = Field(None, description="Search by email, telegram_id, or name")
+    query: Optional[str] = Field(
+        None, description="Search by email, telegram_id, or name"
+    )
     tier: Optional[str] = Field(None, description="Filter by subscription tier")
     status: Optional[str] = Field(None, description="Filter by account status")
     limit: int = Field(50, ge=1, le=500)
@@ -50,6 +53,7 @@ class UserUpdateRequest(BaseModel):
 
 # ===== Device Management =====
 
+
 class DeviceSearchRequest(BaseModel):
     """Request schema for searching devices."""
 
@@ -75,6 +79,7 @@ class DeviceOut(BaseModel):
 
 
 # ===== Billing & Refunds =====
+
 
 class RefundRequest(BaseModel):
     """Request schema for processing refund."""
@@ -106,6 +111,7 @@ class RefundOut(BaseModel):
 
 # ===== Fraud Management =====
 
+
 class FraudEventOut(BaseModel):
     """Response schema for fraud event."""
 
@@ -127,12 +133,15 @@ class FraudResolutionRequest(BaseModel):
     """Request schema for resolving fraud event."""
 
     event_id: str
-    resolution: str = Field(..., pattern="^(false_positive|confirmed_fraud|needs_review)$")
+    resolution: str = Field(
+        ..., pattern="^(false_positive|confirmed_fraud|needs_review)$"
+    )
     action_taken: str = Field(..., min_length=10, max_length=500)
     notes: Optional[str] = Field(None, max_length=1000)
 
 
 # ===== Support Tickets =====
+
 
 class TicketOut(BaseModel):
     """Response schema for support ticket."""
@@ -161,6 +170,7 @@ class TicketUpdateRequest(BaseModel):
 
 
 # ===== Analytics Dashboard =====
+
 
 class AnalyticsDashboardOut(BaseModel):
     """Response schema for admin analytics dashboard."""
@@ -198,6 +208,7 @@ class AnalyticsDashboardOut(BaseModel):
 
 # ===== KB/CMS =====
 
+
 class ArticleOut(BaseModel):
     """Response schema for KB article."""
 
@@ -205,7 +216,7 @@ class ArticleOut(BaseModel):
     title: str
     status: str
     locale: str
-    tags: List[str]
+    tags: list[str]
     author_id: str
     created_at: datetime
     updated_at: datetime

@@ -5,24 +5,24 @@ Tests covering RBAC, CRUD operations, audit logging, refunds, fraud resolution, 
 100% business logic coverage with real-world scenarios.
 """
 
+from datetime import UTC, datetime
+from unittest.mock import Mock, patch
+
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import Mock, patch, AsyncMock
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.users.models import User
+from backend.app.admin.service import (
+    approve_kyc,
+    assign_ticket,
+    process_refund,
+    resolve_fraud_event,
+)
 from backend.app.devices.models import Device
 from backend.app.fraud.models import FraudEvent
-from backend.app.support.models import Ticket
 from backend.app.kb.models import Article
-from backend.app.admin.service import (
-    process_refund,
-    approve_kyc,
-    resolve_fraud_event,
-    assign_ticket,
-)
-
+from backend.app.support.models import Ticket
+from backend.app.users.models import User
 
 # ===== Fixtures =====
 
@@ -39,7 +39,7 @@ async def owner_user(db_session: AsyncSession) -> User:
         is_owner=True,
         is_admin=True,
         kyc_status="approved",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -59,7 +59,7 @@ async def admin_user(db_session: AsyncSession) -> User:
         is_owner=False,
         is_admin=True,
         kyc_status="approved",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -79,7 +79,7 @@ async def regular_user(db_session: AsyncSession) -> User:
         is_owner=False,
         is_admin=False,
         kyc_status="pending",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -97,7 +97,7 @@ async def fraud_event(db_session: AsyncSession, regular_user: User) -> FraudEven
         severity="high",
         details={"slippage_pips": 50, "expected": 2},
         status="open",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(event)
     await db_session.commit()
@@ -116,7 +116,7 @@ async def support_ticket(db_session: AsyncSession, regular_user: User) -> Ticket
         severity="medium",
         status="open",
         channel="telegram",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(ticket)
     await db_session.commit()
@@ -352,7 +352,7 @@ async def test_search_devices(
         user_id="user_123",
         device_name="Test MT5",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(device)
     await db_session.commit()
@@ -381,14 +381,14 @@ async def test_revoke_device(
         user_id="user_123",
         device_name="Compromised Device",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(device)
     await db_session.commit()
 
     # Revoke device
     response = await client.post(
-        f"/api/v1/admin/devices/device_456/revoke?reason=Security+breach+detected",
+        "/api/v1/admin/devices/device_456/revoke?reason=Security+breach+detected",
         headers=auth_headers_owner,
     )
     assert response.status_code == 200
@@ -725,8 +725,8 @@ async def test_list_kb_articles(
         locale="en",
         author_id="owner_123",
         content="Test content",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(article)
     await db_session.commit()
@@ -755,15 +755,15 @@ async def test_publish_article(
         locale="en",
         author_id="owner_123",
         content="Content",
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(article)
     await db_session.commit()
 
     # Publish
     response = await client.post(
-        f"/api/v1/admin/kb/articles/article_456/publish?publish=true",
+        "/api/v1/admin/kb/articles/article_456/publish?publish=true",
         headers=auth_headers_owner,
     )
     assert response.status_code == 200
@@ -814,8 +814,9 @@ async def test_refund_creates_audit_log(
     regular_user: User,
 ):
     """Test refund processing creates audit log."""
-    from backend.app.audit.models import AuditLog
     from sqlalchemy import select
+
+    from backend.app.audit.models import AuditLog
 
     with patch("stripe.Refund.create") as mock_stripe:
         mock_stripe.return_value = Mock(id="re_test", status="succeeded")

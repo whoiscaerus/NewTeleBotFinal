@@ -248,6 +248,27 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Health monitoring metrics (PR-100)
+        self.synthetics_fail_total = Counter(
+            "synthetics_fail_total",
+            "Total synthetic probe failures (PR-100: health monitoring)",
+            ["probe"],  # websocket_ping, mt5_poll, telegram_echo, stripe_replay
+            registry=self.registry,
+        )
+
+        self.incidents_open_gauge = Gauge(
+            "incidents_open_gauge",
+            "Currently open incidents count (PR-100: system health)",
+            registry=self.registry,
+        )
+
+        self.remediations_total = Counter(
+            "remediations_total",
+            "Total auto-remediation actions executed (PR-100: self-healing)",
+            ["type"],  # restart_service, rotate_token, drain_queue, failover_replica
+            registry=self.registry,
+        )
+
         self.web_cwv_lcp_seconds = Histogram(
             "web_cwv_lcp_seconds",
             "Largest Contentful Paint (seconds)",
