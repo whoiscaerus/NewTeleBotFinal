@@ -15,7 +15,9 @@ class User(Base):
     email = Column(String, nullable=False, unique=True)
     username = Column(String)
     status = Column(String, default="active")
-    theme_preference = Column(String, default="professional")  # professional, darkTrader, goldMinimal
+    theme_preference = Column(
+        String, default="professional"
+    )  # professional, darkTrader, goldMinimal
 
     # Relationships
     preferences = relationship(
@@ -35,3 +37,8 @@ class User(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    reports = relationship(
+        "Report",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )  # PR-101: AI-Generated Reports

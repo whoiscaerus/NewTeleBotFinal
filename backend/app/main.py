@@ -30,6 +30,9 @@ from backend.app.privacy.routes import router as privacy_router
 from backend.app.profile.routes import router as profile_router
 from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
+from backend.app.reports.routes import (
+    router as reports_router,  # PR-101: AI-Generated Reports
+)
 from backend.app.revenue.routes import router as revenue_router
 from backend.app.risk.routes import router as risk_router
 from backend.app.risk.routes import trading_router
@@ -101,6 +104,7 @@ app.include_router(web_router, tags=["web-telemetry"])  # PR-084
 app.include_router(
     crm_router, tags=["crm"]
 )  # PR-098: Smart CRM & Retention Automations
+app.include_router(reports_router, tags=["reports"])  # PR-101: AI-Generated Reports
 
 
 @app.get("/")
