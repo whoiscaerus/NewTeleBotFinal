@@ -13,8 +13,8 @@ import stripe
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.audit.service import create_audit_log
-from backend.app.fraud.models import FraudEvent
+from backend.app.audit.service import AuditService
+from backend.app.fraud.models import AnomalyEvent
 from backend.app.support.models import Ticket
 from backend.app.users.models import User
 
@@ -88,13 +88,13 @@ async def process_refund(
             status = "manual_pending"
 
         # Audit log
-        await create_audit_log(
+        await AuditService.record(
             db=db,
-            user_id=admin_user.id,
+            actor_id=admin_user.id,
             action="refund_processed",
-            resource_type="billing",
-            resource_id=refund_id,
-            details={
+            target="billing",
+            target_id=refund_id,
+            meta={
                 "target_user_id": user_id,
                 "amount": amount,
                 "reason": reason,
@@ -172,13 +172,13 @@ async def approve_kyc(
     user.kyc_approved_by = admin_user.id
 
     # Audit log
-    await create_audit_log(
+    await AuditService.record(
         db=db,
-        user_id=admin_user.id,
+        actor_id=admin_user.id,
         action="kyc_approved",
-        resource_type="user",
-        resource_id=user_id,
-        details={
+        target="user",
+        target_id=user_id,
+        meta={
             "notes": notes,
             "approved_at": user.kyc_approved_at.isoformat(),
         },
@@ -205,7 +205,7 @@ async def resolve_fraud_event(
     action_taken: str,
     admin_user: User,
     notes: Optional[str] = None,
-) -> FraudEvent:
+) -> AnomalyEvent:
     """
     Resolve a fraud event with specified action.
 
@@ -218,7 +218,7 @@ async def resolve_fraud_event(
         notes: Optional admin notes
 
     Returns:
-        FraudEvent: Updated fraud event
+        AnomalyEvent: Updated fraud event
 
     Raises:
         ValueError: If event not found or invalid resolution
@@ -230,7 +230,9 @@ async def resolve_fraud_event(
         >>> assert event.status == "resolved"
     """
     # Get event
-    event_result = await db.execute(select(FraudEvent).where(FraudEvent.id == event_id))
+    event_result = await db.execute(
+        select(AnomalyEvent).where(AnomalyEvent.id == event_id)
+    )
     event = event_result.scalar_one_or_none()
     if not event:
         raise ValueError(f"Fraud event {event_id} not found")
@@ -265,13 +267,13 @@ async def resolve_fraud_event(
             )
 
     # Audit log
-    await create_audit_log(
+    await AuditService.record(
         db=db,
-        user_id=admin_user.id,
+        actor_id=admin_user.id,
         action="fraud_event_resolved",
-        resource_type="fraud",
-        resource_id=event_id,
-        details={
+        target="fraud",
+        target_id=event_id,
+        meta={
             "target_user_id": event.user_id,
             "resolution": resolution,
             "action_taken": action_taken,
@@ -337,13 +339,13 @@ async def assign_ticket(
     ticket.assigned_at = datetime.now(UTC)
 
     # Audit log
-    await create_audit_log(
+    await AuditService.record(
         db=db,
-        user_id=admin_user.id,
+        actor_id=admin_user.id,
         action="ticket_assigned",
-        resource_type="support",
-        resource_id=ticket_id,
-        details={
+        target="support",
+        target_id=ticket_id,
+        meta={
             "assigned_to": assigned_to,
             "user_id": ticket.user_id,
         },

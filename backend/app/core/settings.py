@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class AppSettings(BaseSettings):
     """Application settings."""
 
-    env: Literal["development", "staging", "production"] = Field(
+    env: Literal["development", "staging", "production", "test"] = Field(
         default="development", alias="APP_ENV"
     )
     name: str = Field(default="trading-signal-platform", alias="APP_NAME")
