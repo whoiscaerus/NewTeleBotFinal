@@ -80,7 +80,7 @@ class CopyEntry(Base):
     # Indexes
     __table_args__ = (
         Index("ix_copy_entries_type_status", "type", "status"),
-        Index("ix_copy_entries_key", "key"),
+        # Note: "key" column already has index from unique=True constraint
         {"extend_existing": True},
     )
 
