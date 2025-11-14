@@ -11,6 +11,7 @@ Tests validate:
 """
 
 import pytest
+from pytest_asyncio import fixture as asyncio_fixture
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,13 +22,13 @@ from backend.app.copy.service import CopyService
 # --- Fixtures ---
 
 
-@pytest.fixture
+@asyncio_fixture
 async def copy_service(db_session: AsyncSession) -> CopyService:
     """Provide copy service with test database."""
     return CopyService(db_session)
 
 
-@pytest.fixture
+@asyncio_fixture
 async def sample_entry(copy_service: CopyService) -> CopyEntry:
     """Create a sample copy entry for testing."""
     data = CopyEntryCreate(

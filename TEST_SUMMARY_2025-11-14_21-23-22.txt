@@ -1,0 +1,28 @@
+COMPREHENSIVE TEST SUITE SUMMARY
+Generated: 2025-11-14_21-23-22
+Total Duration: 50.14 minutes
+
+OVERALL STATISTICS:
+- Total Test Files: 226
+- Total Tests: 2234
+- Passed: 2201
+- Failed: 4
+- Skipped: 29
+- Pass Rate: 98.52%
+
+FAILED TEST FILES (4 files):
+
+test_feature_store.py: 1 failures
+
+test_pr_048_trace_worker.py: 1 failures
+
+test_theme.py: 1 failures
+
+test_walkforward.py: 1 failures
+
+
+TOP PRIORITY FIXES (Most Failures First):
+  test_feature_store.py: 1 failures
+  test_pr_048_trace_worker.py: 1 failures
+  test_theme.py: 1 failures
+  test_walkforward.py: 1 failures

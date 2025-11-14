@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.db import get_db
 from backend.app.quotas.service import QuotaExceededException, QuotaService
 from backend.app.subscriptions.models import SubscriptionTier
-from backend.app.users.models import User
+from backend.app.auth.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,12 @@ async def get_current_user() -> User:
     """Get current authenticated user (stub)."""
     # For now, return a stub user
     # In production, this would validate JWT token and load user from DB
-    user = User(id="test-user-123", email="test@example.com", username="testuser")
+    user = User(
+        id="test-user-123",
+        email="test@example.com",
+        password_hash="$2b$12$...",
+        role="user"
+    )
     return user
 
 

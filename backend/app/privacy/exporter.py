@@ -73,7 +73,7 @@ class DataExporter:
 
     async def _export_user_profile(self, user_id: str) -> dict[str, Any]:
         """Export user profile data (no passwords)."""
-        from backend.app.users.models import User
+        from backend.app.auth.models import User
 
         result = await self.db.execute(select(User).filter(User.id == user_id))
         user = result.scalar_one_or_none()

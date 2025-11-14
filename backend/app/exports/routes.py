@@ -48,12 +48,12 @@ class ExportResponse(BaseModel):
     message: str
 
 
-@router.post("", summary="Create trade history export")
+@router.post("", summary="Create trade history export", response_model=None)
 async def create_export(
     request: ExportRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> ExportResponse | Response:
+):
     """Create trade history export for current user.
 
     Returns either:

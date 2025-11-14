@@ -10,7 +10,7 @@ from backend.app.auth.dependencies import get_current_user
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
 from backend.app.core.settings import get_settings
-from backend.app.signals.schema import SignalCreate, SignalListOut, SignalOut
+from backend.app.signals.schema import SignalCreate, SignalListOut, SignalOut, SignalUpdate
 from backend.app.signals.service import SignalService
 
 logger = logging.getLogger(__name__)
@@ -84,6 +84,8 @@ async def create_signal(
 
         return signal
 
+    except HTTPException:
+        raise
     except APIError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message) from e
     except Exception as e:
@@ -109,6 +111,47 @@ async def get_signal(
         return signal
     except APIError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message) from e
+
+
+@router.patch("/{signal_id}", response_model=SignalOut)
+async def update_signal(
+    signal_id: str,
+    request: SignalUpdate,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user=Depends(get_current_user),  # noqa: B008
+) -> SignalOut:
+    """Update signal status."""
+    try:
+        from sqlalchemy import select
+        from backend.app.signals.models import Signal
+
+        # Query signal directly from database
+        result = await db.execute(select(Signal).where(Signal.id == signal_id))
+        signal = result.scalar_one_or_none()
+
+        if not signal:
+            raise HTTPException(status_code=404, detail="Signal not found")
+
+        # Verify ownership
+        if current_user.id != signal.user_id:
+            raise HTTPException(status_code=403, detail="Unauthorized")
+
+        # Update signal status in database
+        signal.status = request.status
+        db.add(signal)
+        await db.commit()
+        await db.refresh(signal)
+
+        logger.info(f"Signal {signal_id} status updated to {request.status}")
+        return signal
+
+    except HTTPException:
+        raise
+    except APIError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from e
+    except Exception as e:
+        logger.error(f"Signal update failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get("", response_model=SignalListOut)

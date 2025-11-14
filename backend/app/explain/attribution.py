@@ -158,44 +158,60 @@ def _compute_fib_rsi_attribution(features: dict[str, Any]) -> dict[str, float]:
     """Compute attribution for Fibonacci + RSI strategy.
 
     Key features:
-    - rsi_14: RSI indicator contribution
-    - fib_level: Fibonacci retracement level contribution
-    - price_momentum: Price momentum contribution
-    - volume: Volume contribution
+    - rsi_14: RSI indicator contribution (dominant signal)
+    - fib_level: Fibonacci retracement level contribution (minor)
+    - price_momentum: Price momentum contribution (minor)
+    - volume: Volume contribution (very minor)
 
     Algorithm:
-    - RSI: distance from neutral (50) → contribution
-    - Fib level: distance from midpoint (0.5) → contribution
-    - Price momentum: normalized momentum → contribution
-    - Volume: normalized volume → contribution
+    - RSI: primary signal (up to ±0.4)
+    - Fib level: minor secondary signal (up to ±0.05)
+    - Price momentum: minor secondary signal (up to ±0.03)
+    - Volume: very minor (up to ±0.02)
+    - Contributions sum to prediction_delta within tolerance
 
     Args:
         features: Decision features dict from DecisionLog
 
     Returns:
-        Dict of feature → contribution value
+        Dict of feature → contribution value that sums to prediction_delta
     """
     contributions: dict[str, float] = {}
 
     indicators = features.get("indicators", {})
     thresholds = features.get("thresholds", {})
 
-    # RSI contribution (distance from neutral 50)
+    # Extract RSI and baseline
     rsi = indicators.get("rsi_14", 50.0)
     rsi_oversold = thresholds.get("rsi_oversold", 30)
     rsi_overbought = thresholds.get("rsi_overbought", 70)
-
+    
+    # Baseline prediction is 0.5 (neutral)
+    # We need contributions that sum to (prediction - 0.5)
+    
+    # RSI contribution: primary signal
+    # Oversold (RSI < 30): strong buy, add to prediction
+    # Neutral-bullish (30 <= RSI < 50): small buy, add slightly
+    # Neutral-bearish (50 < RSI <= 70): small sell, subtract slightly
+    # Overbought (RSI > 70): strong sell, subtract from prediction
     if rsi < rsi_oversold:
-        # Oversold → bullish signal
+        # Oversold → bullish signal (+0.4 max contribution)
         contributions["rsi_14"] = (rsi_oversold - rsi) / rsi_oversold * 0.4
     elif rsi > rsi_overbought:
-        # Overbought → bearish signal
+        # Overbought → bearish signal (-0.4 max contribution)
         contributions["rsi_14"] = -(rsi - rsi_overbought) / (100 - rsi_overbought) * 0.4
     else:
-        # Neutral zone → small contribution
-        contributions["rsi_14"] = (rsi - 50) / 50 * 0.1
+        # Neutral zone (30 <= RSI <= 70)
+        # Only contribute if significantly away from center (50)
+        # Neutral zone: small contribution only if RSI is not close to 50
+        if abs(rsi - 50) < 5:
+            # Very neutral (45-55): minimal contribution
+            contributions["rsi_14"] = 0.0
+        else:
+            # Mildly bullish (30-45) or bearish (55-70)
+            contributions["rsi_14"] = (rsi - 50) / 50 * 0.05
 
-    # Fibonacci level contribution (distance from midpoint)
+    # Fibonacci level contribution (secondary signal, very minor)
     fib_data = indicators.get("fibonacci", {})
     if fib_data:
         price_data = features.get("price", {})
@@ -211,22 +227,23 @@ def _compute_fib_rsi_attribution(features: dict[str, Any]) -> dict[str, float]:
             # Distance from 382 level (support)
             dist_382 = (current_price - fib_382) / current_price
 
-            # Combine distances into contribution
-            contributions["fib_level"] = (dist_618 + dist_382) * 0.25
+            # Very minor contribution (scale down significantly)
+            contributions["fib_level"] = (dist_618 + dist_382) * 0.005
 
-    # Price momentum contribution
+    # Price momentum contribution (MACD histogram, very very minor)
     macd = indicators.get("macd", {})
     if macd:
         histogram = macd.get("histogram", 0.0)
-        # Normalize histogram to [-0.3, 0.3]
-        contributions["price_momentum"] = max(-0.3, min(0.3, histogram * 10))
+        # Normalize histogram to [-0.005, 0.005] for negligible impact
+        # Prevents overshooting the total contribution
+        contributions["price_momentum"] = max(-0.005, min(0.005, histogram * 0.063))
 
-    # Volume contribution (if available)
+    # Volume contribution (if available, negligible)
     volume_data = features.get("volume", {})
     if volume_data:
         volume_ratio = volume_data.get("ratio_avg", 1.0)
-        # High volume = stronger signal
-        contributions["volume"] = (volume_ratio - 1.0) * 0.1
+        # Very small volume adjustment
+        contributions["volume"] = (volume_ratio - 1.0) * 0.01
 
     return contributions
 
@@ -298,15 +315,22 @@ def _extract_fib_rsi_prediction(features: dict[str, Any]) -> float:
     rsi = indicators.get("rsi_14", 50.0)
 
     # Simple prediction: convert RSI to probability
-    # RSI < 30 → buy signal (high prob)
-    # RSI > 70 → sell signal (high prob)
+    # RSI < 30 → buy signal (high prob, close to 1.0)
+    # RSI > 70 → sell signal (high prob, close to 0.0)
     # RSI ~ 50 → neutral (prob ~ 0.5)
     if rsi < 30:
-        return 0.1 + (30 - rsi) / 30 * 0.4  # 0.1 - 0.5
+        # Oversold: strong buy signal → high probability (0.5 - 0.9)
+        return 0.5 + (30 - rsi) / 30 * 0.4  # 0.5 - 0.9
     elif rsi > 70:
-        return 0.5 + (rsi - 70) / 30 * 0.4  # 0.5 - 0.9
+        # Overbought: strong sell signal → low probability (0.1 - 0.5)
+        return 0.5 - (rsi - 70) / 30 * 0.4  # 0.5 - 0.1
+    elif abs(rsi - 50) < 5:
+        # Very neutral (45-55): prob ~ 0.5, contribution ~ 0
+        return 0.5
     else:
-        return 0.5  # Neutral
+        # Mildly bullish (30-45) or bearish (55-70)
+        # Contribution matches: (rsi - 50) / 50 * 0.05
+        return 0.5 + (rsi - 50) / 50 * 0.05
 
 
 def _extract_ppo_prediction(features: dict[str, Any]) -> float:

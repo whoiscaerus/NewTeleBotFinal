@@ -1,45 +1,10 @@
-"""User models."""
+"""User models - DEPRECATED: Use backend.app.auth.models.User instead.
 
-from sqlalchemy import Column, String
-from sqlalchemy.orm import relationship
+This module is kept for backward compatibility only.
+All imports are now redirected to the single canonical User model in auth.models.
+"""
 
-from backend.app.core.db import Base
+# Re-export from canonical location to avoid duplicate table definitions
+from backend.app.auth.models import User  # noqa: F401
 
-
-class User(Base):
-    """User model."""
-
-    __tablename__ = "users"
-    __table_args__ = ({"extend_existing": True},)
-
-    id = Column(String, primary_key=True)
-    email = Column(String, nullable=False, unique=True)
-    username = Column(String)
-    status = Column(String, default="active")
-    theme_preference = Column(
-        String, default="professional"
-    )  # professional, darkTrader, goldMinimal
-
-    # Relationships
-    preferences = relationship(
-        "UserPreferences",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-    privacy_requests = relationship(
-        "PrivacyRequest",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
-    paper_account = relationship(
-        "PaperAccount",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-    reports = relationship(
-        "Report",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )  # PR-101: AI-Generated Reports
+__all__ = ["User"]

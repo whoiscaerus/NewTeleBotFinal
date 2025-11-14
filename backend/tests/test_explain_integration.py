@@ -247,6 +247,8 @@ async def test_search_then_explain_workflow(client: AsyncClient, db_session):
         f"/api/v1/explain/attribution?decision_id={selected_id_page2}&strategy=fib_rsi"
     )
     assert response.status_code == 200
+    attribution_data_page2 = response.json()
+    assert attribution_data_page2["is_valid"] is True
 
 
 @pytest.mark.asyncio
@@ -254,7 +256,7 @@ async def test_explain_telemetry_integration(
     client: AsyncClient, db_session, monkeypatch
 ):
     """Test explain endpoints increment telemetry correctly."""
-    from backend.app.observability.metrics import metrics_collector
+    from backend.app.observability.metrics import metrics
 
     explain_calls = []
     search_calls = []
@@ -266,9 +268,9 @@ async def test_explain_telemetry_integration(
         search_calls.append(True)
 
     monkeypatch.setattr(
-        metrics_collector.explain_requests_total, "inc", mock_explain_inc
+        metrics.explain_requests_total, "inc", mock_explain_inc
     )
-    monkeypatch.setattr(metrics_collector.decision_search_total, "inc", mock_search_inc)
+    monkeypatch.setattr(metrics.decision_search_total, "inc", mock_search_inc)
 
     # Create decision
     decision_id = str(uuid4())

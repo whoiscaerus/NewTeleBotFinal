@@ -139,6 +139,11 @@ class APIException(Exception):
             errors=self.errors,
         )
 
+    @property
+    def message(self) -> str:
+        """Alias for detail (for compatibility with error handling code)."""
+        return self.detail
+
 
 class ValidationError(APIException):
     """Validation error (422)."""

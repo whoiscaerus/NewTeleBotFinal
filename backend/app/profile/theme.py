@@ -11,7 +11,7 @@ from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.users.models import User
+from backend.app.auth.models import User
 
 logger = logging.getLogger(__name__)
 

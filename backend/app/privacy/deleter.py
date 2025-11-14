@@ -201,7 +201,7 @@ class DataDeleter:
 
     async def _delete_user_record(self, user_id: str) -> None:
         """Delete user record (final step)."""
-        from backend.app.users.models import User
+        from backend.app.auth.models import User
 
         result = await self.db.execute(delete(User).filter(User.id == user_id))
         count = result.rowcount

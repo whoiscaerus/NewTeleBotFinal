@@ -26,16 +26,20 @@ from backend.app.core.errors import (
 from backend.app.core.middleware import RequestIDMiddleware
 from backend.app.dashboard.routes import router as dashboard_router
 from backend.app.ea.routes import router as ea_router
+from backend.app.explain.routes import router as explain_router
 from backend.app.gamification.routes import router as gamification_router
 from backend.app.kb.routes import router as kb_router
 from backend.app.messaging.routes import router as messaging_router
 from backend.app.miniapp.auth_bridge import router as miniapp_router
 from backend.app.observability.metrics import get_metrics
+from backend.app.profile.routes import router as profile_router
 from backend.app.public.performance_routes import router as performance_router
 from backend.app.public.trust_index_routes import router as trust_index_router
+from backend.app.quotas.routes import router as quotas_router
 from backend.app.revenue.routes import router as revenue_router
 from backend.app.signals.routes import router as signals_router
 from backend.app.strategy.routes import router as strategy_router
+from backend.app.strategy.decision_search import router as decision_search_router
 from backend.app.support.routes import router as support_router
 from backend.app.telegram.webhook import router as telegram_router
 from backend.app.trading.routes import router as trading_router
@@ -106,11 +110,15 @@ def create_app() -> FastAPI:
     app.include_router(messaging_router)
     app.include_router(kb_router)
     app.include_router(performance_router)
+    app.include_router(profile_router)  # PR-090: Theme settings
     app.include_router(revenue_router)
+    app.include_router(quotas_router)  # PR-082: Quota management and enforcement
     app.include_router(trust_index_router)
     app.include_router(ledger_router)  # PR-093: Blockchain ledger proof routes
     app.include_router(social_router)  # PR-094: Social verification graph routes
     app.include_router(signals_router)
+    app.include_router(decision_search_router)  # PR-080: Decision search & attribution
+    app.include_router(explain_router)  # PR-080: Explainability
     app.include_router(strategy_router)
     app.include_router(support_router)
     app.include_router(telegram_router)

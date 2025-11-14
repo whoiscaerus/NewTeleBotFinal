@@ -120,6 +120,7 @@ def mock_settings():
 class TestWorkerInitialization:
     """Test worker initialization and adapter setup."""
 
+    @pytest.mark.asyncio
     @patch("backend.schedulers.trace_worker.settings")
     @patch("backend.schedulers.trace_worker.get_async_redis")
     async def test_worker_initializes_adapters_from_settings(
@@ -139,6 +140,7 @@ class TestWorkerInitialization:
         assert len(adapters) == 1
         assert isinstance(adapters[0], MyfxbookAdapter)
 
+    @pytest.mark.asyncio
     @patch("backend.schedulers.trace_worker.settings")
     async def test_worker_skips_disabled_adapters(self, mock_settings_obj):
         """Test worker skips adapters with enabled=False."""

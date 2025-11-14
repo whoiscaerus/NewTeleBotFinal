@@ -20,7 +20,7 @@ from backend.app.copy.schemas import (
 )
 from backend.app.copy.service import CopyService
 from backend.app.core.db import get_db
-from backend.app.users.models import User
+from backend.app.auth.models import User
 
 router = APIRouter(prefix="/api/v1/copy", tags=["copy"])
 

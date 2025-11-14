@@ -36,7 +36,7 @@ from backend.app.core.db import get_db
 from backend.app.fraud.models import AnomalyEvent
 from backend.app.kb.models import Article
 from backend.app.support.models import Ticket
-from backend.app.users.models import User
+from backend.app.auth.models import User
 
 logger = logging.getLogger(__name__)
 

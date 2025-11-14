@@ -24,7 +24,7 @@ from backend.app.observability import get_metrics
 
 
 @pytest.mark.asyncio
-async def test_dashboard_websocket_connect_success(client: TestClient, test_user: User):
+async def test_dashboard_websocket_connect_success(ws_client, test_user: User):
     """
     Test: Dashboard WebSocket connects with valid JWT token.
 
@@ -45,7 +45,7 @@ async def test_dashboard_websocket_connect_success(client: TestClient, test_user
     metrics = get_metrics()
     initial_gauge = metrics.dashboard_ws_clients_gauge._value.get()
 
-    with client.websocket_connect(f"/api/v1/dashboard/ws?token={token}") as websocket:
+    with ws_client.websocket_connect(f"/api/v1/dashboard/ws?token={token}") as websocket:
         # Should receive approvals message
         data = websocket.receive_json()
         assert data["type"] == "approvals"
@@ -68,7 +68,7 @@ async def test_dashboard_websocket_connect_success(client: TestClient, test_user
 
 
 @pytest.mark.asyncio
-async def test_dashboard_websocket_connect_unauthorized_no_token(client: TestClient):
+async def test_dashboard_websocket_connect_unauthorized_no_token(ws_client):
     """
     Test: Dashboard WebSocket rejects connection without token.
 
@@ -85,7 +85,7 @@ async def test_dashboard_websocket_connect_unauthorized_no_token(client: TestCli
     initial_gauge = metrics.dashboard_ws_clients_gauge._value.get()
 
     with pytest.raises(WebSocketDisconnect):
-        with client.websocket_connect("/api/v1/dashboard/ws"):
+        with ws_client.websocket_connect("/api/v1/dashboard/ws"):
             pass  # Should not reach here
 
     # Gauge should not change
@@ -94,7 +94,7 @@ async def test_dashboard_websocket_connect_unauthorized_no_token(client: TestCli
 
 @pytest.mark.asyncio
 async def test_dashboard_websocket_connect_unauthorized_invalid_token(
-    client: TestClient,
+    ws_client,
 ):
     """
     Test: Dashboard WebSocket rejects connection with invalid token.
@@ -112,7 +112,7 @@ async def test_dashboard_websocket_connect_unauthorized_invalid_token(
     initial_gauge = metrics.dashboard_ws_clients_gauge._value.get()
 
     with pytest.raises(WebSocketDisconnect):
-        with client.websocket_connect("/api/v1/dashboard/ws?token=invalid_token_here"):
+        with ws_client.websocket_connect("/api/v1/dashboard/ws?token=invalid_token_here"):
             pass
 
     assert metrics.dashboard_ws_clients_gauge._value.get() == initial_gauge
@@ -120,7 +120,7 @@ async def test_dashboard_websocket_connect_unauthorized_invalid_token(
 
 @pytest.mark.asyncio
 async def test_dashboard_websocket_gauge_decrements_on_disconnect(
-    client: TestClient, test_user: User
+    ws_client, test_user: User
 ):
     """
     Test: Dashboard WebSocket decrements gauge on disconnect.
@@ -140,7 +140,7 @@ async def test_dashboard_websocket_gauge_decrements_on_disconnect(
     metrics = get_metrics()
     initial_gauge = metrics.dashboard_ws_clients_gauge._value.get()
 
-    with client.websocket_connect(f"/api/v1/dashboard/ws?token={token}") as websocket:
+    with ws_client.websocket_connect(f"/api/v1/dashboard/ws?token={token}") as websocket:
         # Gauge incremented
         assert metrics.dashboard_ws_clients_gauge._value.get() == initial_gauge + 1
 
@@ -156,7 +156,7 @@ async def test_dashboard_websocket_gauge_decrements_on_disconnect(
 
 @pytest.mark.asyncio
 async def test_dashboard_websocket_streams_updates_at_1hz(
-    client: TestClient, test_user: User
+    ws_client, test_user: User
 ):
     """
     Test: Dashboard WebSocket streams updates at 1Hz (1 message per second).
@@ -174,7 +174,7 @@ async def test_dashboard_websocket_streams_updates_at_1hz(
     jwt_handler = JWTHandler()
     token = jwt_handler.create_token(user_id=test_user.id)
 
-    with client.websocket_connect(f"/api/v1/dashboard/ws?token={token}") as websocket:
+    with ws_client.websocket_connect(f"/api/v1/dashboard/ws?token={token}") as websocket:
         # Receive first cycle
         start_time = datetime.now()
 
@@ -199,7 +199,7 @@ async def test_dashboard_websocket_streams_updates_at_1hz(
 
 @pytest.mark.asyncio
 async def test_dashboard_websocket_message_formats_valid(
-    client: TestClient, test_user: User
+    ws_client, test_user: User
 ):
     """
     Test: Dashboard WebSocket messages have correct format.
@@ -218,7 +218,7 @@ async def test_dashboard_websocket_message_formats_valid(
     jwt_handler = JWTHandler()
     token = jwt_handler.create_token(user_id=test_user.id)
 
-    with client.websocket_connect(f"/api/v1/dashboard/ws?token={token}") as websocket:
+    with ws_client.websocket_connect(f"/api/v1/dashboard/ws?token={token}") as websocket:
         # Approvals message
         approvals_msg = websocket.receive_json()
         assert approvals_msg["type"] == "approvals"

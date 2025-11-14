@@ -291,7 +291,7 @@ async def _get_push_subscription(
     # For now, return None (no subscriptions)
     # This will cause send_push() to return "no_subscription" status
 
-    # from backend.app.users.models import PushSubscription
+    # from backend.app.auth.models import PushSubscription
     # result = await db.execute(
     #     select(PushSubscription).where(PushSubscription.user_id == user_id)
     # )
@@ -325,7 +325,7 @@ async def _delete_push_subscription(db: AsyncSession, user_id: str) -> None:
     # TODO: Implement database delete when push_subscriptions table exists (PR-106)
     # For now, this is a no-op
 
-    # from backend.app.users.models import PushSubscription
+    # from backend.app.auth.models import PushSubscription
     # await db.execute(
     #     delete(PushSubscription).where(PushSubscription.user_id == user_id)
     # )

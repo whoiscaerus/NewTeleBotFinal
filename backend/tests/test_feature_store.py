@@ -45,7 +45,8 @@ async def test_put_features_success(db_session: AsyncSession):
 
     assert snapshot.id is not None
     assert snapshot.symbol == "GOLD"
-    assert snapshot.timestamp == now
+    # Compare timestamps without timezone (DB may return naive datetime)
+    assert snapshot.timestamp.replace(tzinfo=None) == now.replace(tzinfo=None)
     assert snapshot.features == features
     assert snapshot.quality_score == 0.95
     assert snapshot.created_at is not None
@@ -105,7 +106,8 @@ async def test_get_latest_returns_most_recent(db_session: AsyncSession):
     assert result is not None
     assert result.id == latest_snapshot.id
     assert result.features["rsi"] == 70.0
-    assert result.timestamp == base_time
+    # Compare timestamps without timezone
+    assert result.timestamp.replace(tzinfo=None) == base_time.replace(tzinfo=None)
 
 
 @pytest.mark.asyncio
@@ -202,11 +204,11 @@ async def test_get_features_descending_order(db_session: AsyncSession):
     snapshots = await store.get_features(symbol="GOLD")
 
     assert len(snapshots) == 4
-    # Should be sorted descending
-    assert snapshots[0].timestamp == base_time + timedelta(minutes=45)
-    assert snapshots[1].timestamp == base_time + timedelta(minutes=30)
-    assert snapshots[2].timestamp == base_time + timedelta(minutes=15)
-    assert snapshots[3].timestamp == base_time + timedelta(minutes=0)
+    # Should be sorted descending (compare without timezone)
+    assert snapshots[0].timestamp.replace(tzinfo=None) == (base_time + timedelta(minutes=45)).replace(tzinfo=None)
+    assert snapshots[1].timestamp.replace(tzinfo=None) == (base_time + timedelta(minutes=30)).replace(tzinfo=None)
+    assert snapshots[2].timestamp.replace(tzinfo=None) == (base_time + timedelta(minutes=15)).replace(tzinfo=None)
+    assert snapshots[3].timestamp.replace(tzinfo=None) == (base_time + timedelta(minutes=0)).replace(tzinfo=None)
 
 
 @pytest.mark.asyncio

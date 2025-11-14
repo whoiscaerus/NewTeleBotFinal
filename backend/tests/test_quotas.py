@@ -5,6 +5,7 @@ Validates real business logic with fakeredis backend.
 """
 
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -30,8 +31,8 @@ async def quota_service(db_session: AsyncSession) -> QuotaService:
 
 @pytest.fixture
 def test_user_id() -> str:
-    """Test user ID."""
-    return "test-user-123"
+    """Test user ID - unique per test to avoid Redis state leaking."""
+    return f"test-user-{uuid4().hex[:8]}"
 
 
 # ========== Model Tests ==========

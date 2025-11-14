@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.audit.models import AuditLog
-from backend.app.users.models import User
+from backend.app.auth.models import User
 from backend.app.web3.models import NFTAccess, WalletLink
 from backend.app.web3.nft_access import NFTAccessService
 from backend.app.web3.wallet_link import WalletLinkService

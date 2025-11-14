@@ -13,7 +13,7 @@ from backend.app.privacy.schemas import (
     PrivacyRequestResponse,
 )
 from backend.app.privacy.service import PrivacyService
-from backend.app.users.models import User
+from backend.app.auth.models import User
 
 logger = get_logger(__name__)
 

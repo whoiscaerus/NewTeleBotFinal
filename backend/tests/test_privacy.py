@@ -27,7 +27,7 @@ from backend.app.privacy.models import PrivacyRequest, RequestStatus, RequestTyp
 from backend.app.privacy.schemas import PrivacyRequestCreate
 from backend.app.privacy.service import PrivacyService
 from backend.app.signals.models import Signal
-from backend.app.users.models import User
+from backend.app.auth.models import User
 
 
 @pytest.mark.asyncio

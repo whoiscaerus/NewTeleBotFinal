@@ -180,9 +180,13 @@ async def redeem_reward(
             f"Reward already redeemed: {reward_id} at {reward.redeemed_at.isoformat()}"
         )
 
-    # Check expiration
+    # Check expiration - handle SQLite naive datetimes
     now = datetime.now(UTC)
-    if now > reward.expires_at:
+    expires_at = reward.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    
+    if now > expires_at:
         raise ValueError(
             f"Reward expired: {reward_id} at {reward.expires_at.isoformat()}"
         )
@@ -230,11 +234,12 @@ async def get_active_rewards(
 
     now = datetime.now(UTC)
 
+    # Note: Can't use expires_at > now in SQLAlchemy query with SQLite naive datetimes
+    # So we query all unredeemed rewards and filter expiration in Python
     query = select(Reward).where(
         and_(
             Reward.user_id == user_id,
             Reward.redeemed_at.is_(None),
-            Reward.expires_at > now,
         )
     )
 
@@ -244,11 +249,20 @@ async def get_active_rewards(
     query = query.order_by(Reward.expires_at)
 
     result = await db.execute(query)
-    rewards = list(result.scalars().all())
+    all_rewards = list(result.scalars().all())
+
+    # Filter expired rewards (handle SQLite naive datetimes)
+    active_rewards = []
+    for reward in all_rewards:
+        expires_at = reward.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if now <= expires_at:
+            active_rewards.append(reward)
 
     logger.debug(
-        f"Active rewards: user={user_id} type={reward_type} count={len(rewards)}",
-        extra={"user_id": user_id, "reward_type": reward_type, "count": len(rewards)},
+        f"Active rewards: user={user_id} type={reward_type} count={len(active_rewards)}",
+        extra={"user_id": user_id, "reward_type": reward_type, "count": len(active_rewards)},
     )
 
-    return rewards
+    return active_rewards

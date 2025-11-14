@@ -13,7 +13,7 @@ from backend.app.core.db import get_db
 from backend.app.messaging.senders import send_email, send_telegram
 from backend.app.reports.generator import ReportGenerator
 from backend.app.reports.models import Report, ReportPeriod, ReportType
-from backend.app.users.models import User
+from backend.app.auth.models import User
 
 logger = logging.getLogger(__name__)
 

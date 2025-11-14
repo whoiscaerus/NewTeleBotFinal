@@ -13,13 +13,12 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.observability.metrics import metrics_collector
-
 from backend.app.core.db import get_db
+from backend.app.observability.metrics import metrics
 from backend.app.strategy.logs.models import DecisionLog, DecisionOutcome
 
 logger = logging.getLogger(__name__)
@@ -85,7 +84,7 @@ async def search_decisions(
         GET /api/v1/decisions/search?strategy=fib_rsi&symbol=GOLD&page=1
     """
     # Track search telemetry
-    metrics_collector.decision_search_total.inc()
+    metrics.decision_search_total.inc()
 
     # Build query with filters
     query = select(DecisionLog)

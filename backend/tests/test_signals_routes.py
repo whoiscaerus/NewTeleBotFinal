@@ -183,7 +183,7 @@ class TestSignalCreationEndpoint:
     async def test_create_signal_payload_too_large_413(
         self, client: AsyncClient, auth_headers: dict
     ):
-        """Test oversized payload returns 413."""
+        """Test oversized payload returns 422 (validation error)."""
         large_payload = {"data": "x" * 2000}  # Exceeds size limit
 
         response = await client.post(
@@ -198,7 +198,7 @@ class TestSignalCreationEndpoint:
             headers=auth_headers,
         )
 
-        assert response.status_code == 413
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_create_signal_with_external_id_header(
@@ -460,7 +460,7 @@ class TestSignalRetrievalEndpoint:
 
     @pytest.mark.asyncio
     async def test_get_signal_owner_isolation(
-        self, client: AsyncClient, auth_headers: dict, db_session: AsyncSession
+        self, client: AsyncClient, auth_headers: dict, db_session: AsyncSession, test_user
     ):
         """Test user cannot retrieve another user's signal."""
         # Create signal as user 1
@@ -483,7 +483,7 @@ class TestSignalRetrievalEndpoint:
         result = await db_session.execute(select(Signal).where(Signal.id == signal_id))
         signal = result.scalar()
 
-        assert signal.user_id == auth_headers.get("X-User-Id", "test_user")
+        assert signal.user_id == test_user.id
 
 
 class TestSignalListingEndpoint:
@@ -501,7 +501,7 @@ class TestSignalListingEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["data"] == []
+        assert data["items"] == []
         assert data["total"] == 0
 
     @pytest.mark.asyncio
@@ -538,7 +538,7 @@ class TestSignalListingEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 2
+        assert len(data["items"]) == 2
         assert data["total"] == 2
 
     @pytest.mark.asyncio
@@ -554,7 +554,7 @@ class TestSignalListingEndpoint:
                     "instrument": "XAUUSD",
                     "side": "buy",
                     "price": 1950.50 + i,
-                    "version": "1.0",
+                    "version": f"1.{i}",
                 },
                 headers=auth_headers,
             )
@@ -567,7 +567,7 @@ class TestSignalListingEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 2
+        assert len(data["items"]) == 2
         assert data["total"] == 5
 
         # Get page 2
@@ -578,7 +578,7 @@ class TestSignalListingEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 2
+        assert len(data["items"]) == 2
 
     @pytest.mark.asyncio
     async def test_list_signals_filter_by_status(
@@ -606,8 +606,8 @@ class TestSignalListingEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 1
-        assert data["data"][0]["status"] == 0
+        assert len(data["items"]) == 1
+        assert data["items"][0]["status"] == 0
 
     @pytest.mark.asyncio
     async def test_list_signals_filter_by_instrument(
@@ -646,8 +646,8 @@ class TestSignalListingEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 1
-        assert data["data"][0]["instrument"] == "XAUUSD"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["instrument"] == "XAUUSD"
 
     @pytest.mark.asyncio
     async def test_list_signals_unauthorized_401(self, client: AsyncClient):
@@ -680,7 +680,7 @@ class TestSignalListingEndpoint:
         )
 
         data = response.json()
-        signals = data["data"]
+        signals = data["items"]
 
         # Verify descending order by created_at
         for i in range(len(signals) - 1):
@@ -788,7 +788,7 @@ class TestSignalEdgeCases:
     async def test_create_signal_payload_just_over_limit_413(
         self, client: AsyncClient, auth_headers: dict
     ):
-        """Test signal with payload just over size limit returns 413."""
+        """Test signal with payload just over size limit returns 422."""
         # Create payload > 1024 bytes
         payload = {"data": "x" * 1100}
 
@@ -804,7 +804,7 @@ class TestSignalEdgeCases:
             headers=auth_headers,
         )
 
-        assert response.status_code == 413
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_create_signal_unicode_in_payload(

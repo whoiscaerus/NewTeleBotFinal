@@ -137,7 +137,7 @@ class SyntheticCheck(Base):
     )  # websocket_ping, mt5_poll, etc.
     status = Column(Enum(SyntheticStatus), nullable=False, index=True)
     latency_ms = Column(Float, nullable=True)  # Response time in milliseconds
-    checked_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    checked_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     error_message = Column(Text, nullable=True)
     incident_id = Column(Integer, ForeignKey("incidents.id"), nullable=True)
 
@@ -166,7 +166,7 @@ class RemediationAction(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     incident_id = Column(Integer, ForeignKey("incidents.id"), nullable=False)
     action_type = Column(
-        String(50), nullable=False, index=True
+        String(50), nullable=False
     )  # restart_service, rotate_token, etc.
     status = Column(
         Enum(RemediationStatus), nullable=False, default=RemediationStatus.PENDING

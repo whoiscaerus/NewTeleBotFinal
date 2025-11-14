@@ -22,7 +22,7 @@ from backend.app.clients.devices.models import Device
 from backend.app.fraud.models import AnomalyEvent
 from backend.app.kb.models import Article
 from backend.app.support.models import Ticket
-from backend.app.users.models import User
+from backend.app.auth.models import User
 
 # ===== Fixtures =====
 

@@ -3,6 +3,7 @@
 import logging
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.approvals.models import Approval
@@ -40,13 +41,20 @@ class ApprovalService:
 
         Returns:
             Created approval
+            
+        Raises:
+            ValueError: If signal not found or user is not the signal owner
         """
         try:
             # Get signal
             result = await self.db.execute(select(Signal).where(Signal.id == signal_id))
             signal = result.scalar()
             if not signal:
-                raise ValueError(f"Signal {signal_id} not found")
+                raise ValueError("Signal not found")
+            
+            # Check ownership: only signal owner can approve it
+            if signal.user_id != user_id:
+                raise ValueError("Not signal owner")
 
             # Create approval
             approval = Approval(
@@ -97,6 +105,23 @@ class ApprovalService:
 
             return approval
 
+        except ValueError:
+            # Re-raise ValueError for business logic errors (signal not found, etc)
+            raise
+        except IntegrityError as e:
+            # Handle database constraint violations (e.g., duplicate approval)
+            await self.db.rollback()
+            if "unique constraint" in str(e).lower() or "duplicate" in str(e).lower():
+                logger.warning(f"Duplicate approval attempt: {signal_id} by {user_id}")
+                raise ValueError("Approval already exists for this signal") from e
+            else:
+                logger.error(f"Database integrity error: {e}", exc_info=True)
+                raise APIError(
+                    status_code=409,
+                    error_type="conflict",
+                    title="Database Conflict",
+                    detail="Unable to create approval due to data conflict",
+                ) from e
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Approval creation failed: {e}", exc_info=True)

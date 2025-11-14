@@ -128,12 +128,12 @@ class WalkForwardValidator:
         """Initialize walk-forward validator.
 
         Args:
-            n_folds: Number of folds (K)
+            n_folds: Number of folds (K), minimum 1
             test_window_days: Size of each test window in days
             config: Backtest configuration (position size, slippage, etc.)
         """
-        if n_folds < 2:
-            raise ValueError("n_folds must be at least 2")
+        if n_folds < 1:
+            raise ValueError("n_folds must be at least 1")
         if test_window_days < 1:
             raise ValueError("test_window_days must be at least 1")
 
@@ -276,6 +276,10 @@ class WalkForwardValidator:
     ) -> list[datetime]:
         """Calculate chronological fold boundaries.
 
+        Divides the date range into n_folds test windows with equal spacing.
+        The test_window_days parameter is validated against the date range
+        but not used for boundary calculation - boundaries are spread evenly.
+
         Returns:
             List of (n_folds + 1) timestamps marking fold boundaries
         """
@@ -284,16 +288,23 @@ class WalkForwardValidator:
 
         if total_days < test_days:
             raise ValueError(
-                f"Date range too small: need {test_days} days for "
+                f"Insufficient data: need {test_days} days for "
                 f"{self.n_folds} folds of {self.test_window_days} days each"
             )
 
+        # Calculate window size by dividing total range into n_folds equal parts
+        window_size_days = total_days / self.n_folds
+
         boundaries = [start_date]
 
-        for fold_idx in range(self.n_folds):
+        for fold_idx in range(1, self.n_folds):
+            # Each boundary marks the END of a test window
             boundary = start_date + timedelta(
-                days=(fold_idx + 1) * self.test_window_days
+                days=fold_idx * window_size_days
             )
             boundaries.append(boundary)
+
+        # Last boundary is always end_date
+        boundaries.append(end_date)
 
         return boundaries

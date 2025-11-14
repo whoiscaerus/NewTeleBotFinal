@@ -104,6 +104,8 @@ def pytest_configure(config):
         PaperTrade,
     )
     from backend.app.prefs.models import UserPreferences  # noqa: F401
+    from backend.app.privacy.models import PrivacyRequest  # noqa: F401
+    from backend.app.reports.models import Report  # noqa: F401
     from backend.app.strategy.logs.models import DecisionLog  # noqa: F401
     from backend.app.strategy.models import (  # noqa: F401
         CanaryConfig,
@@ -126,14 +128,9 @@ def pytest_configure(config):
         Recommendation,
         Variant,
     )
+    from backend.app.marketing.models import MarketingClick  # noqa: F401
 
     print(f"[ROOT CONFTEST] Base.metadata.tables: {list(Base.metadata.tables.keys())}")
-
-
-# Import models again at module level so fixtures can use them
-# These imports happen AFTER pytest_configure, so models already registered
-from backend.app.auth.models import User  # noqa: F401, E402
-from backend.app.clients.models import Client, Device  # noqa: F401, E402
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -305,6 +302,7 @@ async def client(db_session: AsyncSession, monkeypatch):
         """
         # Return the first user from the database if any
         from sqlalchemy import select
+        from backend.app.auth.models import User
 
         result = await db_session.execute(select(User).limit(1))
         user = result.scalar_one_or_none()
@@ -317,6 +315,8 @@ async def client(db_session: AsyncSession, monkeypatch):
     # Override get_device_auth to bypass signature verification in tests
     # Device already imported at top of file
     from backend.app.ea.auth import get_device_auth
+    from backend.app.clients.models import Device
+    from sqlalchemy import select
 
     async def mock_get_device_auth(
         x_device_id: str = Header("", alias="X-Device-Id"),
@@ -417,6 +417,68 @@ async def client(db_session: AsyncSession, monkeypatch):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture
+def ws_client(db_session: AsyncSession, monkeypatch):
+    """Create FastAPI TestClient with WebSocket support for testing real connections.
+    
+    This fixture provides a synchronous TestClient that supports websocket_connect(),
+    unlike the async AsyncClient. Use this fixture for WebSocket tests.
+    
+    Example:
+        with ws_client.websocket_connect("/api/v1/dashboard/ws?token=...") as ws:
+            data = ws.receive_json()
+    """
+    from fastapi.testclient import TestClient
+    from backend.app.core.db import get_db
+    from backend.app.orchestrator.main import app
+    
+    # Create override for get_db
+    async def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+    
+    # Mock the rate limiter
+    class NoOpRateLimiter:
+        def __init__(self):
+            self._initialized = False
+            self.redis_client = None
+
+        async def is_allowed(self, key: str, **kwargs) -> bool:
+            return True
+
+        async def get_remaining(self, key: str, max_tokens: int, **kwargs) -> int:
+            return max_tokens
+
+    async def mock_get_rate_limiter():
+        return NoOpRateLimiter()
+
+    app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr(
+        "backend.app.core.decorators.get_rate_limiter", mock_get_rate_limiter
+    )
+
+    # Override get_current_user for auth
+    from backend.app.auth.dependencies import get_current_user
+    
+    async def mock_get_current_user():
+        from sqlalchemy import select
+        from backend.app.auth.models import User
+        result = await db_session.execute(select(User).limit(1))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        return user
+
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    
+    # Create synchronous TestClient for WebSocket support
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
+
+
 @pytest_asyncio.fixture
 async def real_auth_client(db_session: AsyncSession, monkeypatch):
     """FastAPI test client with REAL device auth (no mocking).
@@ -490,6 +552,30 @@ async def real_auth_client(db_session: AsyncSession, monkeypatch):
 
 
 @pytest.fixture
+def clear_auth_override():
+    """Clear the get_current_user override for tests that need real auth checking.
+    
+    Use this fixture in tests that verify 401 responses for missing/invalid JWT.
+    Example:
+        @pytest.mark.asyncio
+        async def test_missing_auth_returns_401(self, client, clear_auth_override):
+            response = await client.post("/api/v1/approvals", json={...})
+            assert response.status_code == 401
+    """
+    from backend.app.auth.dependencies import get_current_user
+    from backend.app.orchestrator.main import app
+    
+    # Remove the override if it exists
+    if get_current_user in app.dependency_overrides:
+        del app.dependency_overrides[get_current_user]
+    
+    yield
+    
+    # Restore override after test (though conftest sets it up again)
+    # This is just safety - the autouse fixture will restore it anyway
+
+
+@pytest.fixture
 def valid_signal_data() -> dict:
     """Create valid signal data for testing."""
     return {
@@ -531,7 +617,7 @@ async def admin_token(db_session: AsyncSession) -> str:
     """
     from uuid import uuid4
 
-    from backend.app.auth.models import UserRole
+    from backend.app.auth.models import User, UserRole
     from backend.app.auth.utils import create_access_token, hash_password
 
     # Create admin user
@@ -551,6 +637,26 @@ async def admin_token(db_session: AsyncSession) -> str:
     token = create_access_token(subject=str(admin_user.id), role="admin")
 
     return token
+
+
+# DEPRECATED: Use create_access_token() directly instead
+# Kept for backwards compatibility with existing tests that call it as a helper
+async def create_auth_token(user) -> str:
+    """Helper to generate JWT token for a test user.
+    
+    Args:
+        user: User model instance
+        
+    Returns:
+        JWT token string
+        
+    Usage:
+        token = await create_auth_token(user)
+        headers = {"Authorization": f"Bearer {token}"}
+    """
+    from backend.app.auth.utils import create_access_token
+    
+    return create_access_token(subject=str(user.id), role=getattr(user, "role", "user"))
 
 
 @pytest.fixture
@@ -759,6 +865,7 @@ async def admin_auth_headers(admin_user) -> dict:
 async def test_client(db_session: AsyncSession):
     """Create a test client for device registration."""
     from uuid import uuid4
+    from backend.app.clients.models import Client
 
     # Client already imported at top of file
 
@@ -777,6 +884,7 @@ async def test_client(db_session: AsyncSession):
 async def test_device(db_session: AsyncSession, test_client):
     """Create a test EA device for integration tests."""
     from uuid import uuid4
+    from backend.app.clients.models import Device
 
     # Device already imported at top of file
 
@@ -913,3 +1021,97 @@ async def admin_headers(admin_token: str) -> dict:
         ... )
     """
     return {"Authorization": f"Bearer {admin_token}"}
+
+
+@pytest_asyncio.fixture
+async def test_signal(db_session: AsyncSession, test_user):
+    """Create a test signal for integration tests."""
+    from uuid import uuid4
+
+    from backend.app.signals.models import Signal
+
+    signal = Signal(
+        id=str(uuid4()),
+        user_id=test_user.id,
+        instrument="XAUUSD",
+        side=0,  # buy
+        price=1950.50,
+        payload={"rsi": 75.5, "confidence": 0.85},
+        version="1.0",
+    )
+    db_session.add(signal)
+    await db_session.commit()
+    await db_session.refresh(signal)
+    return signal
+
+
+@pytest_asyncio.fixture
+async def create_test_user(db_session: AsyncSession):
+    """Factory fixture to create test users with custom email.
+    
+    Usage:
+        user1 = await create_test_user("user1@test.com")
+        user2 = await create_test_user("user2@test.com", role="ADMIN")
+    """
+    from uuid import uuid4
+    from passlib.context import CryptContext
+    
+    from backend.app.auth.models import User
+    
+    pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+    
+    async def _create_user(email: str = None, password: str = "test123", role: str = "USER"):
+        if email is None:
+            email = f"user{str(uuid4())[:8]}@test.com"
+        
+        user = User(
+            id=str(uuid4()),
+            email=email,
+            password_hash=pwd_context.hash(password),
+            role=role,
+            telegram_user_id=None,
+        )
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+        return user
+    
+    return _create_user
+
+
+@pytest_asyncio.fixture
+async def create_test_signal(db_session: AsyncSession):
+    """Factory fixture to create test signals with custom parameters.
+    
+    Usage:
+        signal = await create_test_signal(user_id=user.id, instrument="EURUSD")
+    """
+    from uuid import uuid4
+    
+    from backend.app.signals.models import Signal
+    
+    async def _create_signal(
+        user_id: str,
+        instrument: str = "XAUUSD",
+        side: int = 0,
+        price: float = 1950.50,
+        payload: dict = None,
+    ):
+        if payload is None:
+            payload = {"rsi": 75.5, "confidence": 0.85}
+        
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=user_id,
+            instrument=instrument,
+            side=side,
+            price=price,
+            payload=payload,
+            version="1.0",
+        )
+        db_session.add(signal)
+        await db_session.commit()
+        await db_session.refresh(signal)
+        return signal
+    
+    return _create_signal

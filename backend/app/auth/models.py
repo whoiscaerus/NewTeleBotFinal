@@ -52,6 +52,9 @@ class User(Base):
         onupdate=datetime.utcnow,
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    theme_preference: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, default=None
+    )
 
     # Relationships
     # NOTE: AccountLink (PR-043), Endorsement (PR-024), UserTrustScore (PR-024), and UserPreferences (PR-059) are implemented
@@ -78,6 +81,12 @@ class User(Base):
     )
     trust_score: Mapped[object] = relationship(
         "UserTrustScore", back_populates="user", uselist=False, lazy="select"
+    )
+    privacy_requests: Mapped[list] = relationship(
+        "PrivacyRequest",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
     )
     preferences: Mapped[object] = relationship(
         "UserPreferences",
@@ -128,6 +137,12 @@ class User(Base):
     )
     exposures: Mapped[list] = relationship(
         "Exposure",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+    reports: Mapped[list] = relationship(
+        "Report",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",

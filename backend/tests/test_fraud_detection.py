@@ -562,7 +562,7 @@ async def test_scan_recent_trades_empty_result(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_get_fraud_events_requires_admin(
-    async_client: AsyncClient, auth_headers: dict
+    client: AsyncClient, auth_headers: dict
 ):
     """Test that /fraud/events endpoint requires admin role.
 
@@ -570,7 +570,7 @@ async def test_get_fraud_events_requires_admin(
         - Regular user should get 403 Forbidden
         - Only admin users can access fraud events
     """
-    response = await async_client.get("/api/v1/fraud/events", headers=auth_headers)
+    response = await client.get("/api/v1/fraud/events", headers=auth_headers)
 
     assert response.status_code == 403
     assert "admin" in response.json()["detail"].lower()
@@ -578,7 +578,7 @@ async def test_get_fraud_events_requires_admin(
 
 @pytest.mark.asyncio
 async def test_get_fraud_events_admin_success(
-    async_client: AsyncClient,
+    client: AsyncClient,
     admin_auth_headers: dict,
     db_session: AsyncSession,
     test_user: User,
@@ -602,7 +602,7 @@ async def test_get_fraud_events_admin_success(
     db_session.add(anomaly)
     await db_session.commit()
 
-    response = await async_client.get(
+    response = await client.get(
         "/api/v1/fraud/events", headers=admin_auth_headers
     )
 
@@ -619,7 +619,7 @@ async def test_get_fraud_events_admin_success(
 
 @pytest.mark.asyncio
 async def test_get_fraud_events_filtering(
-    async_client: AsyncClient,
+    client: AsyncClient,
     admin_auth_headers: dict,
     db_session: AsyncSession,
     test_user: User,
@@ -656,7 +656,7 @@ async def test_get_fraud_events_filtering(
     await db_session.commit()
 
     # Filter by type
-    response = await async_client.get(
+    response = await client.get(
         "/api/v1/fraud/events",
         headers=admin_auth_headers,
         params={"anomaly_type": AnomalyType.SLIPPAGE_EXTREME},
@@ -669,7 +669,7 @@ async def test_get_fraud_events_filtering(
     )
 
     # Filter by severity
-    response = await async_client.get(
+    response = await client.get(
         "/api/v1/fraud/events",
         headers=admin_auth_headers,
         params={"severity": AnomalySeverity.CRITICAL.value},
@@ -682,7 +682,7 @@ async def test_get_fraud_events_filtering(
 
 @pytest.mark.asyncio
 async def test_get_fraud_summary_admin(
-    async_client: AsyncClient,
+    client: AsyncClient,
     admin_auth_headers: dict,
     db_session: AsyncSession,
     test_user: User,
@@ -716,7 +716,7 @@ async def test_get_fraud_summary_admin(
         db_session.add(anomaly)
     await db_session.commit()
 
-    response = await async_client.get(
+    response = await client.get(
         "/api/v1/fraud/summary", headers=admin_auth_headers
     )
 
@@ -735,7 +735,7 @@ async def test_get_fraud_summary_admin(
 
 @pytest.mark.asyncio
 async def test_review_fraud_event_admin(
-    async_client: AsyncClient,
+    client: AsyncClient,
     admin_auth_headers: dict,
     db_session: AsyncSession,
     test_user: User,
@@ -762,7 +762,7 @@ async def test_review_fraud_event_admin(
     await db_session.refresh(anomaly)
 
     # Review anomaly
-    response = await async_client.post(
+    response = await client.post(
         f"/api/v1/fraud/events/{anomaly.event_id}/review",
         headers=admin_auth_headers,
         json={
@@ -782,7 +782,7 @@ async def test_review_fraud_event_admin(
 
 @pytest.mark.asyncio
 async def test_review_fraud_event_invalid_transition(
-    async_client: AsyncClient,
+    client: AsyncClient,
     admin_auth_headers: dict,
     db_session: AsyncSession,
     test_user: User,
@@ -808,7 +808,7 @@ async def test_review_fraud_event_invalid_transition(
     await db_session.refresh(anomaly)
 
     # Try invalid transition
-    response = await async_client.post(
+    response = await client.post(
         f"/api/v1/fraud/events/{anomaly.event_id}/review",
         headers=admin_auth_headers,
         json={"status": "investigating"},

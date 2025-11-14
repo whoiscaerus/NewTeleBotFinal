@@ -16,8 +16,10 @@ from backend.app.clients.exec.routes import router as exec_router
 from backend.app.copy.routes import router as copy_router
 from backend.app.core.settings import get_settings
 from backend.app.crm.routes import router as crm_router
+from backend.app.strategy.decision_search import router as decision_search_router
 from backend.app.ea.routes_admin import router as ea_admin_router
 from backend.app.education.routes import router as education_router
+from backend.app.explain.routes import router as explain_router
 from backend.app.exports.routes import router as exports_router
 from backend.app.health.routes import (
     router as health_router,  # PR-100: Health Monitoring
@@ -91,6 +93,8 @@ app.include_router(revenue_router, prefix="/api/v1", tags=["revenue"])
 app.include_router(risk_router, tags=["risk"])
 app.include_router(trading_router, tags=["trading-controls"])  # PR-075
 app.include_router(signals_router, prefix="/api/v1", tags=["signals"])
+app.include_router(decision_search_router, tags=["decisions"])  # PR-080
+app.include_router(explain_router, tags=["explain"])  # PR-080
 app.include_router(devices_router, prefix="/api/v1", tags=["devices"])
 app.include_router(exec_router, prefix="/api/v1", tags=["execution"])
 app.include_router(ea_admin_router, tags=["executions"])

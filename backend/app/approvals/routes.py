@@ -31,6 +31,94 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+@router.post("/approvals", response_model=ApprovalOut, status_code=201)
+async def create_approval(
+    approval_create: ApprovalCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ApprovalOut:
+    """Create approval for a signal.
+
+    Submits user's approval/rejection decision for a pending signal.
+    Returns 201 on success, 400 if signal not found or already decided.
+
+    Args:
+        approval_create: Approval decision (signal_id, decision, reason, consent_version)
+        request: HTTP request (for IP/UA)
+        db: Database session
+        current_user: Authenticated user making decision
+
+    Returns:
+        ApprovalOut: Created approval record
+
+    Raises:
+        HTTPException: 401 if not authenticated, 404 if signal not found,
+                      409 if already approved/rejected, 422 if validation fails
+
+    Security:
+        - Users can only approve/reject their own signals
+        - Requires JWT authentication
+        - IP and User-Agent logged for audit trail
+
+    Example:
+        >>> response = await create_approval(
+        ...     ApprovalCreate(signal_id="sig-123", decision="approved"),
+        ...     request, db, current_user
+        ... )
+        >>> response.status_code == 201
+        True
+    """
+    try:
+        service = ApprovalService(db)
+        
+        # Get client IP and User-Agent for audit logging
+        client_ip = get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "unknown")
+
+        # Create approval
+        approval = await service.approve_signal(
+            signal_id=approval_create.signal_id,
+            user_id=str(current_user.id),
+            decision=approval_create.decision,
+            reason=approval_create.reason,
+            ip=client_ip,
+            ua=user_agent,
+            consent_version=approval_create.consent_version,
+        )
+
+        # Convert decision from int to string ("approved" or "rejected")
+        decision_str = "approved" if approval.decision == 1 else "rejected"
+
+        # Return success response
+        return ApprovalOut(
+            id=approval.id,
+            signal_id=approval.signal_id,
+            user_id=approval.user_id,
+            decision=decision_str,
+            reason=approval.reason,
+            consent_version=approval.consent_version,
+            created_at=approval.created_at,
+        )
+
+    except ValueError as e:
+        error_msg = str(e)
+        logger.warning(f"Approval validation error: {error_msg}")
+        
+        # Different error codes based on the error message
+        if "already exists" in error_msg.lower():
+            raise HTTPException(status_code=409, detail=error_msg)
+        elif "not found" in error_msg.lower():
+            raise HTTPException(status_code=404, detail=error_msg)
+        elif "not signal owner" in error_msg.lower():
+            raise HTTPException(status_code=403, detail=error_msg)
+        else:
+            raise HTTPException(status_code=400, detail=error_msg)
+    except Exception as e:
+        logger.error(f"Error creating approval: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create approval")
+
+
 @router.get("/approvals/pending", response_model=list[PendingApprovalOut])
 async def get_pending_approvals(
     db: AsyncSession = Depends(get_db),

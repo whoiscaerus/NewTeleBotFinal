@@ -720,13 +720,13 @@ class TestCourseCompletion:
         """Test course with no required lessons is considered complete."""
         user_id = str(uuid4())
 
-        # Create course with no lessons
+        # Create course with no lessons (still needs valid duration)
         course = Course(
             id=str(uuid4()),
             title="Empty Course",
             description="No lessons",
             status=CourseStatus.PUBLISHED,
-            duration_minutes=0,
+            duration_minutes=1,  # Minimum valid duration
             difficulty_level=1,
         )
         db.add(course)
@@ -781,6 +781,7 @@ class TestCourseCompletion:
         db: AsyncSession,
         sample_course: Course,
         sample_lesson: Lesson,
+        sample_quiz: Quiz,
     ):
         """Test partial course completion."""
         user_id = str(uuid4())
@@ -806,11 +807,8 @@ class TestCourseCompletion:
         db.add(quiz2)
         await db.commit()
 
-        # Pass only first lesson
-        quiz1_result = await db.execute(
-            select(Quiz).where(Quiz.lesson_id == sample_lesson.id)
-        )
-        quiz1 = quiz1_result.scalar_one()
+        # Pass only first lesson - use sample_quiz fixture directly
+        quiz1 = sample_quiz
 
         attempt1 = Attempt(
             id=str(uuid4()),
@@ -858,7 +856,12 @@ class TestRewardIssuance:
         assert reward.reward_value == 15.0
         assert reward.currency is None
         assert reward.redeemed_at is None
-        assert reward.expires_at > datetime.now(UTC)
+        
+        # Handle SQLite naive datetime: convert to aware if needed
+        expires_at = reward.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        assert expires_at > datetime.now(UTC)
 
     @pytest.mark.asyncio
     async def test_grant_discount_invalid_percent(self, db: AsyncSession):
@@ -925,6 +928,13 @@ class TestRewardIssuance:
         redeemed = await redeem_reward(db, reward.id, order_id)
 
         assert redeemed.redeemed_at is not None
+        # Verify redeemed_at is recent (within last minute)
+        now = datetime.now(UTC)
+        redeemed_at = redeemed.redeemed_at
+        if redeemed_at.tzinfo is None:
+            redeemed_at = redeemed_at.replace(tzinfo=UTC)
+        time_diff = now - redeemed_at
+        assert time_diff.total_seconds() < 60  # Within last 60 seconds
         assert redeemed.redemption_order_id == order_id
 
     @pytest.mark.asyncio
@@ -1015,7 +1025,13 @@ class TestRewardIssuance:
 
         assert len(active) == 2
         assert all(r.redeemed_at is None for r in active)
-        assert all(r.expires_at > datetime.now(UTC) for r in active)
+        # Handle SQLite naive datetimes
+        now = datetime.now(UTC)
+        for r in active:
+            expires_at = r.expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=UTC)
+            assert expires_at > now
 
     @pytest.mark.asyncio
     async def test_get_active_rewards_by_type(self, db: AsyncSession):
@@ -1124,15 +1140,54 @@ class TestRewardAutoIssuance:
     @pytest.mark.asyncio
     async def test_no_reward_when_not_completed(
         self,
+        db: AsyncSession,
         education_service: EducationService,
-        sample_course: Course,
     ):
         """Test reward not issued when course not completed."""
         user_id = str(uuid4())
+        
+        # Create course with required lesson (so it's NOT auto-complete)
+        course = Course(
+            id=str(uuid4()),
+            title="Advanced Trading",
+            description="Advanced trading strategies",
+            status=CourseStatus.PUBLISHED,
+            duration_minutes=120,
+            difficulty_level=2,
+            reward_percent=15.0,
+            reward_expires_days=30,
+            order_index=2,
+        )
+        db.add(course)
+        
+        # Create required lesson (no quiz = would be complete, so add quiz)
+        lesson = Lesson(
+            id=str(uuid4()),
+            course_id=course.id,
+            title="Advanced Strategies",
+            content="Learn advanced trading",
+            order_index=1,
+            duration_minutes=60,
+            is_required=True,
+        )
+        db.add(lesson)
+        
+        # Create quiz for lesson (required lesson + quiz = must pass to complete)
+        quiz = Quiz(
+            id=str(uuid4()),
+            lesson_id=lesson.id,
+            title="Strategy Quiz",
+            description="Test your knowledge",
+            passing_score=70.0,
+            max_attempts=3,
+            retry_delay_minutes=0,
+        )
+        db.add(quiz)
+        await db.commit()
 
-        # Try to issue reward without completing course
+        # Try to issue reward without passing quiz (course not complete)
         with pytest.raises(ValueError, match="not completed"):
-            await education_service.issue_course_reward(user_id, sample_course.id)
+            await education_service.issue_course_reward(user_id, course.id)
 
     @pytest.mark.asyncio
     async def test_no_reward_when_not_configured(
