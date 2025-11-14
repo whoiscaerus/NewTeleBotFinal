@@ -78,9 +78,12 @@ class SignalCreate(BaseModel):
             raise ValueError(f"Instrument {v} not in whitelist")
         return v
 
-    @validator("payload")
+    @validator("payload", pre=True, always=True)
     def validate_payload(cls, v: dict[str, Any]) -> dict[str, Any]:
-        """Validate payload size."""
+        """Validate payload size. Convert None to empty dict."""
+        if v is None:
+            return {}
+
         import json
 
         payload_size = len(json.dumps(v))
@@ -109,6 +112,9 @@ class SignalOut(BaseModel):
     """Schema for signal responses."""
 
     id: str = Field(..., description="Unique signal ID")
+    user_id: str | None = Field(
+        default=None, description="User ID who created this signal"
+    )
     instrument: str
     side: int  # 0=buy, 1=sell (from database)
     price: float
@@ -116,8 +122,8 @@ class SignalOut(BaseModel):
     payload: dict[str, Any]
     version: str = Field(default="1.0", description="Signal schema version")
     external_id: str | None = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = Field(default=None)
+    updated_at: datetime | None = Field(default=None)
 
     class Config:
         """Pydantic config."""
@@ -144,6 +150,26 @@ class SignalOut(BaseModel):
             5: "cancelled",
         }
         return labels.get(self.status, "unknown")
+
+
+class SignalUpdate(BaseModel):
+    """Schema for updating existing signal."""
+
+    status: int = Field(
+        ...,
+        ge=0,
+        le=5,
+        description="New signal status (0=new, 1=approved, 2=rejected, 3=executed, 4=closed, 5=cancelled)",
+    )
+
+    class Config:
+        """Pydantic config."""
+
+        json_schema_extra = {
+            "example": {
+                "status": 1,  # approved
+            }
+        }
 
 
 class SignalListOut(BaseModel):

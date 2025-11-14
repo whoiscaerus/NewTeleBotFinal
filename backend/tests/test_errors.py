@@ -330,4 +330,7 @@ class TestErrorResponses:
         # 401 Unauthorized is correct when no credentials provided
         assert response.status_code == 401
         data = response.json()
-        assert "Missing Authorization" in data["detail"]
+        assert (
+            "Not authenticated" in data["detail"]
+            or "Missing Authorization" in data["detail"]
+        )

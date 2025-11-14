@@ -21,6 +21,7 @@ def _create_signal_out(**kwargs):
     """Helper to create SignalOut with default datetimes."""
     defaults = {
         "id": "sig_test",
+        "user_id": "user_123",
         "instrument": "XAUUSD",
         "side": 0,
         "price": 1950.50,
@@ -415,12 +416,15 @@ class TestSignalOutSchema:
         """Test side_label property for buy."""
         signal_out = SignalOut(
             id="sig_123",
+            user_id="user_456",
             instrument="XAUUSD",
             side=0,  # buy
             price=1950.50,
             status=0,
             payload={},
             version="1.0",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
 
         assert signal_out.side_label == "buy"
@@ -429,12 +433,15 @@ class TestSignalOutSchema:
         """Test side_label property for sell."""
         signal_out = SignalOut(
             id="sig_123",
+            user_id="user_456",
             instrument="XAUUSD",
             side=1,  # sell
             price=1950.50,
             status=0,
             payload={},
             version="1.0",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
 
         assert signal_out.side_label == "sell"
