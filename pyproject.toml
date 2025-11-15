@@ -73,6 +73,8 @@ dev = [
     "networkx>=3.2.0",
     "web3>=7.0.0",
     "eth-account>=0.13.0",
+    "tenacity>=8.0.0",
+    "boto3>=1.26.0",
 ]
 # MetaTrader5 is Windows-only and not available on PyPI for Linux
 # For CI/CD testing, we mock MT5 imports. For Windows production, install separately:
