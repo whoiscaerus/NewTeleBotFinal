@@ -10,7 +10,12 @@ from backend.app.auth.dependencies import get_current_user
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
 from backend.app.core.settings import get_settings
-from backend.app.signals.schema import SignalCreate, SignalListOut, SignalOut, SignalUpdate
+from backend.app.signals.schema import (
+    SignalCreate,
+    SignalListOut,
+    SignalOut,
+    SignalUpdate,
+)
 from backend.app.signals.service import SignalService
 
 logger = logging.getLogger(__name__)
@@ -123,6 +128,7 @@ async def update_signal(
     """Update signal status."""
     try:
         from sqlalchemy import select
+
         from backend.app.signals.models import Signal
 
         # Query signal directly from database

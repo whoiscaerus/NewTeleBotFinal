@@ -7,6 +7,7 @@ REST endpoints for managing copy entries and resolving text.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User
 from backend.app.copy.schemas import (
     CopyConversionRequest,
     CopyEntryCreate,
@@ -20,7 +21,6 @@ from backend.app.copy.schemas import (
 )
 from backend.app.copy.service import CopyService
 from backend.app.core.db import get_db
-from backend.app.auth.models import User
 
 router = APIRouter(prefix="/api/v1/copy", tags=["copy"])
 

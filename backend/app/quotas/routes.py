@@ -10,10 +10,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.quotas.service import QuotaExceededException, QuotaService
 from backend.app.subscriptions.models import SubscriptionTier
-from backend.app.auth.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ async def get_current_user() -> User:
         id="test-user-123",
         email="test@example.com",
         password_hash="$2b$12$...",
-        role="user"
+        role="user",
     )
     return user
 

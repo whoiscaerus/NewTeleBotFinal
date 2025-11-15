@@ -194,7 +194,10 @@ class TestCreateApprovalEndpoint:
 
         # User2 tries to approve user1's signal
         from backend.app.auth.utils import create_access_token
-        token = create_access_token(subject=str(user2.id), role=getattr(user2, "role", "user"))
+
+        token = create_access_token(
+            subject=str(user2.id), role=getattr(user2, "role", "user")
+        )
         headers = {"Authorization": f"Bearer {token}"}
 
         response = await client.post(
@@ -466,7 +469,9 @@ class TestGetApprovalEndpoint:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Requires create_auth_token fixture - RBAC test for future implementation")
+    @pytest.mark.skip(
+        reason="Requires create_auth_token fixture - RBAC test for future implementation"
+    )
     async def test_get_approval_different_user_returns_404(
         self,
         client,
@@ -544,7 +549,9 @@ class TestListApprovalsEndpoint:
         """Test pagination with skip parameter."""
         # Create 3 approvals
         for i in range(3):
-            signal = await create_test_signal(user_id=test_user.id, instrument=f"GOLD_v{i}")
+            signal = await create_test_signal(
+                user_id=test_user.id, instrument=f"GOLD_v{i}"
+            )
             await client.post(
                 "/api/v1/approvals",
                 json={
@@ -575,7 +582,9 @@ class TestListApprovalsEndpoint:
         """Test pagination with limit parameter."""
         # Create 5 approvals
         for i in range(5):
-            signal = await create_test_signal(user_id=test_user.id, instrument=f"EURUSD_v{i}")
+            signal = await create_test_signal(
+                user_id=test_user.id, instrument=f"EURUSD_v{i}"
+            )
             await client.post(
                 "/api/v1/approvals",
                 json={
@@ -595,7 +604,9 @@ class TestListApprovalsEndpoint:
         assert len(response.json()) == 2
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="RBAC test - Auth mock bypass prevents user isolation. Requires refactoring auth mocking.")
+    @pytest.mark.skip(
+        reason="RBAC test - Auth mock bypass prevents user isolation. Requires refactoring auth mocking."
+    )
     async def test_list_approvals_user_isolation(
         self,
         client,
@@ -604,19 +615,23 @@ class TestListApprovalsEndpoint:
         create_test_signal,
     ):
         """Test user only sees their own approvals (isolation).
-        
+
         NOTE: Skipped - global auth mock prevents proper user isolation in tests.
         """
         from backend.app.auth.utils import create_access_token
-        
+
         # User1 creates approval
         user1 = await create_test_user("user1@test.com")
         user2 = await create_test_user("user2@test.com")
         signal1 = await create_test_signal(user_id=user1.id)
         signal2 = await create_test_signal(user_id=user2.id)
 
-        token1 = create_access_token(subject=str(user1.id), role=getattr(user1, "role", "user"))
-        token2 = create_access_token(subject=str(user2.id), role=getattr(user2, "role", "user"))
+        token1 = create_access_token(
+            subject=str(user1.id), role=getattr(user1, "role", "user")
+        )
+        token2 = create_access_token(
+            subject=str(user2.id), role=getattr(user2, "role", "user")
+        )
         headers1 = {"Authorization": f"Bearer {token1}"}
         headers2 = {"Authorization": f"Bearer {token2}"}
 

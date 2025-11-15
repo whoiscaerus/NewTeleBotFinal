@@ -561,9 +561,7 @@ async def test_scan_recent_trades_empty_result(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_fraud_events_requires_admin(
-    client: AsyncClient, auth_headers: dict
-):
+async def test_get_fraud_events_requires_admin(client: AsyncClient, auth_headers: dict):
     """Test that /fraud/events endpoint requires admin role.
 
     Business Logic:
@@ -602,9 +600,7 @@ async def test_get_fraud_events_admin_success(
     db_session.add(anomaly)
     await db_session.commit()
 
-    response = await client.get(
-        "/api/v1/fraud/events", headers=admin_auth_headers
-    )
+    response = await client.get("/api/v1/fraud/events", headers=admin_auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -716,9 +712,7 @@ async def test_get_fraud_summary_admin(
         db_session.add(anomaly)
     await db_session.commit()
 
-    response = await client.get(
-        "/api/v1/fraud/summary", headers=admin_auth_headers
-    )
+    response = await client.get("/api/v1/fraud/summary", headers=admin_auth_headers)
 
     assert response.status_code == 200
     data = response.json()

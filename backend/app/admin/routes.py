@@ -31,12 +31,12 @@ from backend.app.admin.schemas import (
 )
 from backend.app.admin.service import approve_kyc, process_refund, resolve_fraud_event
 from backend.app.audit.service import AuditService
+from backend.app.auth.models import User
 from backend.app.clients.devices.models import Device
 from backend.app.core.db import get_db
 from backend.app.fraud.models import AnomalyEvent
 from backend.app.kb.models import Article
 from backend.app.support.models import Ticket
-from backend.app.auth.models import User
 
 logger = logging.getLogger(__name__)
 

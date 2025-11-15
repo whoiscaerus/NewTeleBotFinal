@@ -71,7 +71,7 @@ async def create_approval(
     """
     try:
         service = ApprovalService(db)
-        
+
         # Get client IP and User-Agent for audit logging
         client_ip = get_client_ip(request)
         user_agent = request.headers.get("user-agent", "unknown")
@@ -104,7 +104,7 @@ async def create_approval(
     except ValueError as e:
         error_msg = str(e)
         logger.warning(f"Approval validation error: {error_msg}")
-        
+
         # Different error codes based on the error message
         if "already exists" in error_msg.lower():
             raise HTTPException(status_code=409, detail=error_msg)

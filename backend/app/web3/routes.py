@@ -12,8 +12,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.dependencies import get_current_user
-from backend.app.core.db import get_db
 from backend.app.auth.models import User
+from backend.app.core.db import get_db
 from backend.app.web3.nft_access import NFTAccessService
 from backend.app.web3.wallet_link import WalletLinkService
 

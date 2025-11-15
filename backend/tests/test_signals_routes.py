@@ -460,7 +460,11 @@ class TestSignalRetrievalEndpoint:
 
     @pytest.mark.asyncio
     async def test_get_signal_owner_isolation(
-        self, client: AsyncClient, auth_headers: dict, db_session: AsyncSession, test_user
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        db_session: AsyncSession,
+        test_user,
     ):
         """Test user cannot retrieve another user's signal."""
         # Create signal as user 1

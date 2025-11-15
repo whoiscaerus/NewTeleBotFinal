@@ -38,8 +38,8 @@ from backend.app.public.trust_index_routes import router as trust_index_router
 from backend.app.quotas.routes import router as quotas_router
 from backend.app.revenue.routes import router as revenue_router
 from backend.app.signals.routes import router as signals_router
-from backend.app.strategy.routes import router as strategy_router
 from backend.app.strategy.decision_search import router as decision_search_router
+from backend.app.strategy.routes import router as strategy_router
 from backend.app.support.routes import router as support_router
 from backend.app.telegram.webhook import router as telegram_router
 from backend.app.trading.routes import router as trading_router

@@ -299,9 +299,7 @@ class WalkForwardValidator:
 
         for fold_idx in range(1, self.n_folds):
             # Each boundary marks the END of a test window
-            boundary = start_date + timedelta(
-                days=fold_idx * window_size_days
-            )
+            boundary = start_date + timedelta(days=fold_idx * window_size_days)
             boundaries.append(boundary)
 
         # Last boundary is always end_date

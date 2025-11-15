@@ -267,9 +267,7 @@ async def test_explain_telemetry_integration(
     def mock_search_inc():
         search_calls.append(True)
 
-    monkeypatch.setattr(
-        metrics.explain_requests_total, "inc", mock_explain_inc
-    )
+    monkeypatch.setattr(metrics.explain_requests_total, "inc", mock_explain_inc)
     monkeypatch.setattr(metrics.decision_search_total, "inc", mock_search_inc)
 
     # Create decision

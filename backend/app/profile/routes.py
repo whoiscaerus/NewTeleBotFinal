@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.observability.metrics import get_metrics
 from backend.app.profile.theme import ThemeService
-from backend.app.auth.models import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/profile", tags=["profile", "theme"])

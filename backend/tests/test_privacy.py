@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.approvals.models import Approval
 from backend.app.audit.models import AuditLog
+from backend.app.auth.models import User
 from backend.app.clients.devices.models import Device
 from backend.app.privacy.deleter import DataDeleter
 from backend.app.privacy.exporter import DataExporter
@@ -27,7 +28,6 @@ from backend.app.privacy.models import PrivacyRequest, RequestStatus, RequestTyp
 from backend.app.privacy.schemas import PrivacyRequestCreate
 from backend.app.privacy.service import PrivacyService
 from backend.app.signals.models import Signal
-from backend.app.auth.models import User
 
 
 @pytest.mark.asyncio

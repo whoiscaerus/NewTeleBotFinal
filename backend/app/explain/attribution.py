@@ -185,10 +185,10 @@ def _compute_fib_rsi_attribution(features: dict[str, Any]) -> dict[str, float]:
     rsi = indicators.get("rsi_14", 50.0)
     rsi_oversold = thresholds.get("rsi_oversold", 30)
     rsi_overbought = thresholds.get("rsi_overbought", 70)
-    
+
     # Baseline prediction is 0.5 (neutral)
     # We need contributions that sum to (prediction - 0.5)
-    
+
     # RSI contribution: primary signal
     # Oversold (RSI < 30): strong buy, add to prediction
     # Neutral-bullish (30 <= RSI < 50): small buy, add slightly

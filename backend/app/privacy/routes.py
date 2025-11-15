@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User
 from backend.app.core.auth import get_current_user
 from backend.app.core.db import get_db
 from backend.app.core.logging import get_logger
@@ -13,7 +14,6 @@ from backend.app.privacy.schemas import (
     PrivacyRequestResponse,
 )
 from backend.app.privacy.service import PrivacyService
-from backend.app.auth.models import User
 
 logger = get_logger(__name__)
 

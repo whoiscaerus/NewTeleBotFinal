@@ -8,7 +8,7 @@ Validates:
 """
 
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -182,7 +182,7 @@ class TestWalkForwardValidation:
         call_count = 0
 
         mock_runner = Mock()
-        
+
         def side_effect_run(*args, **kwargs):
             nonlocal call_count
             result = fold_metrics[call_count]
@@ -330,9 +330,7 @@ class TestEdgeCases:
         validator = WalkForwardValidator(n_folds=2, test_window_days=90)
 
         mock_runner = Mock()
-        mock_runner.run = Mock(
-            side_effect=FileNotFoundError("Data file not found")
-        )
+        mock_runner.run = Mock(side_effect=FileNotFoundError("Data file not found"))
 
         with patch(
             "backend.app.research.walkforward.BacktestRunner", return_value=mock_runner

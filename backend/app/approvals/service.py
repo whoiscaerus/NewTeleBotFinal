@@ -41,7 +41,7 @@ class ApprovalService:
 
         Returns:
             Created approval
-            
+
         Raises:
             ValueError: If signal not found or user is not the signal owner
         """
@@ -51,7 +51,7 @@ class ApprovalService:
             signal = result.scalar()
             if not signal:
                 raise ValueError("Signal not found")
-            
+
             # Check ownership: only signal owner can approve it
             if signal.user_id != user_id:
                 raise ValueError("Not signal owner")

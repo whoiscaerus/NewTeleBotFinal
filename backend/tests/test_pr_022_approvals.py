@@ -203,7 +203,11 @@ class TestApprovalSecurity:
 
     @pytest.mark.asyncio
     async def test_create_approval_not_owner_403(
-        self, client: AsyncClient, db_session: AsyncSession, hmac_secret: str, clear_auth_override
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        hmac_secret: str,
+        clear_auth_override,
     ):
         """Test approval by non-owner returns 403."""
         # Create two users

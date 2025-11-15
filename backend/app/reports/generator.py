@@ -16,10 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.analytics.equity import EquityEngine
 from backend.app.analytics.metrics import PerformanceMetrics
+from backend.app.auth.models import User
 from backend.app.health.models import Incident, IncidentSeverity
 from backend.app.reports.models import Report, ReportPeriod, ReportStatus, ReportType
 from backend.app.trading.store.models import Trade
-from backend.app.auth.models import User
 
 logger = logging.getLogger(__name__)
 

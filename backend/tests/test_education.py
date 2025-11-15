@@ -17,7 +17,6 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.education.models import (
@@ -856,7 +855,7 @@ class TestRewardIssuance:
         assert reward.reward_value == 15.0
         assert reward.currency is None
         assert reward.redeemed_at is None
-        
+
         # Handle SQLite naive datetime: convert to aware if needed
         expires_at = reward.expires_at
         if expires_at.tzinfo is None:
@@ -1145,7 +1144,7 @@ class TestRewardAutoIssuance:
     ):
         """Test reward not issued when course not completed."""
         user_id = str(uuid4())
-        
+
         # Create course with required lesson (so it's NOT auto-complete)
         course = Course(
             id=str(uuid4()),
@@ -1159,7 +1158,7 @@ class TestRewardAutoIssuance:
             order_index=2,
         )
         db.add(course)
-        
+
         # Create required lesson (no quiz = would be complete, so add quiz)
         lesson = Lesson(
             id=str(uuid4()),
@@ -1171,7 +1170,7 @@ class TestRewardAutoIssuance:
             is_required=True,
         )
         db.add(lesson)
-        
+
         # Create quiz for lesson (required lesson + quiz = must pass to complete)
         quiz = Quiz(
             id=str(uuid4()),

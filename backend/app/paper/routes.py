@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.paper.engine import FillPriceMode, PaperTradingEngine, SlippageMode
 from backend.app.paper.models import PaperAccount, PaperPosition, PaperTrade, TradeSide
-from backend.app.auth.models import User
 
 router = APIRouter(prefix="/api/v1/paper", tags=["paper-trading"])
 

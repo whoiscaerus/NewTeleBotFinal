@@ -16,7 +16,6 @@ from backend.app.clients.exec.routes import router as exec_router
 from backend.app.copy.routes import router as copy_router
 from backend.app.core.settings import get_settings
 from backend.app.crm.routes import router as crm_router
-from backend.app.strategy.decision_search import router as decision_search_router
 from backend.app.ea.routes_admin import router as ea_admin_router
 from backend.app.education.routes import router as education_router
 from backend.app.explain.routes import router as explain_router
@@ -39,6 +38,7 @@ from backend.app.revenue.routes import router as revenue_router
 from backend.app.risk.routes import router as risk_router
 from backend.app.risk.routes import trading_router
 from backend.app.signals.routes import router as signals_router
+from backend.app.strategy.decision_search import router as decision_search_router
 from backend.app.trust.ledger.routes import router as ledger_router
 from backend.app.trust.routes import router as trust_router
 from backend.app.web3.routes import router as web3_router  # PR-102: NFT Access

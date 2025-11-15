@@ -205,10 +205,18 @@ async def test_get_features_descending_order(db_session: AsyncSession):
 
     assert len(snapshots) == 4
     # Should be sorted descending (compare without timezone)
-    assert snapshots[0].timestamp.replace(tzinfo=None) == (base_time + timedelta(minutes=45)).replace(tzinfo=None)
-    assert snapshots[1].timestamp.replace(tzinfo=None) == (base_time + timedelta(minutes=30)).replace(tzinfo=None)
-    assert snapshots[2].timestamp.replace(tzinfo=None) == (base_time + timedelta(minutes=15)).replace(tzinfo=None)
-    assert snapshots[3].timestamp.replace(tzinfo=None) == (base_time + timedelta(minutes=0)).replace(tzinfo=None)
+    assert snapshots[0].timestamp.replace(tzinfo=None) == (
+        base_time + timedelta(minutes=45)
+    ).replace(tzinfo=None)
+    assert snapshots[1].timestamp.replace(tzinfo=None) == (
+        base_time + timedelta(minutes=30)
+    ).replace(tzinfo=None)
+    assert snapshots[2].timestamp.replace(tzinfo=None) == (
+        base_time + timedelta(minutes=15)
+    ).replace(tzinfo=None)
+    assert snapshots[3].timestamp.replace(tzinfo=None) == (
+        base_time + timedelta(minutes=0)
+    ).replace(tzinfo=None)
 
 
 @pytest.mark.asyncio

@@ -185,7 +185,7 @@ async def redeem_reward(
     expires_at = reward.expires_at
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=UTC)
-    
+
     if now > expires_at:
         raise ValueError(
             f"Reward expired: {reward_id} at {reward.expires_at.isoformat()}"
@@ -262,7 +262,11 @@ async def get_active_rewards(
 
     logger.debug(
         f"Active rewards: user={user_id} type={reward_type} count={len(active_rewards)}",
-        extra={"user_id": user_id, "reward_type": reward_type, "count": len(active_rewards)},
+        extra={
+            "user_id": user_id,
+            "reward_type": reward_type,
+            "count": len(active_rewards),
+        },
     )
 
     return active_rewards

@@ -6,7 +6,6 @@ API endpoints for generating exports and accessing public share links.
 
 import json
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field

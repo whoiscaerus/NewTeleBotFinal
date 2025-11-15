@@ -183,7 +183,7 @@ class EducationService:
         created_at = last_attempt.created_at
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=UTC)
-        
+
         available_at = created_at + timedelta(minutes=retry_delay_minutes)
         now = datetime.now(UTC)
 
