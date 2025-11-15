@@ -17,8 +17,8 @@ def parse_pytest_json(json_file: str) -> dict:
         with open(json_file) as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"ERROR: {json_file} not found")
-        sys.exit(1)
+        print(f"⚠️ {json_file} not found")
+        return None
 
 
 def group_failures_by_module(tests: list) -> dict:
@@ -37,6 +37,13 @@ def generate_report(json_file: str, output_file: str):
 
     # Parse JSON
     data = parse_pytest_json(json_file)
+
+    # Handle missing JSON file
+    if data is None:
+        print("⚠️ Cannot generate report without pytest JSON output")
+        print(f"   Tried: {json_file}")
+        print("   Make sure pytest runs with --json-report flag")
+        return
 
     # Get summary
     summary = data.get("summary", {})
@@ -67,7 +74,11 @@ def generate_report(json_file: str, output_file: str):
     report.append(f"- ❌ **Failed**: {failed}\n")
     report.append(f"- ⏭️ **Skipped**: {skipped}\n")
     report.append(f"- 💥 **Errors**: {errors}\n")
-    report.append(f"- **Pass Rate**: {(passed/total*100):.1f}%\n\n")
+    # Fix division by zero
+    if total > 0:
+        report.append(f"- **Pass Rate**: {(passed/total*100):.1f}%\n\n")
+    else:
+        report.append("- **Pass Rate**: N/A (no tests collected)\n\n")
 
     # Quick summary table
     if failures_by_module:
@@ -145,8 +156,8 @@ def generate_report(json_file: str, output_file: str):
 
 
 if __name__ == "__main__":
-    # Default paths
-    json_report = "backend/tests/.pytest_cache/test_results.json"
+    # Default paths - pytest-json-report outputs to repo root by default
+    json_report = "test_results.json"
     output_report = "TEST_FAILURES_DETAILED.md"
 
     # Check if pytest JSON exists
@@ -154,12 +165,28 @@ if __name__ == "__main__":
         print(f"⚠️ {json_report} not found, trying alternate paths...")
         # Try alternate locations
         for alt_path in [
-            "test_results.json",
+            "backend/tests/.pytest_cache/test_results.json",
             "backend/test_results.json",
             ".pytest_cache/test_results.json",
+            ".pytest_results.json",
         ]:
             if Path(alt_path).exists():
                 json_report = alt_path
+                print(f"   ✅ Found: {json_report}")
                 break
+        else:
+            print("   ⚠️ No JSON report found in any location")
+            print("   This can happen if pytest didn't complete or JSON plugin failed")
+            # Create a minimal report anyway
+            with open(output_report, "w") as f:
+                f.write("# 🧪 Test Failure Report\n\n")
+                f.write("⚠️ **Report Generation Issue**\n\n")
+                f.write("The pytest JSON report was not found. This can happen if:\n")
+                f.write("- pytest-json-report plugin failed to install\n")
+                f.write("- pytest didn't complete successfully\n")
+                f.write("- Tests were skipped or collection failed\n\n")
+                f.write("Check the GitHub Actions logs for details.\n")
+            print(f"Created minimal report: {output_report}")
+            sys.exit(0)
 
     generate_report(json_report, output_report)
