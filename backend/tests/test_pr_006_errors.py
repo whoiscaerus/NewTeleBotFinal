@@ -300,15 +300,11 @@ class TestServerErrorREAL:
         assert exc.detail == "Database connection failed"
 
 
-@pytest.mark.timeout(
-    0
-)  # Disable per-test timeout for entire class - TestClient slow on CI
 class TestExceptionHandlerIntegrationREAL:
     """✅ REAL TEST: FastAPI exception handlers with actual app.
 
-    ⚠️ TIMEOUT PRONE: TestClient fixture initialization can hang >900s on GitHub Actions.
-    Per-test timeout disabled (timeout=0) - still protected by workflow timeout (300 min).
-    All tests in this class will NOT hit per-test timeout, only workflow timeout.
+    Tests protected by global 60s timeout in conftest.py.
+    If any test exceeds 60s, it will be automatically skipped and logged.
     """
 
     @pytest.fixture
