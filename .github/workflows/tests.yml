@@ -126,7 +126,23 @@ jobs:
             --cov=backend/app \
             --cov-report=xml:coverage/backend/coverage.xml \
             --cov-report=term-missing \
+            --json-report \
+            --json-report-file=test_results.json \
             -vv --maxfail=999
+
+      - name: Generate test failure report
+        if: always()
+        run: |
+          python scripts/generate_test_report.py
+
+      - name: Commit test report to repo
+        if: always()
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add TEST_FAILURES_DETAILED.md
+          git commit -m "CI/CD: Update test failure report" || true
+          git push
 
       - name: Post-mortem diagnostics (on failure/timeout)
         if: failure() || cancelled()
