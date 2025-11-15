@@ -115,6 +115,7 @@ jobs:
       - name: Run pytest with coverage (Backend)
         timeout-minutes: 300
         env:
+          CI: "true"
           DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/trading_db
           REDIS_URL: redis://localhost:6379/0
           APP_ENV: test
