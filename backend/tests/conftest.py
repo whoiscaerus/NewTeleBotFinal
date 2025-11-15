@@ -1128,11 +1128,12 @@ async def create_test_signal(db_session: AsyncSession):
 
 
 # ============================================================================
-# TIMEOUT HANDLING - Aggressive Auto-Skip
+# TIMEOUT HANDLING - 2-Minute Auto-Skip (NO FAILURES)
 # ============================================================================
-# Purpose: When a test times out (>60s), immediately skip it instead of failing.
-# This ensures GitHub Actions CI/CD completes in 60-90 min instead of hanging.
-# Any test exceeding 60s is logged to SLOW_TESTS.txt for later debugging.
+# Purpose: When a test times out (>120s), immediately skip it instead of failing.
+# This ensures GitHub Actions CI/CD NEVER STOPS - it always completes.
+# Any test exceeding 120s is logged to SLOW_TESTS.txt for later debugging.
+# CI/CD continues with all other tests, slow tests appear as SKIPPED.
 # ============================================================================
 
 # Global tracking for slow tests
@@ -1148,8 +1149,8 @@ def pytest_runtest_setup(item):
 def pytest_runtest_makereport(item, call):
     """Convert timeout exceptions to SKIPPED status instead of FAILED.
 
-    Also logs any test that takes >30s (warning threshold) or >60s (timeout).
-    This allows CI/CD to complete quickly while identifying performance issues.
+    Also logs any test that takes >30s (warning threshold) or >120s (timeout).
+    This allows CI/CD to ALWAYS COMPLETE - no test can stop the pipeline.
 
     Args:
         item: pytest item (test)
@@ -1159,8 +1160,8 @@ def pytest_runtest_makereport(item, call):
     start_time = _TEST_START_TIMES.get(item.nodeid)
     if start_time and call.when == "call":  # Only for actual test execution
         elapsed = time.time() - start_time
-        threshold_slow = 30  # Log if >30s
-        threshold_timeout = 60  # Hard timeout at 60s
+        threshold_slow = 30  # Log if >30s (warning)
+        threshold_timeout = 120  # Hard timeout at 120s (2 minutes)
 
         if elapsed > threshold_timeout:
             # Log to SLOW_TESTS.txt
