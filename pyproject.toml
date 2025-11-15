@@ -67,6 +67,12 @@ dev = [
     "types-pytz>=2025.1.0",
     "apscheduler>=3.10.0",
     "locust>=2.0.0",
+    # Optional dependencies needed for full test coverage
+    "pywebpush>=1.14.0",
+    "aiohttp>=3.9.0",
+    "networkx>=3.2.0",
+    "web3>=7.0.0",
+    "eth-account>=0.13.0",
 ]
 # MetaTrader5 is Windows-only and not available on PyPI for Linux
 # For CI/CD testing, we mock MT5 imports. For Windows production, install separately:
