@@ -126,7 +126,7 @@ jobs:
             --cov=backend/app \
             --cov-report=xml:coverage/backend/coverage.xml \
             --cov-report=term-missing \
-            -vv --maxfail=1
+            -vv --maxfail=999
 
       - name: Post-mortem diagnostics (on failure/timeout)
         if: failure() || cancelled()
