@@ -779,6 +779,14 @@ class TestErrorHandling:
         self, decision_service, db_session
     ):
         """Test transaction rollback on error."""
+        # SQLite doesn't enforce column length constraints, so this test
+        # is PostgreSQL-specific. Skip on SQLite.
+        import os
+
+        db_url = os.getenv("DATABASE_URL", "")
+        if "sqlite" in db_url.lower():
+            pytest.skip("Column length validation is PostgreSQL-specific")
+
         # Force an error by passing invalid data (symbol too long)
         from sqlalchemy.exc import DataError
 
@@ -826,6 +834,13 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_jsonb_querying(self, decision_service, db_session):
         """Test JSONB field can be queried."""
+        # JSONB operators are PostgreSQL-specific; SQLite doesn't support them
+        import os
+
+        db_url = os.getenv("DATABASE_URL", "")
+        if "sqlite" in db_url.lower():
+            pytest.skip("JSONB operators are PostgreSQL-specific")
+
         await decision_service.record_decision(
             strategy="test",
             symbol="GOLD",
