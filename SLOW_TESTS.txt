@@ -1,0 +1,4 @@
+[TIMEOUT_EXCEPTION] tests/test_outbound_client_errors.py::TestNetworkErrorHandling::test_post_signal_handles_timeout_error - Request timeout after 30.0s
+[TIMEOUT_EXCEPTION] tests/test_outbound_client_errors.py::TestNetworkErrorHandling::test_post_signal_handles_timeout_error - Request timeout after 30.0s
+[TIMEOUT_EXCEPTION] tests/test_outbound_client_errors.py::TestNetworkErrorHandling::test_post_signal_handles_timeout_error - Request timeout after 30.0s
+[TIMEOUT_EXCEPTION] tests/test_outbound_client_errors.py::TestNetworkErrorHandling::test_post_signal_handles_timeout_error - Request timeout after 30.0s

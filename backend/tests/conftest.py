@@ -1185,7 +1185,7 @@ def pytest_runtest_makereport(item, call):
                 f.write(f"[TIMEOUT_EXCEPTION] {item.nodeid} - {call.excinfo.value}\n")
 
             # Create a custom report that marks this as SKIPPED
-            print(f"\n⏱️  TIMEOUT: {item.nodeid} - Skipping to allow CI/CD completion")
+            print(f"\n[TIMEOUT] {item.nodeid} - Skipping to allow CI/CD completion")
 
             # Mark as skipped with reason
             item.add_marker(

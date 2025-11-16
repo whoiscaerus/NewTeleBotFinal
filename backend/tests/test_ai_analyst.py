@@ -499,7 +499,7 @@ class TestTemplates:
         assert "📊 *Daily Market Outlook*" in result
         assert "Sharpe:" in result
         assert "Sortino:" in result
-        assert "Not financial advice" in result.lower()
+        assert "not financial advice" in result.lower()
 
     def test_telegram_template_escapes_special_chars(self, sample_outlook):
         """Test Telegram template escapes special characters for MarkdownV2."""
