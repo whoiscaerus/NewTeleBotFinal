@@ -138,6 +138,24 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
 
+      - name: Wait for services
+        run: |
+          # Wait for PostgreSQL to be ready
+          for i in {1..30}; do
+            if python -c "import psycopg; psycopg.connect('postgresql+psycopg://postgres:postgres@localhost:5432/trading_db')" 2>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/trading_db
+        run: |
+          python -m alembic upgrade head
+
       - name: Run pytest with coverage (Backend)
         timeout-minutes: 300
         env:
