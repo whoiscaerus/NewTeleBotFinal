@@ -20,8 +20,10 @@ jobs:
       - name: Check for skip markers
         id: check
         run: |
+          # Use a grep-based check for skip markers to avoid bash [[ =~ ]] regex portability issues
           COMMIT_MSG="${{ github.event.head_commit.message }}"
-          if [[ "$COMMIT_MSG" =~ (\[skip-ci\]|\[ci-skip\]|\[skip\ ci\]|\[ci\ skip\]) ]]; then
+          echo "Commit message: $COMMIT_MSG"
+          if echo "$COMMIT_MSG" | grep -E '\[skip-ci\]|\[ci-skip\]|\[skip[[:space:]]ci\]|\[ci[[:space:]]skip\]' >/dev/null 2>&1; then
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "⏭️ CI will be skipped (found skip marker in commit message)"
           else
