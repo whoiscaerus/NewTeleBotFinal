@@ -262,20 +262,39 @@ class TestBodySizeValidation:
     @pytest.mark.asyncio
     async def test_post_signal_body_too_large(self, valid_config, valid_signal, logger):
         """Test post_signal rejects body exceeding max_body_size."""
-        # Create config with very small max_body_size
+        from datetime import datetime
+
+        # Create config with small max_body_size (but >= 1024 minimum)
+        # Signal body will be larger than this limit
         small_config = OutboundConfig(
             enabled=True,
             producer_id="test-producer",
             producer_secret="super-secret-key-1234567890",
             server_base_url="https://api.example.com",
             timeout_seconds=30.0,
-            max_body_size=10,  # Very small
+            max_body_size=1024,  # Minimum allowed, but signal will exceed it
         )
 
         client = HmacClient(small_config, logger)
 
+        # Signal with large payload to exceed 1024 bytes (need ~400+ chars to exceed)
+        large_signal = SignalCandidate(
+            instrument="GOLD",
+            side="buy",
+            entry_price=1950.50,
+            stop_loss=1940.0,
+            take_profit=1965.0,
+            confidence=0.85,
+            timestamp=datetime.now(UTC),
+            reason="test",
+            payload={"x": "y" * 1000},  # Large payload - ~1000 chars
+        )
+
+        # Pre-initialize session with mock to bypass network operations
+        client._session = MagicMock()
+
         with pytest.raises(OutboundClientError, match="too large"):
-            await client.post_signal(valid_signal)
+            await client.post_signal(large_signal)
 
     @pytest.mark.asyncio
     async def test_post_signal_body_near_max_size(
