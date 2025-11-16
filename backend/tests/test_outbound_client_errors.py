@@ -68,123 +68,144 @@ class TestSignalValidation:
         from datetime import datetime
 
         client = HmacClient(valid_config, logger)
-        signal = SignalCandidate(
-            instrument="GL",  # Changed from empty to valid (min 2 chars)
+        # Use model_construct to bypass Pydantic validation
+        signal = SignalCandidate.model_construct(
+            instrument="",  # Empty - bypasses Pydantic
             side="buy",
             entry_price=1950.50,
             stop_loss=1940.0,
             take_profit=1965.0,
             confidence=0.85,
             timestamp=datetime.now(UTC),
-            reason="test",
+            reason="test_empty_instrument",
             payload={},
         )
-        # Now test with empty after construction by calling _validate_signal directly
-        # But we need to trigger the validation error, so let's test the actual scenario
-        # where instrument becomes empty during validation
-        signal.instrument = ""  # Make it empty after creation
         with pytest.raises(OutboundClientError, match="non-empty instrument"):
             client._validate_signal(signal)
 
     @pytest.mark.asyncio
     async def test_validate_signal_whitespace_instrument(self, valid_config, logger):
         """Test validation rejects whitespace-only instrument."""
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
-        signal = SignalCandidate(
-            instrument="   ",
+        # Use model_construct to bypass Pydantic validation
+        signal = SignalCandidate.model_construct(
+            instrument="   ",  # Whitespace - bypasses Pydantic
             side="buy",
             entry_price=1950.50,
             stop_loss=1940.0,
             take_profit=1965.0,
             confidence=0.85,
+            timestamp=datetime.now(UTC),
+            reason="test_whitespace",
             payload={},
         )
-
         with pytest.raises(OutboundClientError, match="non-empty instrument"):
             client._validate_signal(signal)
 
     @pytest.mark.asyncio
     async def test_validate_signal_invalid_side(self, valid_config, logger):
         """Test validation rejects invalid side."""
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
-        signal = SignalCandidate(
+        # Use model_construct to bypass Pydantic validation
+        signal = SignalCandidate.model_construct(
             instrument="GOLD",
-            side="invalid",  # type: ignore
+            side="invalid",  # Invalid value bypasses Pydantic
             entry_price=1950.50,
             stop_loss=1940.0,
             take_profit=1965.0,
             confidence=0.85,
+            timestamp=datetime.now(UTC),
+            reason="test_invalid_side",
             payload={},
         )
-
         with pytest.raises(OutboundClientError, match="buy.*sell"):
             client._validate_signal(signal)
 
     @pytest.mark.asyncio
     async def test_validate_signal_zero_entry_price(self, valid_config, logger):
         """Test validation rejects zero entry price."""
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
-        signal = SignalCandidate(
+        # Use model_construct to bypass Pydantic validation
+        signal = SignalCandidate.model_construct(
             instrument="GOLD",
             side="buy",
-            entry_price=0.0,  # Invalid
+            entry_price=0.0,  # Zero - bypasses Pydantic
             stop_loss=1940.0,
             take_profit=1965.0,
             confidence=0.85,
+            timestamp=datetime.now(UTC),
+            reason="test_zero_price",
             payload={},
         )
-
         with pytest.raises(OutboundClientError, match="entry_price must be > 0"):
             client._validate_signal(signal)
 
     @pytest.mark.asyncio
     async def test_validate_signal_negative_entry_price(self, valid_config, logger):
         """Test validation rejects negative entry price."""
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
-        signal = SignalCandidate(
+        # Use model_construct to bypass Pydantic validation
+        signal = SignalCandidate.model_construct(
             instrument="GOLD",
             side="buy",
-            entry_price=-100.0,  # Invalid
+            entry_price=-100.0,  # Negative - bypasses Pydantic
             stop_loss=1940.0,
             take_profit=1965.0,
             confidence=0.85,
+            timestamp=datetime.now(UTC),
+            reason="test_negative_price",
             payload={},
         )
-
         with pytest.raises(OutboundClientError, match="entry_price must be > 0"):
             client._validate_signal(signal)
 
     @pytest.mark.asyncio
     async def test_validate_signal_confidence_below_range(self, valid_config, logger):
         """Test validation rejects confidence < 0.0."""
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
-        signal = SignalCandidate(
+        # Use model_construct to bypass Pydantic validation
+        signal = SignalCandidate.model_construct(
             instrument="GOLD",
             side="buy",
             entry_price=1950.50,
             stop_loss=1940.0,
             take_profit=1965.0,
-            confidence=-0.1,  # Invalid
+            confidence=-0.1,  # Below range - bypasses Pydantic
+            timestamp=datetime.now(UTC),
+            reason="test_confidence_below",
             payload={},
         )
-
         with pytest.raises(OutboundClientError, match="confidence must be between"):
             client._validate_signal(signal)
 
     @pytest.mark.asyncio
     async def test_validate_signal_confidence_above_range(self, valid_config, logger):
         """Test validation rejects confidence > 1.0."""
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
-        signal = SignalCandidate(
+        # Use model_construct to bypass Pydantic validation
+        signal = SignalCandidate.model_construct(
             instrument="GOLD",
             side="buy",
             entry_price=1950.50,
             stop_loss=1940.0,
             take_profit=1965.0,
-            confidence=1.5,  # Invalid
+            confidence=1.5,  # Above range - bypasses Pydantic
+            timestamp=datetime.now(UTC),
+            reason="test_confidence_above",
             payload={},
         )
-
         with pytest.raises(OutboundClientError, match="confidence must be between"):
             client._validate_signal(signal)
 
@@ -193,6 +214,8 @@ class TestSignalValidation:
         self, valid_config, logger
     ):
         """Test validation accepts confidence = 0.0."""
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
         signal = SignalCandidate(
             instrument="GOLD",
@@ -201,6 +224,8 @@ class TestSignalValidation:
             stop_loss=1940.0,
             take_profit=1965.0,
             confidence=0.0,  # Boundary
+            timestamp=datetime.now(UTC),
+            reason="test_boundary_zero",
             payload={},
         )
 
@@ -212,6 +237,8 @@ class TestSignalValidation:
         self, valid_config, logger
     ):
         """Test validation accepts confidence = 1.0."""
+        from datetime import datetime
+
         client = HmacClient(valid_config, logger)
         signal = SignalCandidate(
             instrument="GOLD",
@@ -220,6 +247,8 @@ class TestSignalValidation:
             stop_loss=1940.0,
             take_profit=1965.0,
             confidence=1.0,  # Boundary
+            timestamp=datetime.now(UTC),
+            reason="test_boundary_one",
             payload={},
         )
 
