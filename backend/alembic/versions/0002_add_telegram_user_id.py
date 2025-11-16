@@ -1,6 +1,6 @@
 """Add telegram_user_id to users table
 
-Revision ID: 0002
+Revision ID: 0002b_add_telegram_user_id
 Revises: 0001
 Create Date: 2025-10-30 17:20:00.000000
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "0002"
+revision = "0002b_add_telegram_user_id"
 down_revision = "0001"
 branch_labels = None
 depends_on = None

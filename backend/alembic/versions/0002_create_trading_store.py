@@ -18,7 +18,7 @@ from alembic import op
 
 # Revision identifiers
 revision = "0002_create_trading_store"
-down_revision = "0001_initial_schema"
+down_revision = "0001"
 branch_labels = None
 depends_on = None
 

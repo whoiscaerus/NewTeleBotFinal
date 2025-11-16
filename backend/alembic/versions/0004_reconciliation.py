@@ -1,7 +1,7 @@
 """Add reconciliation models for MT5 account sync.
 
 Revision ID: 0004_reconciliation
-Revises: 003_add_signals_approvals
+Revises: 003
 Create Date: 2024-10-26 19:30:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers
 revision = "0004_reconciliation"
-down_revision = "003_add_signals_approvals"
+down_revision = "003"
 branch_labels = None
 depends_on = None
 
