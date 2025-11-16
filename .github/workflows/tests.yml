@@ -21,7 +21,7 @@ jobs:
         id: check
         run: |
           COMMIT_MSG="${{ github.event.head_commit.message }}"
-          if [[ "$COMMIT_MSG" =~ \[skip-ci\]|\[ci-skip\]|\[skip ci\]|\[ci skip\] ]]; then
+          if [[ "$COMMIT_MSG" =~ (\[skip-ci\]|\[ci-skip\]|\[skip\ ci\]|\[ci\ skip\]) ]]; then
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "⏭️ CI will be skipped (found skip marker in commit message)"
           else
@@ -154,7 +154,13 @@ jobs:
             --json-report-file=test_results.json \
             --tb=short \
             --maxfail=999 \
-            || echo "Tests completed with failures"
+            -v 2>&1 | tee test_output.log || echo "Tests completed with failures"
+
+          # Generate detailed failure report
+          python scripts/analyze_test_output.py \
+            --json test_results.json \
+            --output TEST_FAILURES_DETAILED.md \
+            --csv TEST_FAILURES.csv 2>&1 || echo "Detailed report generation skipped"
 
       - name: Generate test failure report
         if: always()
@@ -168,8 +174,9 @@ jobs:
           name: test-results
           path: |
             test_results.json
+            test_output.log
             TEST_FAILURES_DETAILED.md
-            SLOW_TESTS.txt
+            TEST_FAILURES.csv
           retention-days: 30
 
       - name: Display test summary
