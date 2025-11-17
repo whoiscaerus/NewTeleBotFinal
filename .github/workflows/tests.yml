@@ -159,18 +159,39 @@ jobs:
           # Tests will create tables via SQLAlchemy fixtures instead
           echo "Skipping alembic migrations - using test fixtures for schema"
 
-      - name: Collect tests diagnostic (CI environment)
+      - name: Collect tests diagnostic (CI environment - DETAILED)
         env:
           CI: "true"
           DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/trading_db
           REDIS_URL: redis://localhost:6379/0
           APP_ENV: test
         run: |
-          python -m pytest backend/tests --collect-only -q 2>&1 | tee ci_collected_tests.txt
-          echo "Total tests collected:"
-          python -m pytest backend/tests --collect-only -q 2>&1 | tail -1
+          echo "=========================================="
+          echo "COMPREHENSIVE TEST COLLECTION DIAGNOSTIC"
+          echo "=========================================="
 
-      - name: Run pytest with coverage (Backend)
+          echo ""
+          echo "1. Test collection with verbose output:"
+          python -m pytest backend/tests --collect-only 2>&1 | head -100
+
+          echo ""
+          echo "2. Total test count:"
+          TEST_COUNT=$(python -m pytest backend/tests --collect-only -q 2>&1 | tail -1)
+          echo "Result: $TEST_COUNT"
+
+          echo ""
+          echo "3. Tests by directory:"
+          find backend/tests -name "test_*.py" -type f | wc -l
+
+          echo ""
+          echo "4. Collection with errors (if any):"
+          python -m pytest backend/tests --collect-only -q 2>&1 | grep -E "ERROR|error|Error" || echo "No collection errors found"
+
+          echo ""
+          echo "5. Full collection output saved to ci_collected_tests.txt"
+          python -m pytest backend/tests --collect-only -q 2>&1 | tee ci_collected_tests.txt
+
+      - name: Run pytest with coverage (Backend) - FULL TEST SUITE
         timeout-minutes: 300
         env:
           CI: "true"
@@ -180,6 +201,10 @@ jobs:
           APP_LOG_LEVEL: INFO
           PYTHONFAULTHANDLER: "1"
         run: |
+          echo "=========================================="
+          echo "RUNNING FULL TEST SUITE - ALL 6400+ TESTS"
+          echo "=========================================="
+
           python -m pytest backend/tests \
             --cov=backend/app \
             --cov-report=xml:coverage/backend/coverage.xml \
@@ -189,6 +214,12 @@ jobs:
             --tb=short \
             --maxfail=999 \
             -v 2>&1 | tee test_output.log || echo "Tests completed with failures"
+
+          echo ""
+          echo "=========================================="
+          echo "TEST RUN SUMMARY"
+          echo "=========================================="
+          tail -50 test_output.log
 
           # Generate detailed failure report
           python scripts/analyze_test_output.py \
