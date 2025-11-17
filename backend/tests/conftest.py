@@ -325,8 +325,10 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         echo=False,
     )
 
-    # Create all tables
+    # Drop all tables first (prevents "index already exists" errors if metadata was modified)
+    # Then create all tables fresh
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     # Create session factory
