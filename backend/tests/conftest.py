@@ -84,12 +84,37 @@ def pytest_configure(config):
     from backend.app.approvals.models import Approval  # noqa: F401
     from backend.app.audit.models import AuditLog  # noqa: F401
     from backend.app.auth.models import User  # noqa: F401
+
+    # Billing catalog
+    from backend.app.billing.catalog.models import (  # noqa: F401
+        Product,
+        ProductCategory,
+        ProductTier,
+    )
     from backend.app.billing.stripe.models import StripeEvent  # noqa: F401
     from backend.app.clients.models import Client, Device  # noqa: F401
+    from backend.app.copy.models import CopyEntry, CopyVariant  # noqa: F401
 
     # Debug: Show which tables are registered
     from backend.app.core.db import Base
+
+    # CRM and copy models
+    from backend.app.crm.models import (  # noqa: F401
+        CRMDiscountCode,
+        CRMPlaybookExecution,
+        CRMStepExecution,
+    )
     from backend.app.ea.models import Execution  # noqa: F401
+
+    # Education models
+    from backend.app.education.models import (  # noqa: F401
+        Attempt,
+        Course,
+        Lesson,
+        Quiz,
+        QuizQuestion,
+        Reward,
+    )
     from backend.app.features.models import FeatureSnapshot  # noqa: F401
     from backend.app.fraud.models import AnomalyEvent  # noqa: F401
     from backend.app.gamification.models import (  # noqa: F401
@@ -98,30 +123,103 @@ def pytest_configure(config):
         LeaderboardOptIn,
         Level,
     )
+
+    # Health monitoring
+    from backend.app.health.models import (  # noqa: F401
+        Incident,
+        RemediationAction,
+        SyntheticCheck,
+    )
+    from backend.app.journeys.models import (  # noqa: F401
+        Journey,
+        JourneyStep,
+        StepExecution,
+        UserJourney,
+    )
+
+    # Knowledge base models
+    from backend.app.kb.models import (  # noqa: F401
+        Article,
+        ArticleAttachment,
+        ArticleTag,
+        ArticleVersion,
+        ArticleView,
+        Tag,
+    )
     from backend.app.marketing.models import MarketingClick  # noqa: F401
+
+    # Orders and journeys
+    from backend.app.orders.models import Order, OrderItem  # noqa: F401
     from backend.app.paper.models import (  # noqa: F401
         PaperAccount,
         PaperPosition,
         PaperTrade,
     )
+    from backend.app.payments.models import (  # noqa: F401
+        EntitlementRecord,
+        PaymentRecord,
+    )
     from backend.app.prefs.models import UserPreferences  # noqa: F401
     from backend.app.privacy.models import PrivacyRequest  # noqa: F401
+
+    # NOTE: Skipping research.models entirely - has PaperTrade class that conflicts with paper.models.PaperTrade
+    # Tests requiring research.models should import them directly in the test file
+    # Quotas and payments
+    from backend.app.quotas.models import QuotaDefinition, QuotaUsage  # noqa: F401
     from backend.app.reports.models import Report  # noqa: F401
+    from backend.app.revenue.models import (  # noqa: F401
+        RevenueSnapshot,
+        SubscriptionCohort,
+    )
     from backend.app.strategy.logs.models import DecisionLog  # noqa: F401
     from backend.app.strategy.models import (  # noqa: F401
         CanaryConfig,
         ShadowDecisionLog,
         StrategyVersion,
     )
+    from backend.app.subscriptions.models import Subscription  # noqa: F401
+
+    # Support, subscriptions, revenue
+    from backend.app.support.models import Ticket  # noqa: F401
+
+    # Telegram models
+    from backend.app.telegram.models import (  # noqa: F401
+        DistributionAuditLog,
+        GuideScheduleLog,
+        TelegramBroadcast,
+        TelegramCommand,
+        TelegramGuide,
+        TelegramUser,
+        TelegramUserGuideCollection,
+        TelegramWebhook,
+    )
+
+    # Data pipeline models (SymbolPrice, OHLCCandle, DataPullLog)
+    from backend.app.trading.data.models import (  # noqa: F401
+        DataPullLog,
+        OHLCCandle,
+        SymbolPrice,
+    )
     from backend.app.trading.positions.close_commands import CloseCommand  # noqa: F401
     from backend.app.trading.positions.models import OpenPosition  # noqa: F401
+
+    # Trading reconciliation models
+    from backend.app.trading.reconciliation.models import (  # noqa: F401
+        DrawdownAlert,
+        PositionSnapshot,
+        ReconciliationLog,
+    )
     from backend.app.trading.store.models import (  # noqa: F401
         EquityPoint,
         Position,
         Trade,
         ValidationLog,
     )
-    from backend.app.trust.models import Endorsement, UserTrustScore  # noqa: F401
+    from backend.app.trust.models import (  # noqa: F401
+        Endorsement,
+        TrustCalculationLog,
+        UserTrustScore,
+    )
     from backend.app.trust.social.models import VerificationEdge  # noqa: F401
     from backend.app.upsell.models import (  # noqa: F401
         Experiment,
@@ -129,6 +227,9 @@ def pytest_configure(config):
         Recommendation,
         Variant,
     )
+
+    # Web3 models
+    from backend.app.web3.models import NFTAccess, WalletLink  # noqa: F401
 
     print(f"[ROOT CONFTEST] Base.metadata.tables: {list(Base.metadata.tables.keys())}")
 
