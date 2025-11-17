@@ -11,8 +11,8 @@ on:
 
 jobs:
   test-changed:
-    # Only run if commit message contains [test-changed] or [test-only]
-    if: contains(github.event.head_commit.message, '[test-changed]') || contains(github.event.head_commit.message, '[test-only]')
+    # Always run on push to main (unless commit has [skip-ci])
+    if: "!contains(github.event.head_commit.message, '[skip-ci]')"
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
