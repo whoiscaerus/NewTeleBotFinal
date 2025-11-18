@@ -1,0 +1,236 @@
+name: Full Diagnostic Test Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  full-diagnostic:
+    name: Full Test Suite Diagnostic
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trading_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Wait for services
+        run: |
+          for i in {1..30}; do
+            if python -c "import psycopg; psycopg.connect('postgresql+psycopg://postgres:postgres@localhost:5432/trading_db')" 2>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Test Collection (Diagnostic)
+        env:
+          CI: "true"
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/trading_db
+          REDIS_URL: redis://localhost:6379/0
+          APP_ENV: test
+        run: |
+          echo "======================================"
+          echo "TEST COLLECTION DIAGNOSTIC"
+          echo "======================================"
+          python -m pytest backend/tests --collect-only -q 2>&1 | tee collection_output.txt
+          COLLECTION_COUNT=$(tail -1 collection_output.txt)
+          echo ""
+          echo "Total tests collected: $COLLECTION_COUNT"
+
+      - name: Run Full Test Suite (Complete Diagnostic)
+        timeout-minutes: 400
+        env:
+          CI: "true"
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/trading_db
+          REDIS_URL: redis://localhost:6379/0
+          APP_ENV: test
+          APP_LOG_LEVEL: INFO
+          PYTHONFAULTHANDLER: "1"
+        run: |
+          echo "======================================"
+          echo "RUNNING FULL TEST SUITE - ALL TESTS"
+          echo "======================================"
+          echo ""
+
+          # Run pytest with FULL verbose output saved to file
+          python -m pytest backend/tests \
+            --tb=short \
+            --json-report \
+            --json-report-file=test_results.json \
+            --json-report-indent=2 \
+            -v \
+            --timeout=120 \
+            --timeout-method=thread \
+            --maxfail=999 \
+            2>&1 | tee full_test_run_output.log
+
+          echo ""
+          echo "======================================"
+          echo "TEST RUN COMPLETED"
+          echo "======================================"
+
+      - name: Parse and Summarize Results
+        if: always()
+        run: |
+          echo "======================================"
+          echo "TEST RESULTS SUMMARY"
+          echo "======================================"
+
+          # Extract summary from log
+          grep -E "passed|failed|error|skipped|warnings" full_test_run_output.log | tail -5 || echo "Summary not found in log"
+
+          echo ""
+          echo "======================================"
+          echo "SAVING ALL OUTPUT TO ARTIFACTS"
+          echo "======================================"
+
+      - name: Generate Detailed Failure Report
+        if: always()
+        run: |
+          python3 << 'EOF'
+          import json
+          from pathlib import Path
+
+          # Load test results
+          results_file = Path("test_results.json")
+          if results_file.exists():
+              with open(results_file) as f:
+                  data = json.load(f)
+
+              summary = data.get("summary", {})
+              tests = data.get("tests", [])
+
+              # Count outcomes
+              passed = [t for t in tests if t.get("outcome") == "passed"]
+              failed = [t for t in tests if t.get("outcome") == "failed"]
+              errors = [t for t in tests if t.get("outcome") == "error"]
+              skipped = [t for t in tests if t.get("outcome") == "skipped"]
+
+              print(f"\n{'='*60}")
+              print(f"COMPREHENSIVE TEST SUMMARY")
+              print(f"{'='*60}")
+              print(f"Total Tests:  {len(tests)}")
+              print(f"Passed:       {len(passed)} ✅")
+              print(f"Failed:       {len(failed)} ❌")
+              print(f"Errors:       {len(errors)} ⚠️")
+              print(f"Skipped:      {len(skipped)} ⏭️")
+              print(f"Pass Rate:    {(len(passed)/len(tests)*100):.1f}%")
+              print(f"{'='*60}\n")
+
+              # Show failed tests
+              if failed:
+                  print(f"\n{'='*60}")
+                  print(f"FAILED TESTS ({len(failed)})")
+                  print(f"{'='*60}")
+                  for test in failed[:30]:
+                      print(f"\n❌ {test.get('nodeid')}")
+                      call = test.get("call", {})
+                      if call.get("longrepr"):
+                          print(f"   {call.get('longrepr')[:200]}")
+
+              # Show error tests
+              if errors:
+                  print(f"\n{'='*60}")
+                  print(f"ERROR TESTS ({len(errors)})")
+                  print(f"{'='*60}")
+                  for test in errors[:30]:
+                      print(f"\n⚠️  {test.get('nodeid')}")
+                      if test.get("longrepr"):
+                          print(f"   {test.get('longrepr')[:200]}")
+
+              # Save detailed report
+              with open("DETAILED_TEST_RESULTS.txt", "w") as f:
+                  f.write(f"{'='*80}\n")
+                  f.write(f"FULL TEST SUITE DIAGNOSTIC REPORT\n")
+                  f.write(f"{'='*80}\n\n")
+                  f.write(f"Total Tests:  {len(tests)}\n")
+                  f.write(f"Passed:       {len(passed)}\n")
+                  f.write(f"Failed:       {len(failed)}\n")
+                  f.write(f"Errors:       {len(errors)}\n")
+                  f.write(f"Skipped:      {len(skipped)}\n")
+                  f.write(f"Pass Rate:    {(len(passed)/len(tests)*100):.1f}%\n\n")
+
+                  f.write(f"{'='*80}\n")
+                  f.write(f"ALL TEST RESULTS\n")
+                  f.write(f"{'='*80}\n\n")
+
+                  for test in tests:
+                      outcome = test.get("outcome", "unknown")
+                      symbol = "✅" if outcome == "passed" else "❌" if outcome == "failed" else "⚠️" if outcome == "error" else "⏭️"
+                      f.write(f"{symbol} [{outcome.upper():7}] {test.get('nodeid')}\n")
+                      if outcome in ["failed", "error"]:
+                          call = test.get("call", {})
+                          if call.get("longrepr"):
+                              f.write(f"          Error: {call.get('longrepr')[:500]}\n")
+                      f.write("\n")
+          else:
+              print("❌ test_results.json not found")
+          EOF
+
+      - name: Upload All Diagnostic Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-diagnostic-results
+          path: |
+            full_test_run_output.log
+            test_results.json
+            collection_output.txt
+            DETAILED_TEST_RESULTS.txt
+          retention-days: 90
+
+      - name: Display Summary
+        if: always()
+        run: |
+          echo "======================================"
+          echo "DIAGNOSTIC RUN COMPLETE"
+          echo "======================================"
+          echo ""
+          echo "📁 Artifacts saved:"
+          echo "   - full_test_run_output.log (complete pytest output)"
+          echo "   - test_results.json (structured results)"
+          echo "   - collection_output.txt (test collection info)"
+          echo "   - DETAILED_TEST_RESULTS.txt (human-readable summary)"
+          echo ""
+          if [ -f DETAILED_TEST_RESULTS.txt ]; then
+            head -100 DETAILED_TEST_RESULTS.txt
+          fi
