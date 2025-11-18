@@ -162,11 +162,18 @@ def pytest_configure(config):
     from backend.app.prefs.models import UserPreferences  # noqa: F401
     from backend.app.privacy.models import PrivacyRequest  # noqa: F401
 
-    # NOTE: Skipping research.models entirely - has PaperTrade class that conflicts with paper.models.PaperTrade
-    # Tests requiring research.models should import them directly in the test file
     # Quotas and payments
     from backend.app.quotas.models import QuotaDefinition, QuotaUsage  # noqa: F401
     from backend.app.reports.models import Report  # noqa: F401
+
+    # NOTE: research.models has ResearchPaperTrade (for strategy validation paper trades)
+    # This is separate from paper.models.PaperTrade (for user paper trading mode)
+    # Both can coexist now that they have different names and table names
+    from backend.app.research.models import (  # noqa: F401
+        ResearchPaperTrade,
+        StrategyMetadata,
+        WalkForwardResult,
+    )
     from backend.app.revenue.models import (  # noqa: F401
         RevenueSnapshot,
         SubscriptionCohort,

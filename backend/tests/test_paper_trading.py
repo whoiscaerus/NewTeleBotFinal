@@ -13,7 +13,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from backend.app.research.models import PaperTrade, StrategyMetadata, StrategyStatus
+from backend.app.research.models import (
+    ResearchPaperTrade,
+    StrategyMetadata,
+    StrategyStatus,
+)
 from backend.app.trading.runtime.modes import (
     OrderRouter,
     PaperTradingEngine,
@@ -114,7 +118,7 @@ class TestFillSimulation:
         from sqlalchemy import select
 
         result = await db_session.execute(
-            select(PaperTrade).where(PaperTrade.id == position.id)
+            select(ResearchPaperTrade).where(ResearchPaperTrade.id == position.id)
         )
         db_position = result.scalar_one()
 
@@ -218,7 +222,7 @@ class TestFillSimulation:
         from sqlalchemy import select
 
         result = await db_session.execute(
-            select(PaperTrade).where(PaperTrade.id == position.id)
+            select(ResearchPaperTrade).where(ResearchPaperTrade.id == position.id)
         )
         db_position = result.scalar_one()
 

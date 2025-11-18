@@ -12,7 +12,7 @@ Each transition requires passing validation thresholds.
 import enum
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Enum, Float, Index, Integer, String
+from sqlalchemy import JSON, Column, DateTime, Enum, Float, Integer, String
 
 from backend.app.core.db import Base
 
@@ -151,11 +151,14 @@ class WalkForwardResult(Base):
         return f"<WalkForwardResult {self.strategy_name} v{self.strategy_version} {self.n_folds} folds passed={bool(self.passed)}>"
 
 
-class PaperTrade(Base):
-    """Paper trading ledger.
+class ResearchPaperTrade(Base):
+    """Paper trading ledger for research/walk-forward validation.
 
-    Records simulated trades for paper trading mode.
-    Separate from live trades for safety and analysis.
+    Records simulated trades for paper trading mode during strategy validation.
+    Separate from live trades and from user paper trading (PaperTrade in paper.models).
+
+    NOTE: This is for research/strategy validation. User paper trading uses
+    PaperTrade from backend.app.paper.models with different schema.
 
     Attributes:
         id: Unique trade identifier
@@ -173,8 +176,7 @@ class PaperTrade(Base):
         signal_id: Reference to original signal
     """
 
-    __tablename__ = "paper_trades"
-    __table_args__ = ({"extend_existing": True},)
+    __tablename__ = "research_paper_trades"
 
     id = Column(String(36), primary_key=True)
     strategy_name = Column(String(50), nullable=False, index=True)
@@ -191,4 +193,4 @@ class PaperTrade(Base):
     signal_id = Column(String(36), nullable=True)
 
     def __repr__(self) -> str:
-        return f"<PaperTrade {self.id} {self.symbol} {self.side} @ {self.entry_price}>"
+        return f"<ResearchPaperTrade {self.id} {self.symbol} {self.side} @ {self.entry_price}>"
