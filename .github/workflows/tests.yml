@@ -188,7 +188,11 @@ jobs:
           python -m pytest backend/tests --collect-only -q 2>&1 | grep -E "ERROR|error|Error" || echo "No collection errors found"
 
           echo ""
-          echo "5. Full collection output saved to ci_collected_tests.txt"
+          echo "5. Collection with warnings/import failures:"
+          python -m pytest backend/tests --collect-only 2>&1 | grep -E "ImportError|ModuleNotFoundError|SyntaxError" | head -20 || echo "No import errors"
+
+          echo ""
+          echo "6. Full collection output saved to ci_collected_tests.txt"
           python -m pytest backend/tests --collect-only -q 2>&1 | tee ci_collected_tests.txt
 
       - name: Run pytest with coverage (Backend) - FULL TEST SUITE
