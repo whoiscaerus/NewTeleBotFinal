@@ -48,24 +48,27 @@ async def test_dashboard_websocket_connect_success(ws_client, test_user: User):
         f"/api/v1/dashboard/ws?token={token}"
     ) as websocket:
         # Should receive approvals message
-        data = websocket.receive_json()
+        data = websocket.receive_json(timeout=5)
         assert data["type"] == "approvals"
         assert "data" in data
         assert "timestamp" in data
 
         # Should receive positions message
-        data = websocket.receive_json()
+        data = websocket.receive_json(timeout=5)
         assert data["type"] == "positions"
         assert "data" in data
 
         # Should receive equity message
-        data = websocket.receive_json()
+        data = websocket.receive_json(timeout=5)
         assert data["type"] == "equity"
         assert "data" in data
 
         # Gauge should be incremented
         current_gauge = metrics.dashboard_ws_clients_gauge._value.get()
         assert current_gauge == initial_gauge + 1
+
+        # Close connection cleanly to avoid hanging
+        websocket.close()
 
 
 @pytest.mark.asyncio
@@ -150,9 +153,12 @@ async def test_dashboard_websocket_gauge_decrements_on_disconnect(
         assert metrics.dashboard_ws_clients_gauge._value.get() == initial_gauge + 1
 
         # Receive initial messages to confirm connection
-        websocket.receive_json()  # approvals
-        websocket.receive_json()  # positions
-        websocket.receive_json()  # equity
+        websocket.receive_json(timeout=5)  # approvals
+        websocket.receive_json(timeout=5)  # positions
+        websocket.receive_json(timeout=5)  # equity
+
+        # Close connection
+        websocket.close()
 
     # After disconnect, gauge should decrement
     await asyncio.sleep(0.1)  # Give time for cleanup
@@ -183,23 +189,26 @@ async def test_dashboard_websocket_streams_updates_at_1hz(ws_client, test_user: 
         # Receive first cycle
         start_time = datetime.now()
 
-        msg1 = websocket.receive_json()
+        msg1 = websocket.receive_json(timeout=5)
         assert msg1["type"] == "approvals"
 
-        msg2 = websocket.receive_json()
+        msg2 = websocket.receive_json(timeout=5)
         assert msg2["type"] == "positions"
 
-        msg3 = websocket.receive_json()
+        msg3 = websocket.receive_json(timeout=5)
         assert msg3["type"] == "equity"
 
         # Receive second cycle (should arrive after ~1 second)
-        msg4 = websocket.receive_json()
+        msg4 = websocket.receive_json(timeout=5)
         assert msg4["type"] == "approvals"
 
         elapsed = (datetime.now() - start_time).total_seconds()
 
         # Should be around 1 second (allow 0.8-1.5s tolerance)
         assert 0.8 <= elapsed <= 1.5
+
+        # Close connection
+        websocket.close()
 
 
 @pytest.mark.asyncio
@@ -225,23 +234,26 @@ async def test_dashboard_websocket_message_formats_valid(ws_client, test_user: U
         f"/api/v1/dashboard/ws?token={token}"
     ) as websocket:
         # Approvals message
-        approvals_msg = websocket.receive_json()
+        approvals_msg = websocket.receive_json(timeout=5)
         assert approvals_msg["type"] == "approvals"
         assert "data" in approvals_msg
         assert "timestamp" in approvals_msg
         assert isinstance(approvals_msg["data"], list)
 
         # Positions message
-        positions_msg = websocket.receive_json()
+        positions_msg = websocket.receive_json(timeout=5)
         assert positions_msg["type"] == "positions"
         assert "data" in positions_msg
         assert isinstance(positions_msg["data"], list)
 
         # Equity message
-        equity_msg = websocket.receive_json()
+        equity_msg = websocket.receive_json(timeout=5)
         assert equity_msg["type"] == "equity"
         assert "data" in equity_msg
         assert "final_equity" in equity_msg["data"]
         assert "total_return_percent" in equity_msg["data"]
+
+        # Close connection
+        websocket.close()
         assert "max_drawdown_percent" in equity_msg["data"]
         assert "equity_curve" in equity_msg["data"]
