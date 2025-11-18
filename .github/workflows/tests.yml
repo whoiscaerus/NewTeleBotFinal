@@ -204,28 +204,35 @@ jobs:
           echo "=========================================="
           echo "RUNNING FULL TEST SUITE - ALL 6400+ TESTS"
           echo "=========================================="
+          echo "Note: Verbose output saved to file (console limited to summary)"
+          echo ""
 
+          # Run pytest WITHOUT -v to reduce console output
+          # Use -q for quiet mode, --tb=line for minimal traceback
+          # Add --timeout to kill any individual tests that hang
           python -m pytest backend/tests \
             --cov=backend/app \
             --cov-report=xml:coverage/backend/coverage.xml \
             --cov-report=term-missing \
             --json-report \
             --json-report-file=test_results.json \
-            --tb=short \
+            --tb=line \
+            --timeout=120 \
+            --timeout-method=thread \
             --maxfail=999 \
-            -v 2>&1 | tee test_output.log || echo "Tests completed with failures"
+            -q > test_output.log 2>&1 || TEST_EXIT=$?
+
+          echo "✅ Test run completed"
+          echo ""
+          echo "=========================================="
+          echo "TEST RUN SUMMARY (Last 100 lines)"
+          echo "=========================================="
+          tail -100 test_output.log
 
           echo ""
           echo "=========================================="
-          echo "TEST RUN SUMMARY"
+          echo "FULL OUTPUT SAVED TO ARTIFACTS"
           echo "=========================================="
-          tail -50 test_output.log
-
-          # Generate detailed failure report
-          python scripts/analyze_test_output.py \
-            --json test_results.json \
-            --output TEST_FAILURES_DETAILED.md \
-            --csv TEST_FAILURES.csv 2>&1 || echo "Detailed report generation skipped"
 
       - name: Generate test failure report
         if: always()
