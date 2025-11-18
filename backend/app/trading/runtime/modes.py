@@ -31,7 +31,11 @@ from typing import Any
 from prometheus_client import Counter, Gauge
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.research.models import PaperTrade, StrategyMetadata, StrategyStatus
+from backend.app.research.models import (
+    ResearchPaperTrade,
+    StrategyMetadata,
+    StrategyStatus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +111,7 @@ class PaperTradingEngine:
         strategy_name: str,
         db_session: AsyncSession,
         size: float = 1.0,
-    ) -> PaperTrade:
+    ) -> ResearchPaperTrade:
         """Execute entry order with simulated fill.
 
         Args:
@@ -117,7 +121,7 @@ class PaperTradingEngine:
             size: Position size (lots)
 
         Returns:
-            PaperTrade record with simulated fill
+            ResearchPaperTrade record with simulated fill
 
         Example:
             >>> position = await engine.execute_entry(
@@ -144,7 +148,7 @@ class PaperTradingEngine:
             side = 1
 
         # Create paper trade record
-        paper_trade = PaperTrade(
+        paper_trade = ResearchPaperTrade(
             id=str(uuid.uuid4()),
             strategy_name=strategy_name,
             signal_id=signal.id,
@@ -185,7 +189,7 @@ class PaperTradingEngine:
         """Execute exit order and calculate PnL.
 
         Args:
-            position_id: PaperTrade ID to close
+            position_id: ResearchPaperTrade ID to close
             exit_price: Exit price (before slippage)
             reason: Exit reason (take_profit, stop_loss, signal, manual)
             db_session: Database session
@@ -208,7 +212,7 @@ class PaperTradingEngine:
         from sqlalchemy import select
 
         result = await db_session.execute(
-            select(PaperTrade).where(PaperTrade.id == position_id)
+            select(ResearchPaperTrade).where(ResearchPaperTrade.id == position_id)
         )
         position = result.scalar_one_or_none()
 
@@ -299,18 +303,18 @@ class PaperTradingEngine:
 
         # Get open positions
         result = await db_session.execute(
-            select(PaperTrade).where(
-                PaperTrade.strategy_name == strategy_name,
-                PaperTrade.exit_price.is_(None),
+            select(ResearchPaperTrade).where(
+                ResearchPaperTrade.strategy_name == strategy_name,
+                ResearchPaperTrade.exit_price.is_(None),
             )
         )
         open_positions = result.scalars().all()
 
         # Get closed trades
         result = await db_session.execute(
-            select(PaperTrade).where(
-                PaperTrade.strategy_name == strategy_name,
-                PaperTrade.exit_price.isnot(None),
+            select(ResearchPaperTrade).where(
+                ResearchPaperTrade.strategy_name == strategy_name,
+                ResearchPaperTrade.exit_price.isnot(None),
             )
         )
         closed_trades = result.scalars().all()
@@ -351,9 +355,9 @@ class PaperTradingEngine:
 
         # Get all closed paper trades
         result = await db_session.execute(
-            select(PaperTrade).where(
-                PaperTrade.strategy_name == strategy_name,
-                PaperTrade.exit_price.isnot(None),
+            select(ResearchPaperTrade).where(
+                ResearchPaperTrade.strategy_name == strategy_name,
+                ResearchPaperTrade.exit_price.isnot(None),
             )
         )
         closed_trades = result.scalars().all()
