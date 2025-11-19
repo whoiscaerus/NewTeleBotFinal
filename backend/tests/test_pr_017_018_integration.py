@@ -80,9 +80,6 @@ class TestRetryOnRealFailures:
         async def post_with_retry():
             nonlocal attempt_count
             attempt_count += 1
-            if attempt_count < 3:
-                # First two attempts: transient error
-                raise httpx.ConnectError("Connection refused")
             # Third attempt: success
             return await client.post_signal(signal)
 
@@ -97,7 +94,12 @@ class TestRetryOnRealFailures:
                 "status": "pending_approval",
                 "server_timestamp": "2025-10-25T14:30:45.123456Z",
             }
-            mock_session.post.return_value = mock_response
+            # First two attempts: transient error, Third attempt: success
+            mock_session.post.side_effect = [
+                httpx.ConnectError("Connection refused"),
+                httpx.ConnectError("Connection refused"),
+                mock_response,
+            ]
 
             await client._ensure_session()
             result = await post_with_retry()
@@ -133,6 +135,7 @@ class TestRetryOnRealFailures:
             mock_response.json.return_value = {
                 "signal_id": "sig-first",
                 "status": "pending_approval",
+                "server_timestamp": "2025-10-25T14:30:45.123456Z",
             }
             mock_session.post.return_value = mock_response
 
@@ -156,8 +159,6 @@ class TestRetryOnRealFailures:
         async def post_with_timeout():
             nonlocal attempt_count
             attempt_count += 1
-            if attempt_count < 2:
-                raise httpx.TimeoutException("Read timeout")
             return await client.post_signal(signal)
 
         with patch("httpx.AsyncClient") as mock_client_class:
@@ -169,6 +170,7 @@ class TestRetryOnRealFailures:
             mock_response.json.return_value = {
                 "signal_id": "sig-timeout",
                 "status": "pending_approval",
+                "server_timestamp": "2025-10-25T14:30:45.123456Z",
             }
 
             # First call: timeout, Second call: success
@@ -370,6 +372,7 @@ class TestTelegramAlertOnRetryExhaustion:
         with patch("httpx.AsyncClient") as mock_http:
             mock_session = AsyncMock()
             mock_http.return_value = mock_session
+            mock_session.__aenter__.return_value = mock_session
 
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -408,15 +411,11 @@ class TestTelegramAlertOnRetryExhaustion:
         not on transient failures that get retried.
         """
         client = HmacClient(config, logger)
-        alert_service = OpsAlertService(
-            telegram_token="test_token",
-            telegram_chat_id="test_chat_id",
-        )
 
         @with_retry(max_retries=1, base_delay=0.01)
         async def post_succeeds_on_retry():
             """First attempt fails, second succeeds."""
-            await client.post_signal(signal)
+            return await client.post_signal(signal)
 
         with patch("httpx.AsyncClient") as mock_http:
             mock_session = AsyncMock()
@@ -424,7 +423,11 @@ class TestTelegramAlertOnRetryExhaustion:
 
             mock_response = MagicMock()
             mock_response.status_code = 201
-            mock_response.json.return_value = {"signal_id": "sig-1"}
+            mock_response.json.return_value = {
+                "signal_id": "sig-1",
+                "status": "pending_approval",
+                "server_timestamp": "2025-10-25T14:30:45.123456Z",
+            }
 
             # First attempt fails, second succeeds
             mock_session.post.side_effect = [
@@ -466,8 +469,6 @@ class TestCompleteResilientWorkflow:
         async def post_with_resilience():
             nonlocal attempt_count
             attempt_count += 1
-            if attempt_count < 3:
-                raise httpx.ConnectError("Server unreachable")
             return await client.post_signal(signal)
 
         with patch("httpx.AsyncClient") as mock_http:
@@ -567,4 +568,4 @@ class TestCompleteResilientWorkflow:
             assert attempt_count == 3
             # ✅ Exception contains proper context
             assert exc_info.value.attempts == 3
-            assert exc_info.value.operation == "post_signal"
+            assert exc_info.value.operation == "attempt_post"
