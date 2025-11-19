@@ -196,7 +196,7 @@ jobs:
           python -m pytest backend/tests --collect-only -q 2>&1 | tee ci_collected_tests.txt
 
       - name: Run pytest with coverage (Backend) - FULL TEST SUITE
-        timeout-minutes: 300
+        timeout-minutes: 120
         env:
           CI: "true"
           DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/trading_db
@@ -211,37 +211,120 @@ jobs:
           echo "Note: Verbose output saved to file (console limited to summary)"
           echo ""
 
+          # Ensure output directories exist
+          mkdir -p coverage/backend
+          mkdir -p test-results
+
           # Run pytest WITHOUT -v to reduce console output
-          # Use -q for quiet mode, --tb=line for minimal traceback
-          # Add --timeout to kill any individual tests that hang
+          # Use -q for quiet mode, --tb=short for concise traceback
+          # Add --timeout to kill any individual tests that hang (60s per test)
+          # CRITICAL: Use absolute path for JSON report to ensure it's created
+          set +e  # Don't exit on test failures
           python -m pytest backend/tests \
             --cov=backend/app \
             --cov-report=xml:coverage/backend/coverage.xml \
-            --cov-report=term-missing \
+            --cov-report=html:coverage/backend/htmlcov \
+            --cov-report=term-missing:skip-covered \
             --json-report \
-            --json-report-file=test_results.json \
-            --tb=line \
-            --timeout=120 \
+            --json-report-file=./test-results/test_results.json \
+            --json-report-indent=2 \
+            --json-report-omit=log \
+            --tb=short \
+            --timeout=60 \
             --timeout-method=thread \
-            --maxfail=999 \
-            -q > test_output.log 2>&1 || TEST_EXIT=$?
+            -q 2>&1 | tee test-results/test_output.log
+          TEST_EXIT_CODE=$?
+          set -e  # Re-enable exit on error
 
-          echo "✅ Test run completed"
+          echo ""
+          echo "✅ Test run completed with exit code: $TEST_EXIT_CODE"
           echo ""
           echo "=========================================="
-          echo "TEST RUN SUMMARY (Last 100 lines)"
+          echo "TEST RUN SUMMARY (Last 200 lines)"
           echo "=========================================="
-          tail -100 test_output.log
+          tail -200 test-results/test_output.log || echo "(log file not found)"
+
+          echo ""
+          echo "=========================================="
+          echo "FILES CREATED FOR ARTIFACTS"
+          echo "=========================================="
+          ls -lh test-results/ || echo "test-results directory not found"
+          ls -lh coverage/backend/*.xml || echo "coverage XML not found"
+
+          echo ""
+          echo "=========================================="
+          echo "JSON REPORT STATUS"
+          echo "=========================================="
+          if [ -f "test-results/test_results.json" ]; then
+            echo "✅ JSON report created successfully"
+            echo "Size: $(du -h test-results/test_results.json | cut -f1)"
+            echo "Tests in report: $(python -c 'import json; print(len(json.load(open("test-results/test_results.json")).get("tests", [])))' 2>/dev/null || echo 'unknown')"
+          else
+            echo "❌ JSON report NOT FOUND - this will cause report generation to fail"
+            echo "Checking for JSON report in other locations:"
+            find . -name "test_results.json" -o -name "*.json" -path "*/test-results/*" 2>/dev/null || echo "No JSON files found"
+          fi
 
           echo ""
           echo "=========================================="
           echo "FULL OUTPUT SAVED TO ARTIFACTS"
           echo "=========================================="
 
+          # Exit with original test exit code
+          exit $TEST_EXIT_CODE
+
       - name: Generate test failure report
         if: always()
         run: |
-          python scripts/generate_test_report.py || echo "Report generation failed"
+          echo "=========================================="
+          echo "GENERATING TEST FAILURE REPORT"
+          echo "=========================================="
+
+          # Check if JSON report exists before generating report
+          if [ -f "test-results/test_results.json" ]; then
+            echo "✅ JSON report found, generating detailed report..."
+            python scripts/generate_test_report.py test-results/test_results.json test-results/TEST_FAILURES_DETAILED.md || echo "⚠️ Report generation script failed"
+          else
+            echo "❌ JSON report not found, creating placeholder report..."
+            mkdir -p test-results
+            cat > test-results/TEST_FAILURES_DETAILED.md <<EOF
+          # 🧪 Test Failure Report
+
+          ⚠️ **Report Generation Issue**
+
+          The pytest JSON report was not found at expected location: \`test-results/test_results.json\`
+
+          This can happen if:
+          - pytest was terminated due to timeout (>120 minutes)
+          - pytest crashed before completing
+          - pytest-json-report plugin failed to initialize
+          - Tests collection failed completely
+
+          ## 📋 What We Know
+
+          - **Test Run**: Started but may not have completed
+          - **Timeout**: Individual tests limited to 60 seconds
+          - **Total Timeout**: Job limited to 120 minutes
+          - **See**: Full logs in test_output.log artifact
+
+          ## 🔍 Next Steps
+
+          1. Download the \`test_output.log\` artifact from this run
+          2. Search for the last test that ran before timeout/failure
+          3. Run that specific test locally: \`pytest path/to/test.py::test_name -xvs\`
+          4. Fix the hanging/failing test
+          5. Push fix and re-run CI
+
+          ---
+          *This placeholder was created because pytest did not generate a JSON report*
+          EOF
+            echo "Created placeholder report"
+          fi
+
+          # Always show what we created
+          echo ""
+          echo "Report preview (first 50 lines):"
+          head -50 test-results/TEST_FAILURES_DETAILED.md || echo "Report not created"
 
       - name: Upload test results
         if: always()
@@ -249,12 +332,11 @@ jobs:
         with:
           name: test-results
           path: |
-            test_results.json
-            test_output.log
-            TEST_FAILURES_DETAILED.md
-            TEST_FAILURES.csv
+            test-results/
             ci_collected_tests.txt
+            coverage/backend/
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Display test summary
         if: always()

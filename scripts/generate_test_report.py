@@ -156,15 +156,21 @@ def generate_report(json_file: str, output_file: str):
 
 
 if __name__ == "__main__":
-    # Default paths - pytest-json-report outputs to repo root by default
-    json_report = "test_results.json"
-    output_report = "TEST_FAILURES_DETAILED.md"
+    # Accept command line arguments for file paths
+    if len(sys.argv) >= 3:
+        json_report = sys.argv[1]
+        output_report = sys.argv[2]
+    else:
+        # Default paths - pytest-json-report outputs to repo root by default
+        json_report = "test_results.json"
+        output_report = "TEST_FAILURES_DETAILED.md"
 
     # Check if pytest JSON exists
     if not Path(json_report).exists():
         print(f"⚠️ {json_report} not found, trying alternate paths...")
         # Try alternate locations
         for alt_path in [
+            "test-results/test_results.json",
             "backend/tests/.pytest_cache/test_results.json",
             "backend/test_results.json",
             ".pytest_cache/test_results.json",
@@ -177,16 +183,9 @@ if __name__ == "__main__":
         else:
             print("   ⚠️ No JSON report found in any location")
             print("   This can happen if pytest didn't complete or JSON plugin failed")
-            # Create a minimal report anyway
-            with open(output_report, "w") as f:
-                f.write("# 🧪 Test Failure Report\n\n")
-                f.write("⚠️ **Report Generation Issue**\n\n")
-                f.write("The pytest JSON report was not found. This can happen if:\n")
-                f.write("- pytest-json-report plugin failed to install\n")
-                f.write("- pytest didn't complete successfully\n")
-                f.write("- Tests were skipped or collection failed\n\n")
-                f.write("Check the GitHub Actions logs for details.\n")
-            print(f"Created minimal report: {output_report}")
-            sys.exit(0)
+            print(
+                "   ⚠️ Script will exit with error - GitHub Actions will create placeholder"
+            )
+            sys.exit(1)  # Exit with error so GitHub Actions knows to create placeholder
 
     generate_report(json_report, output_report)
