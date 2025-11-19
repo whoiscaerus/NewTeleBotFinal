@@ -34,6 +34,7 @@ from fastapi import Header, HTTPException
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Set test environment variables BEFORE importing app
 os.environ["APP_ENV"] = "development"
@@ -41,7 +42,8 @@ os.environ["APP_NAME"] = "test-app"
 os.environ["APP_VERSION"] = "0.1.0-test"
 os.environ["APP_LOG_LEVEL"] = "DEBUG"
 os.environ["DB_DSN"] = "postgresql+psycopg://user:pass@localhost:5432/test_app"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+# Use setdefault to allow CI/CD to override with real Postgres
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ["SMTP_HOST"] = "localhost"
 os.environ["SMTP_PORT"] = "587"
@@ -313,40 +315,93 @@ async def db_postgres() -> AsyncGenerator[AsyncSession, None]:
     await engine.dispose()
 
 
-@pytest_asyncio.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create in-memory SQLite session for unit tests with proper cleanup.
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an instance of the default event loop for each test session."""
+    import asyncio
 
-    Each test gets a fresh database session with clean state:
-    - Creates new in-memory database for each test
-    - All tables created fresh
-    - After test: engine disposed to clear all data
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
 
-    This ensures complete test isolation - no data leaks between tests.
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture(scope="session")
+async def db_engine():
+    """Create async engine once per session with schema initialized.
+
+    This fixture:
+    1. Creates the engine (Postgres or SQLite)
+    2. Creates all tables (schema) ONCE
+    3. Yields the engine
+    4. Disposes the engine at end of session
     """
-
     from backend.app.core.db import Base
 
+    db_url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+    is_sqlite = "sqlite" in db_url
+
+    # Configure engine
+    connect_args = {}
+    poolclass = None
+
+    if is_sqlite:
+        connect_args = {"check_same_thread": False}
+        poolclass = StaticPool
+
     engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
+        db_url,
         echo=False,
+        connect_args=connect_args,
+        poolclass=poolclass,
     )
 
-    # Drop all tables first (prevents "index already exists" errors if metadata was modified)
-    # Then create all tables fresh
+    # Create all tables fresh ONCE per session
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
-    # Create session factory
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    yield engine
 
-    async with async_session() as session:
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
+    """Create database session for unit tests with transaction rollback.
+
+    Each test gets a fresh transaction that is rolled back at the end.
+    This is MUCH faster than recreating the schema for every test.
+    """
+    # Connect to the existing engine
+    connection = await db_engine.connect()
+    transaction = await connection.begin()
+
+    # Bind session to this connection
+    session_factory = sessionmaker(
+        bind=connection,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+    async with session_factory() as session:
+        # Start a nested transaction (SAVEPOINT) if supported
+        # For SQLite, this helps isolation. For Postgres, it's essential.
+        if connection.in_transaction():
+            await connection.begin_nested()
+
         yield session
 
-    # Cleanup: dispose engine (destroys in-memory database)
-    # Each test gets a fresh database, ensuring complete isolation
-    await engine.dispose()
+        # No need to explicitly rollback nested, the outer rollback handles it
+        # But explicit rollback is safer for some drivers
+
+    # Rollback the outer transaction to clean up ALL changes made during the test
+    await transaction.rollback()
+    await connection.close()
 
 
 @pytest_asyncio.fixture
