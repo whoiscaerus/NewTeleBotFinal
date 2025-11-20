@@ -394,6 +394,7 @@ class TestGetSessionEndpoint:
             updated_at=datetime.utcnow(),
         )
         db_session.add(other_user)
+        await db_session.flush()
 
         session = ChatSession(
             id=uuid4(),
@@ -630,9 +631,7 @@ class TestCORSHeaders:
             "/api/v1/ai/sessions",
             headers=auth_headers,
         )
-
-        # Check for CORS headers (if configured)
-        # This depends on FastAPI CORS middleware configuration
+        assert response.status_code == 200
 
 
 class TestRateLimiting:

@@ -32,6 +32,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.approvals.models import Approval, ApprovalDecision
 from backend.app.auth.models import User, UserRole
 from backend.app.auth.utils import create_access_token, hash_password
+from backend.app.clients.devices.models import Device
+from backend.app.clients.models import Client
 from backend.app.core.db import get_db
 from backend.app.ea.aggregate import (
     get_approval_execution_status,
@@ -154,6 +156,53 @@ async def signal_with_approval(
     return signal, approval
 
 
+async def create_test_device(db_session: AsyncSession) -> Device:
+    """Create a valid device for testing."""
+    client = Client(
+        id=str(uuid4()),
+        email=f"client_{uuid4()}@test.com",
+    )
+    db_session.add(client)
+    await db_session.flush()
+
+    device = Device(
+        id=str(uuid4()),
+        client_id=client.id,
+        device_name=f"Device {uuid4()}",
+        hmac_key_hash=f"hash_{uuid4()}",
+    )
+    db_session.add(device)
+    await db_session.flush()
+    return device
+
+
+async def create_test_approval(db_session: AsyncSession, user_id: str) -> Approval:
+    """Create a valid approval for testing."""
+    signal = Signal(
+        id=str(uuid4()),
+        user_id=user_id,
+        instrument="GOLD",
+        side=0,
+        price=1950.50,
+    )
+    db_session.add(signal)
+    await db_session.flush()
+
+    approval = Approval(
+        id=str(uuid4()),
+        signal_id=signal.id,
+        user_id=user_id,
+        client_id=str(uuid4()),
+        decision=ApprovalDecision.APPROVED.value,
+        consent_version=1,
+        ip="127.0.0.1",
+        ua="Test",
+    )
+    db_session.add(approval)
+    await db_session.flush()
+    return approval
+
+
 # =============================================================================
 # TEST SUITE 1: Execution Aggregation Logic (12 tests)
 # =============================================================================
@@ -172,10 +221,11 @@ class TestExecutionAggregation:
 
         # Create 3 placed executions from different devices
         for i in range(3):
+            device = await create_test_device(db_session)
             execution = Execution(
                 id=str(uuid4()),
                 approval_id=approval_id,
-                device_id=str(uuid4()),
+                device_id=device.id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"PLACED_{i}",
             )
@@ -202,10 +252,11 @@ class TestExecutionAggregation:
 
         # Create 2 failed executions
         for i in range(2):
+            device = await create_test_device(db_session)
             execution = Execution(
                 id=str(uuid4()),
                 approval_id=approval_id,
-                device_id=str(uuid4()),
+                device_id=device.id,
                 status=ExecutionStatus.FAILED,
                 error=f"Connection timeout {i}",
             )
@@ -229,20 +280,22 @@ class TestExecutionAggregation:
 
         # Create 4 placed, 2 failed
         for i in range(4):
+            device = await create_test_device(db_session)
             execution = Execution(
                 id=str(uuid4()),
                 approval_id=approval_id,
-                device_id=str(uuid4()),
+                device_id=device.id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"PLACED_{i}",
             )
             db_session.add(execution)
 
         for i in range(2):
+            device = await create_test_device(db_session)
             execution = Execution(
                 id=str(uuid4()),
                 approval_id=approval_id,
-                device_id=str(uuid4()),
+                device_id=device.id,
                 status=ExecutionStatus.FAILED,
                 error=f"Error_{i}",
             )
@@ -280,11 +333,12 @@ class TestExecutionAggregation:
         _, approval = signal_with_approval
         approval_id = str(approval.id)
 
+        device = await create_test_device(db_session)
         error_msg = "Insufficient margin in account"
         execution = Execution(
             id=str(uuid4()),
             approval_id=approval_id,
-            device_id=str(uuid4()),
+            device_id=device.id,
             status=ExecutionStatus.FAILED,
             error=error_msg,
         )
@@ -306,11 +360,12 @@ class TestExecutionAggregation:
         _, approval = signal_with_approval
         approval_id = str(approval.id)
 
+        device = await create_test_device(db_session)
         ticket = "MT5_ORDER_987654321"
         execution = Execution(
             id=str(uuid4()),
             approval_id=approval_id,
-            device_id=str(uuid4()),
+            device_id=device.id,
             status=ExecutionStatus.PLACED,
             broker_ticket=ticket,
         )
@@ -331,7 +386,8 @@ class TestExecutionAggregation:
         _, approval = signal_with_approval
         approval_id = str(approval.id)
 
-        device_ids = [str(uuid4()) for _ in range(3)]
+        devices = [await create_test_device(db_session) for _ in range(3)]
+        device_ids = [d.id for d in devices]
 
         for device_id in device_ids:
             execution = Execution(
@@ -365,11 +421,12 @@ class TestExecutionAggregation:
         # Create executions with staggered timestamps
         exec_ids = []
         for i in range(3):
+            device = await create_test_device(db_session)
             exec_id = str(uuid4())
             execution = Execution(
                 id=exec_id,
                 approval_id=approval_id,
-                device_id=str(uuid4()),
+                device_id=device.id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"TICKET_{i}",
                 created_at=base_time + timedelta(seconds=i),
@@ -395,11 +452,12 @@ class TestExecutionAggregation:
         _, approval = signal_with_approval
         approval_id = str(approval.id)
 
+        device = await create_test_device(db_session)
         created_time = datetime.now(UTC)
         execution = Execution(
             id=str(uuid4()),
             approval_id=approval_id,
-            device_id=str(uuid4()),
+            device_id=device.id,
             status=ExecutionStatus.PLACED,
             broker_ticket="TICKET_TEST",
             created_at=created_time,
@@ -423,15 +481,19 @@ class TestDeviceSuccessRate:
     """Test device execution success rate calculations."""
 
     @pytest.mark.asyncio
-    async def test_success_rate_100_percent_all_placed(self, db_session: AsyncSession):
+    async def test_success_rate_100_percent_all_placed(
+        self, db_session: AsyncSession, admin_user: User
+    ):
         """Test 100% success rate with all placed executions."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         # Create 5 placed executions
         for i in range(5):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"TICKET_{i}",
@@ -448,15 +510,19 @@ class TestDeviceSuccessRate:
         assert metrics["total_count"] == 5
 
     @pytest.mark.asyncio
-    async def test_success_rate_0_percent_all_failed(self, db_session: AsyncSession):
+    async def test_success_rate_0_percent_all_failed(
+        self, db_session: AsyncSession, admin_user: User
+    ):
         """Test 0% success rate with all failed executions."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         # Create 3 failed executions
         for i in range(3):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.FAILED,
                 error=f"Error_{i}",
@@ -473,24 +539,29 @@ class TestDeviceSuccessRate:
         assert metrics["total_count"] == 3
 
     @pytest.mark.asyncio
-    async def test_success_rate_50_percent_mixed(self, db_session: AsyncSession):
+    async def test_success_rate_50_percent_mixed(
+        self, db_session: AsyncSession, admin_user: User
+    ):
         """Test 50% success rate with equal placed and failed."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         # Create 2 placed, 2 failed
         for i in range(2):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"PLACED_{i}",
             )
             db_session.add(execution)
 
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.FAILED,
                 error=f"Failed_{i}",
@@ -507,14 +578,18 @@ class TestDeviceSuccessRate:
         assert metrics["total_count"] == 4
 
     @pytest.mark.asyncio
-    async def test_success_rate_respects_time_window(self, db_session: AsyncSession):
+    async def test_success_rate_respects_time_window(
+        self, db_session: AsyncSession, admin_user: User
+    ):
         """Test success rate only counts executions within time window."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         # Create old execution (outside 24hr window)
+        approval = await create_test_approval(db_session, admin_user.id)
         old_execution = Execution(
             id=str(uuid4()),
-            approval_id=str(uuid4()),
+            approval_id=approval.id,
             device_id=device_id,
             status=ExecutionStatus.FAILED,
             error="Old error",
@@ -524,9 +599,10 @@ class TestDeviceSuccessRate:
 
         # Create recent executions (within window)
         for i in range(3):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"RECENT_{i}",
@@ -549,7 +625,8 @@ class TestDeviceSuccessRate:
         self, db_session: AsyncSession
     ):
         """Test success rate with no executions returns 0 metrics."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         metrics = await get_execution_success_rate(db_session, device_id)
 
@@ -560,17 +637,20 @@ class TestDeviceSuccessRate:
 
     @pytest.mark.asyncio
     async def test_success_rate_multiple_devices_isolated(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, admin_user: User
     ):
         """Test success rates for different devices are isolated."""
-        device1_id = str(uuid4())
-        device2_id = str(uuid4())
+        device1 = await create_test_device(db_session)
+        device2 = await create_test_device(db_session)
+        device1_id = device1.id
+        device2_id = device2.id
 
         # Device 1: 3 placed
         for i in range(3):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device1_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"DEVICE1_{i}",
@@ -578,9 +658,10 @@ class TestDeviceSuccessRate:
             db_session.add(execution)
 
         # Device 2: 1 placed, 3 failed
+        approval = await create_test_approval(db_session, admin_user.id)
         execution = Execution(
             id=str(uuid4()),
-            approval_id=str(uuid4()),
+            approval_id=approval.id,
             device_id=device2_id,
             status=ExecutionStatus.PLACED,
             broker_ticket="DEVICE2_PLACED",
@@ -588,9 +669,10 @@ class TestDeviceSuccessRate:
         db_session.add(execution)
 
         for i in range(3):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device2_id,
                 status=ExecutionStatus.FAILED,
                 error=f"DEVICE2_ERROR_{i}",
@@ -630,10 +712,11 @@ class TestAdminEndpointsRBAC:
         _, approval = signal_with_approval
 
         # Create an execution for this approval
+        device = await create_test_device(db_session)
         execution = Execution(
             id=str(uuid4()),
             approval_id=str(approval.id),
-            device_id=str(uuid4()),
+            device_id=device.id,
             status=ExecutionStatus.PLACED,
             broker_ticket="TICKET_123",
         )
@@ -661,10 +744,11 @@ class TestAdminEndpointsRBAC:
         """Test owner user can query approval executions."""
         _, approval = signal_with_approval
 
+        device = await create_test_device(db_session)
         execution = Execution(
             id=str(uuid4()),
             approval_id=str(approval.id),
-            device_id=str(uuid4()),
+            device_id=device.id,
             status=ExecutionStatus.FAILED,
             error="Connection timeout",
         )
@@ -721,16 +805,22 @@ class TestAdminEndpointsRBAC:
 
     @pytest.mark.asyncio
     async def test_query_device_executions_admin_allowed(
-        self, client: AsyncClient, admin_token: str, db_session: AsyncSession
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        db_session: AsyncSession,
+        admin_user: User,
     ):
         """Test admin can query device executions."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         # Create executions for device
         for i in range(2):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"TICKET_{i}",
@@ -764,15 +854,21 @@ class TestAdminEndpointsRBAC:
 
     @pytest.mark.asyncio
     async def test_query_device_success_rate_admin_allowed(
-        self, client: AsyncClient, admin_token: str, db_session: AsyncSession
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        db_session: AsyncSession,
+        admin_user: User,
     ):
         """Test admin can query device success rate."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         # Create mixed executions
+        approval = await create_test_approval(db_session, admin_user.id)
         execution = Execution(
             id=str(uuid4()),
-            approval_id=str(uuid4()),
+            approval_id=approval.id,
             device_id=device_id,
             status=ExecutionStatus.PLACED,
             broker_ticket="TICKET",
@@ -824,10 +920,11 @@ class TestQueryFunctions:
         # Create multiple executions
         exec_ids = []
         for i in range(3):
+            device = await create_test_device(db_session)
             execution = Execution(
                 id=str(uuid4()),
                 approval_id=approval_id,
-                device_id=str(uuid4()),
+                device_id=device.id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"TICKET_{i}",
             )
@@ -845,16 +942,18 @@ class TestQueryFunctions:
 
     @pytest.mark.asyncio
     async def test_get_executions_by_device_respects_limit(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, admin_user: User
     ):
         """Test get_executions_by_device respects limit parameter."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         # Create 10 executions
         for i in range(10):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"TICKET_{i}",
@@ -870,16 +969,18 @@ class TestQueryFunctions:
 
     @pytest.mark.asyncio
     async def test_get_executions_by_device_filters_by_status(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, admin_user: User
     ):
         """Test get_executions_by_device can filter by status."""
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
 
         # Create 2 placed, 3 failed
         for i in range(2):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"PLACED_{i}",
@@ -887,9 +988,10 @@ class TestQueryFunctions:
             db_session.add(execution)
 
         for i in range(3):
+            approval = await create_test_approval(db_session, admin_user.id)
             execution = Execution(
                 id=str(uuid4()),
-                approval_id=str(uuid4()),
+                approval_id=approval.id,
                 device_id=device_id,
                 status=ExecutionStatus.FAILED,
                 error=f"ERROR_{i}",
@@ -950,10 +1052,11 @@ class TestEdgeCasesAndErrors:
         """Test execution without broker ticket (failed case) is handled."""
         _, approval = signal_with_approval
 
+        device = await create_test_device(db_session)
         execution = Execution(
             id=str(uuid4()),
             approval_id=str(approval.id),
-            device_id=str(uuid4()),
+            device_id=device.id,
             status=ExecutionStatus.FAILED,
             error="Connection lost",
             broker_ticket=None,
@@ -974,10 +1077,11 @@ class TestEdgeCasesAndErrors:
         """Test execution without error message (placed case) is handled."""
         _, approval = signal_with_approval
 
+        device = await create_test_device(db_session)
         execution = Execution(
             id=str(uuid4()),
             approval_id=str(approval.id),
-            device_id=str(uuid4()),
+            device_id=device.id,
             status=ExecutionStatus.PLACED,
             broker_ticket="ORDER_123",
             error=None,
@@ -998,11 +1102,12 @@ class TestEdgeCasesAndErrors:
         """Test long error messages are fully preserved."""
         _, approval = signal_with_approval
 
+        device = await create_test_device(db_session)
         long_error = "X" * 1000  # 1000 character error
         execution = Execution(
             id=str(uuid4()),
             approval_id=str(approval.id),
-            device_id=str(uuid4()),
+            device_id=device.id,
             status=ExecutionStatus.FAILED,
             error=long_error,
         )
@@ -1039,7 +1144,8 @@ class TestEdgeCasesAndErrors:
         """Test device IDs maintain format consistency."""
         _, approval = signal_with_approval
 
-        device_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
         execution = Execution(
             id=str(uuid4()),
             approval_id=str(approval.id),
@@ -1064,10 +1170,11 @@ class TestEdgeCasesAndErrors:
 
         # Create 100 executions
         for i in range(100):
+            device = await create_test_device(db_session)
             execution = Execution(
                 id=str(uuid4()),
                 approval_id=str(approval.id),
-                device_id=str(uuid4()),
+                device_id=device.id,
                 status=ExecutionStatus.PLACED if i % 2 == 0 else ExecutionStatus.FAILED,
                 broker_ticket=f"TICKET_{i}" if i % 2 == 0 else None,
                 error=f"Error_{i}" if i % 2 == 1 else None,
@@ -1085,12 +1192,15 @@ class TestEdgeCasesAndErrors:
 
     @pytest.mark.asyncio
     async def test_same_device_multiple_approvals_isolated(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, admin_user: User
     ):
         """Test same device executing same approval only counts once per approval."""
-        device_id = str(uuid4())
-        approval1_id = str(uuid4())
-        approval2_id = str(uuid4())
+        device = await create_test_device(db_session)
+        device_id = device.id
+        approval1 = await create_test_approval(db_session, admin_user.id)
+        approval2 = await create_test_approval(db_session, admin_user.id)
+        approval1_id = approval1.id
+        approval2_id = approval2.id
 
         # Device executes approval 1
         exec1 = Execution(
@@ -1139,8 +1249,10 @@ class TestIntegration:
         _, approval = signal_with_approval
         approval_id = str(approval.id)
 
-        device1_id = str(uuid4())
-        device2_id = str(uuid4())
+        device1 = await create_test_device(db_session)
+        device2 = await create_test_device(db_session)
+        device1_id = device1.id
+        device2_id = device2.id
 
         # Device 1 places order
         exec1 = Execution(
@@ -1198,10 +1310,11 @@ class TestIntegration:
 
         # Create executions
         for i in range(3):
+            device = await create_test_device(db_session)
             execution = Execution(
                 id=str(uuid4()),
                 approval_id=str(approval.id),
-                device_id=str(uuid4()),
+                device_id=device.id,
                 status=ExecutionStatus.PLACED,
                 broker_ticket=f"TICKET_{i}",
             )

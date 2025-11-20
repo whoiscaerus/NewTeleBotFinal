@@ -49,7 +49,7 @@ def get_request_id() -> str:
     return request_id_var.get()
 
 
-class IdempotencyMiddleware:
+class IdempotencyMiddleware(BaseHTTPMiddleware):
     """
     Middleware to ensure idempotency for POST/PATCH requests.
     Uses Redis to store response for a given Idempotency-Key.
