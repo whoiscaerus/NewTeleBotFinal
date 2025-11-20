@@ -32,6 +32,7 @@ from backend.app.core.errors import (
 from backend.app.core.middleware import IdempotencyMiddleware, RequestIDMiddleware
 from backend.app.core.settings import get_settings
 from backend.app.crm.routes import router as crm_router
+from backend.app.ea.routes import router as ea_client_router  # PR-104: EA Client Routes
 from backend.app.ea.routes_admin import router as ea_admin_router
 from backend.app.education.routes import router as education_router
 from backend.app.explain.routes import router as explain_router
@@ -129,6 +130,9 @@ app.include_router(decision_search_router, tags=["decisions"])  # PR-080
 app.include_router(explain_router, tags=["explain"])  # PR-080
 app.include_router(devices_router, prefix="/api/v1", tags=["devices"])
 app.include_router(exec_router, prefix="/api/v1", tags=["execution"])
+app.include_router(
+    ea_client_router
+)  # PR-104: EA Client Routes (prefix defined in router)
 app.include_router(ea_admin_router, tags=["executions"])
 app.include_router(education_router, tags=["education"])
 app.include_router(exports_router, prefix="/api/v1", tags=["exports"])

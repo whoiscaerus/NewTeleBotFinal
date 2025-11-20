@@ -48,6 +48,7 @@ os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 os.environ["SMTP_HOST"] = "localhost"
 os.environ["SMTP_PORT"] = "587"
 os.environ["SMTP_USER"] = "test@example.com"
+os.environ["OWNER_ONLY_ENCRYPTION_KEY"] = "mjrsG9DHtIk7yi2bCpbFw1WNRhBhHpVLI3e7tnrz1U4="
 os.environ["SMTP_PASSWORD"] = "test_password"
 os.environ["SMTP_FROM"] = "noreply@test.com"
 os.environ["PUSH_ENABLED"] = "false"
@@ -734,7 +735,7 @@ def clear_auth_override():
             assert response.status_code == 401
     """
     from backend.app.auth.dependencies import get_current_user
-    from backend.app.orchestrator.main import app
+    from backend.app.main import app
 
     # Remove the override if it exists
     if get_current_user in app.dependency_overrides:
