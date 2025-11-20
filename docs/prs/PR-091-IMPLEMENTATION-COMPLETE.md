@@ -70,7 +70,7 @@
     - Toggle owner_only flag
     - Get status (any user)
     - Persists across sessions
-  
+
   - **Outlook Generation Tests (12)**:
     - Requires enabled flag
     - Includes data citations
@@ -84,14 +84,14 @@
     - Instruments covered
     - Data citations complete
     - Owner-only restricts viewing
-  
+
   - **Scheduler Tests (5)**:
     - Skips when disabled
     - Generates when enabled
     - Owner-only sends to owner
     - Public sends to all
     - Increments metrics
-  
+
   - **Template Tests (4)**:
     - Email renders HTML
     - Email plain text fallback
@@ -124,8 +124,8 @@
 
 3. **Database Direct** (Emergency)
    ```sql
-   UPDATE feature_flags 
-   SET enabled = true, owner_only = false 
+   UPDATE feature_flags
+   SET enabled = true, owner_only = false
    WHERE name = 'ai_analyst';
    ```
 
@@ -313,3 +313,18 @@
 
 **Timeline**: 6-7 hours implementation (as planned) → **COMPLETE**
 **Owner Testing**: 2-4 weeks (user requirement) → **STARTS AFTER PUSH**
+
+## 🛠️ Fixes Applied (Post-Implementation)
+
+### 1. Scheduler Test Infrastructure Fix
+- **Issue**: `OperationalError: no such table: feature_flags` in scheduler tests.
+- **Cause**: `generate_daily_outlook` used `get_async_session` which created a new engine/connection for in-memory SQLite tests, resulting in an empty database separate from the test fixture's database.
+- **Fix**: Patched `backend.schedulers.daily_outlook.get_async_session` in `TestScheduler` to use a mock factory that yields the shared `db_session` fixture. This ensures the scheduler code sees the tables and data created by the test setup.
+
+### 2. API Authorization Test Fix
+- **Issue**: `test_outlook_api_endpoint_owner_only` failed with 200 OK instead of 403 Forbidden for regular user.
+- **Cause**: The `client` fixture sets up a `mock_get_current_user` override that returns the *first* user in the database. Since the admin user was created first (or returned first), the regular user request was effectively authenticated as admin, bypassing the owner-only check.
+- **Fix**: Added `clear_auth_override` fixture to the test to remove the mock dependency. This forces the application to use the real `get_current_user` dependency which correctly decodes the JWT token from the headers, identifying the user as a regular user (non-admin).
+
+### 3. Test Stability
+- **Result**: All 29 tests in `backend/tests/test_ai_analyst.py` are now passing consistently.

@@ -14,7 +14,7 @@ class PaymentRecord(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False)
-    stripe_payment_id = Column(String)
+    stripe_payment_intent = Column(String)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -29,3 +29,8 @@ class EntitlementRecord(Base):
     feature = Column(String, nullable=False)
     status = Column(String, default="active")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    @property
+    def is_active(self) -> bool:
+        """Check if entitlement is active."""
+        return self.status == "active"

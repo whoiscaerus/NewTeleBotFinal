@@ -27,7 +27,7 @@ class ProductCategory(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    products = relationship("Product", back_populates="category")
+    products = relationship("Product", back_populates="category", lazy="selectin")
 
     __table_args__ = (Index("ix_categories_slug", "slug"),)
 
@@ -54,9 +54,14 @@ class Product(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    category = relationship("ProductCategory", back_populates="products")
+    category = relationship(
+        "ProductCategory", back_populates="products", lazy="selectin"
+    )
     tiers = relationship(
-        "ProductTier", back_populates="product", cascade="all, delete-orphan"
+        "ProductTier",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (
@@ -93,7 +98,7 @@ class ProductTier(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    product = relationship("Product", back_populates="tiers")
+    product = relationship("Product", back_populates="tiers", lazy="selectin")
 
     __table_args__ = (
         Index("ix_product_tiers_product", "product_id"),

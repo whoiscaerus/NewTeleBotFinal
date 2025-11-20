@@ -515,3 +515,77 @@ async def verify_stripe_signature(
     except Exception as e:
         logger.error(f"Stripe signature verification failed: {e}")
         raise ValueError(f"Signature verification failed: {str(e)}")
+
+
+# ============================================================================
+# GENERIC IDEMPOTENCY STORAGE (PR-110)
+# ============================================================================
+
+
+class IdempotencyStorage:
+    """Abstract base class for idempotency storage backends."""
+
+    async def get(self, key: str) -> dict[str, Any] | None:
+        """Retrieve cached response."""
+        raise NotImplementedError
+
+    async def set(self, key: str, response: dict[str, Any], ttl: int) -> bool:
+        """Cache response."""
+        raise NotImplementedError
+
+    async def lock(self, key: str, ttl: int) -> bool:
+        """Acquire processing lock for key."""
+        raise NotImplementedError
+
+    async def unlock(self, key: str) -> bool:
+        """Release processing lock."""
+        raise NotImplementedError
+
+
+class RedisIdempotencyStorage(IdempotencyStorage):
+    """Redis implementation of idempotency storage."""
+
+    def __init__(self, redis_client: Any):
+        self.redis = redis_client
+
+    async def get(self, key: str) -> dict[str, Any] | None:
+        try:
+            cached = await self.redis.get(f"idempotency:response:{key}")
+            if cached:
+                return json.loads(cached)
+        except Exception as e:
+            logger.error(f"Redis get error: {e}")
+        return None
+
+    async def set(self, key: str, response: dict[str, Any], ttl: int) -> bool:
+        try:
+            await self.redis.setex(
+                f"idempotency:response:{key}", ttl, json.dumps(response)
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Redis set error: {e}")
+            return False
+
+    async def lock(self, key: str, ttl: int) -> bool:
+        """
+        Acquire a lock to prevent concurrent processing of the same key.
+        Returns True if lock acquired, False if already locked.
+        """
+        try:
+            # NX=True (Only set if not exists)
+            result = await self.redis.set(
+                f"idempotency:lock:{key}", "locked", ex=ttl, nx=True
+            )
+            return bool(result)
+        except Exception as e:
+            logger.error(f"Redis lock error: {e}")
+            return False
+
+    async def unlock(self, key: str) -> bool:
+        try:
+            await self.redis.delete(f"idempotency:lock:{key}")
+            return True
+        except Exception as e:
+            logger.error(f"Redis unlock error: {e}")
+            return False

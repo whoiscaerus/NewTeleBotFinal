@@ -13,8 +13,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useDashboardWebSocket } from '@/lib/ws';
-import {  SignalMaturity } from '@/components/trade/SignalMaturity';
-import { ConfidenceMeter } from '@/components/trade/ConfidenceMeter';
+import { TradingChart } from '@/components/TradingChart';
+import { ApprovalCard } from '@/components/ApprovalCard';
+import { AuditLogFeed } from '@/components/AuditLogFeed';
 
 // Placeholder for auth - would come from auth context
 function useAuth() {
@@ -203,6 +204,18 @@ function PositionsTable({ positions }: { positions: any[] }) {
  * Approvals List
  */
 function ApprovalsList({ approvals }: { approvals: any[] }) {
+  const handleApprove = async (id: string) => {
+    // Call API to approve
+    console.log('Approving', id);
+    // await api.approve(id);
+  };
+
+  const handleReject = async (id: string) => {
+    // Call API to reject
+    console.log('Rejecting', id);
+    // await api.reject(id);
+  };
+
   if (approvals.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -219,30 +232,27 @@ function ApprovalsList({ approvals }: { approvals: any[] }) {
       </h2>
       <div className="space-y-4">
         {approvals.map((approval) => (
-          <div
-            key={approval.signal_id}
-            className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900">{approval.instrument}</h3>
-                <p className="text-sm text-gray-600">
-                  {approval.side === 0 ? 'BUY' : 'SELL'} @ {approval.price.toFixed(5)} • Vol: {approval.volume}
-                </p>
-              </div>
-              <SignalMaturity
-                createdAt={new Date(Date.now() - approval.signal_age_minutes * 60000)}
-              />
-            </div>
-
-            <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
-              <button className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm">
-                Approve
-              </button>
-              <button className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm">
-                Reject
-              </button>
-            </div>
+          <div key={approval.signal_id} className="space-y-2">
+             <ApprovalCard
+                signal={{
+                  id: approval.signal_id,
+                  instrument: approval.instrument,
+                  side: approval.side,
+                  price: approval.price,
+                  timestamp: new Date(Date.now() - approval.signal_age_minutes * 60000).toISOString()
+                }}
+                onApprove={handleApprove}
+                onReject={handleReject}
+             />
+             {/* Example Chart for the signal - in real app, fetch candles for this instrument */}
+             <TradingChart
+                data={[
+                  { time: '2023-10-25', open: 1800, high: 1820, low: 1790, close: 1810 },
+                  { time: '2023-10-26', open: 1810, high: 1830, low: 1800, close: 1815 },
+                  // ... more data
+                ]}
+                entryPrice={approval.price}
+             />
           </div>
         ))}
       </div>
@@ -302,6 +312,15 @@ export default function DashboardPage() {
 
             {/* Approvals */}
             <ApprovalsList approvals={approvals} />
+          </div>
+
+          {/* Audit Log Feed */}
+          <div className="mt-6">
+             <AuditLogFeed logs={[
+               { id: '1', action: 'Signal Received', status: 'success', timestamp: new Date().toISOString(), details: 'Signal for GOLD received from strategy engine.' },
+               { id: '2', action: 'Risk Check', status: 'success', timestamp: new Date().toISOString(), details: 'Risk check passed. Position size: 0.1 lots.' },
+               // In real app, these come from websocket or API
+             ]} />
           </div>
         </div>
       </main>

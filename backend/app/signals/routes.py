@@ -10,6 +10,7 @@ from backend.app.auth.dependencies import get_current_user
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
 from backend.app.core.settings import get_settings
+from backend.app.core.websockets import manager
 from backend.app.signals.schema import (
     SignalCreate,
     SignalListOut,
@@ -20,7 +21,7 @@ from backend.app.signals.service import SignalService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/signals", tags=["signals"])
+router = APIRouter(prefix="/signals", tags=["signals"])
 
 
 @router.post("", status_code=201, response_model=SignalOut)
@@ -85,6 +86,11 @@ async def create_signal(
             user_id=current_user.id,
             signal_create=request,
             external_id=x_producer_id,
+        )
+
+        # Broadcast new signal to connected clients
+        await manager.broadcast(
+            {"type": "signal_created", "data": signal.model_dump(mode="json")}
         )
 
         return signal

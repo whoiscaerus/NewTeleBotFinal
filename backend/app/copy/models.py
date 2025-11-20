@@ -74,7 +74,10 @@ class CopyEntry(Base):
 
     # Relationships
     variants = relationship(
-        "CopyVariant", back_populates="entry", cascade="all, delete-orphan"
+        "CopyVariant",
+        back_populates="entry",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     # Indexes
@@ -162,7 +165,7 @@ class CopyVariant(Base):
     )
 
     # Relationships
-    entry = relationship("CopyEntry", back_populates="variants")
+    entry = relationship("CopyEntry", back_populates="variants", lazy="selectin")
 
     # Indexes
     __table_args__ = (

@@ -85,9 +85,9 @@ class ReconciliationLog(Base):
     )
 
     # Relationships
-    user = relationship("User", lazy="select")
-    signal = relationship("Signal", lazy="select")
-    approval = relationship("Approval", lazy="select")
+    user = relationship("User", lazy="selectin")
+    signal = relationship("Signal", lazy="selectin")
+    approval = relationship("Approval", lazy="selectin")
 
     # Indexes
     __table_args__ = (

@@ -51,10 +51,16 @@ class Endorsement(Base):
 
     # Relationships
     endorser = relationship(
-        "User", foreign_keys=[endorser_id], back_populates="endorsements_given"
+        "User",
+        foreign_keys=[endorser_id],
+        back_populates="endorsements_given",
+        lazy="selectin",
     )
     endorsee = relationship(
-        "User", foreign_keys=[endorsee_id], back_populates="endorsements_received"
+        "User",
+        foreign_keys=[endorsee_id],
+        back_populates="endorsements_received",
+        lazy="selectin",
     )
 
     # Indexes
@@ -119,7 +125,7 @@ class UserTrustScore(Base):
     )  # TTL for refresh
 
     # Relationship
-    user = relationship("User", back_populates="trust_score")
+    user = relationship("User", back_populates="trust_score", lazy="selectin")
 
     # Indexes
     __table_args__ = (
@@ -176,7 +182,7 @@ class TrustCalculationLog(Base):
     notes = Column(Text, nullable=True)
 
     # Relationship
-    user = relationship("User")
+    user = relationship("User", lazy="selectin")
 
     # Indexes
     __table_args__ = (Index("ix_calc_logs_user_date", "user_id", "calculated_at"),)

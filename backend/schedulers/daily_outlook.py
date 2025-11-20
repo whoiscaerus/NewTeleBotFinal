@@ -23,7 +23,7 @@ from backend.app.ai.analyst import (
     is_analyst_enabled,
     is_analyst_owner_only,
 )
-from backend.app.core.db import get_db_context
+from backend.app.core.db import get_async_session
 from backend.app.observability.metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ async def generate_daily_outlook():
     logger.info("Daily outlook generation started")
 
     try:
-        async with get_db_context() as db:
+        async with get_async_session() as db:
             # Check if feature is enabled
             if not await is_analyst_enabled(db):
                 logger.info("AI Analyst disabled, skipping daily outlook generation")
@@ -74,9 +74,7 @@ async def generate_daily_outlook():
 
                 # Increment metric
                 if metrics:
-                    metrics.ai_outlook_published_total.labels(
-                        channel="email"
-                    ).inc()
+                    metrics.ai_outlook_published_total.labels(channel="email").inc()
             else:
                 logger.info("Public mode: sending to all users")
                 email_count = await _send_to_all_users_email(db, outlook)
@@ -88,9 +86,7 @@ async def generate_daily_outlook():
 
                 # Increment metrics
                 if metrics:
-                    metrics.ai_outlook_published_total.labels(
-                        channel="email"
-                    ).inc()
+                    metrics.ai_outlook_published_total.labels(channel="email").inc()
                     if telegram_count > 0:
                         metrics.ai_outlook_published_total.labels(
                             channel="telegram"

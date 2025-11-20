@@ -23,7 +23,7 @@ from backend.app.core.errors import (
     problem_detail_exception_handler,
     pydantic_validation_exception_handler,
 )
-from backend.app.core.middleware import RequestIDMiddleware
+from backend.app.core.middleware import IdempotencyMiddleware, RequestIDMiddleware
 from backend.app.dashboard.routes import router as dashboard_router
 from backend.app.ea.routes import router as ea_router
 from backend.app.explain.routes import router as explain_router
@@ -73,6 +73,7 @@ def create_app() -> FastAPI:
     )
 
     # Add middlewares
+    app.add_middleware(IdempotencyMiddleware)
     app.add_middleware(RequestIDMiddleware)
 
     app.add_middleware(

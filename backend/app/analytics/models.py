@@ -41,8 +41,8 @@ class DimSymbol(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    trades = relationship("TradesFact", back_populates="dim_symbol")
-    rollups = relationship("DailyRollups", back_populates="dim_symbol")
+    trades = relationship("TradesFact", back_populates="dim_symbol", lazy="selectin")
+    rollups = relationship("DailyRollups", back_populates="dim_symbol", lazy="selectin")
 
     def __repr__(self):
         return f"<DimSymbol {self.symbol}>"
@@ -69,7 +69,7 @@ class DimDay(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    rollups = relationship("DailyRollups", back_populates="dim_day")
+    rollups = relationship("DailyRollups", back_populates="dim_day", lazy="selectin")
 
     def __repr__(self):
         return f"<DimDay {self.date}>"
@@ -129,7 +129,7 @@ class TradesFact(Base):
     signal_id = Column(String(36), nullable=True)  # Links to signal if bot-generated
 
     # Relationships
-    dim_symbol = relationship("DimSymbol", back_populates="trades")
+    dim_symbol = relationship("DimSymbol", back_populates="trades", lazy="selectin")
 
     # Indexes
     __table_args__ = (
@@ -189,8 +189,8 @@ class DailyRollups(Base):
     )
 
     # Relationships
-    dim_symbol = relationship("DimSymbol", back_populates="rollups")
-    dim_day = relationship("DimDay", back_populates="rollups")
+    dim_symbol = relationship("DimSymbol", back_populates="rollups", lazy="selectin")
+    dim_day = relationship("DimDay", back_populates="rollups", lazy="selectin")
 
     # Indexes
     __table_args__ = (

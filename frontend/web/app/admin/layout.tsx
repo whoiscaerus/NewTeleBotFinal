@@ -1,17 +1,32 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
+"use client";
 
-export default async function AdminLayout({
+import Link from "next/link";
+import { redirect, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
+import { useEffect } from "react";
+
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-  // Check if user is admin/owner
-  if (!session?.user?.isAdmin && !session?.user?.isOwner) {
-    redirect("/dashboard");
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+        router.push("/dashboard");
+      }
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
+  }
+
+  if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+    return null; // Will redirect
   }
 
   return (
@@ -21,7 +36,7 @@ export default async function AdminLayout({
         <div className="p-6">
           <h1 className="text-2xl font-bold text-gray-800">Admin Portal</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {session?.user?.isOwner ? "Owner" : "Admin"}
+            {user?.role === 'owner' ? "Owner" : "Admin"}
           </p>
         </div>
 

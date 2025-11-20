@@ -94,8 +94,8 @@ class Recommendation(Base):
     converted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="recommendations")
-    variant = relationship("Variant", back_populates="recommendations")
+    user = relationship("User", back_populates="recommendations", lazy="selectin")
+    variant = relationship("Variant", back_populates="recommendations", lazy="selectin")
 
     __table_args__ = (
         Index("ix_recommendations_user_type", "user_id", "recommendation_type"),
@@ -156,7 +156,10 @@ class Experiment(Base):
 
     # Relationships
     variants = relationship(
-        "Variant", back_populates="experiment", cascade="all, delete-orphan"
+        "Variant",
+        back_populates="experiment",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (
@@ -225,10 +228,15 @@ class Variant(Base):
     )
 
     # Relationships
-    experiment = relationship("Experiment", back_populates="variants")
-    recommendations = relationship("Recommendation", back_populates="variant")
+    experiment = relationship("Experiment", back_populates="variants", lazy="selectin")
+    recommendations = relationship(
+        "Recommendation", back_populates="variant", lazy="selectin"
+    )
     exposures = relationship(
-        "Exposure", back_populates="variant", cascade="all, delete-orphan"
+        "Exposure",
+        back_populates="variant",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (
@@ -280,8 +288,8 @@ class Exposure(Base):
     )
 
     # Relationships
-    user = relationship("User", back_populates="exposures")
-    variant = relationship("Variant", back_populates="exposures")
+    user = relationship("User", back_populates="exposures", lazy="selectin")
+    variant = relationship("Variant", back_populates="exposures", lazy="selectin")
 
     __table_args__ = (
         Index("ix_exposures_user_experiment", "user_id", "experiment_id", unique=True),

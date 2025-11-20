@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/auth";
 
 interface User {
   id: string;
@@ -17,7 +17,7 @@ interface User {
 }
 
 export default function UsersPage() {
-  const { data: session } = useSession();
+  const { token, user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,7 +35,7 @@ export default function UsersPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           query: searchQuery || undefined,
@@ -64,7 +64,7 @@ export default function UsersPage() {
       const response = await fetch(`/api/v1/admin/users/${userId}/kyc/approve`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session?.accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -212,7 +212,7 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
                     {user.kyc_status === "pending" &&
-                      session?.user?.isOwner && (
+                      currentUser?.role === 'owner' && (
                         <button
                           onClick={() => approveKYC(user.id)}
                           className="text-green-600 hover:text-green-900 mr-4"

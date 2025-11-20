@@ -84,11 +84,16 @@ class Device(Base):
     )
 
     # Relationship to Client
-    client: Mapped["Client"] = relationship("Client", back_populates="devices")
+    client: Mapped["Client"] = relationship(
+        "Client", back_populates="devices", lazy="selectin"
+    )
 
     # Relationship to Executions (executions triggered from this device)
     executions: Mapped[list["Execution"]] = relationship(
-        "Execution", back_populates="device", cascade="all, delete-orphan"
+        "Execution",
+        back_populates="device",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     # Relationship to CloseCommands (commented to avoid circular import - can query via FK)

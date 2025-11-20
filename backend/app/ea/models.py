@@ -68,8 +68,8 @@ class Execution(Base):
     )
 
     # Relationships
-    approval = relationship("Approval", back_populates="executions")
-    device = relationship("Device", back_populates="executions")
+    approval = relationship("Approval", back_populates="executions", lazy="selectin")
+    device = relationship("Device", back_populates="executions", lazy="selectin")
 
     __table_args__ = (
         Index("ix_executions_approval_device", "approval_id", "device_id"),

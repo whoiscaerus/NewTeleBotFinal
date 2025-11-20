@@ -107,6 +107,7 @@ class TelegramUser(Base):
         "TelegramUserGuideCollection",
         back_populates="user",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     def __repr__(self) -> str:
@@ -144,6 +145,7 @@ class TelegramGuide(Base):
         "TelegramUserGuideCollection",
         back_populates="guide",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (

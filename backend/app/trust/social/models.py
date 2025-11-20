@@ -47,10 +47,16 @@ class VerificationEdge(Base):
 
     # Relationships
     verifier = relationship(
-        "User", foreign_keys=[verifier_id], back_populates="given_verifications"
+        "User",
+        foreign_keys=[verifier_id],
+        back_populates="given_verifications",
+        lazy="selectin",
     )
     verified = relationship(
-        "User", foreign_keys=[verified_id], back_populates="received_verifications"
+        "User",
+        foreign_keys=[verified_id],
+        back_populates="received_verifications",
+        lazy="selectin",
     )
 
     __table_args__ = (

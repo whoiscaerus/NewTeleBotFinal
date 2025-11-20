@@ -55,7 +55,21 @@ export interface EquityMessage {
   timestamp: string;
 }
 
-export type DashboardMessage = ApprovalsMessage | PositionsMessage | EquityMessage;
+export interface SignalCreatedMessage {
+  type: 'signal_created';
+  data: {
+    id: string;
+    instrument: string;
+    side: number;
+    price: number;
+    status: string;
+    created_at: string;
+    [key: string]: any;
+  };
+  timestamp?: string;
+}
+
+export type DashboardMessage = ApprovalsMessage | PositionsMessage | EquityMessage | SignalCreatedMessage;
 
 export interface DashboardWebSocketConfig {
   token: string;
@@ -74,6 +88,7 @@ export interface DashboardWebSocketState {
   approvals: ApprovalsMessage['data'];
   positions: PositionsMessage['data'];
   equity: EquityMessage['data'] | null;
+  latestSignal: SignalCreatedMessage['data'] | null;
 }
 
 /**
@@ -103,8 +118,8 @@ class DashboardWebSocketClient {
 
     const wsUrl = this.config.url ||
       (typeof window !== 'undefined'
-        ? `ws://${window.location.host}/api/v1/dashboard/ws`
-        : 'ws://localhost:8000/api/v1/dashboard/ws');
+        ? `ws://${window.location.host}/ws`
+        : 'ws://localhost:8000/ws');
 
     const urlWithToken = `${wsUrl}?token=${encodeURIComponent(this.config.token)}`;
 
@@ -223,6 +238,7 @@ export function useDashboardWebSocket(
     approvals: [],
     positions: [],
     equity: null,
+    latestSignal: null,
   });
 
   const clientRef = useRef<DashboardWebSocketClient | null>(null);
@@ -242,6 +258,12 @@ export function useDashboardWebSocket(
           break;
         case 'equity':
           updates.equity = message.data;
+          break;
+        case 'signal_created':
+          updates.latestSignal = message.data;
+          // Optionally append to approvals if it matches the structure,
+          // but signal_created structure might differ from approvals list item.
+          // For now, we just expose latestSignal.
           break;
       }
 

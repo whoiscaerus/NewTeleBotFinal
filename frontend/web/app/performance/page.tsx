@@ -127,7 +127,7 @@ export default function PerformancePage(): React.ReactNode {
                 Ready to explore our trading platform?
               </p>
               <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition">
-                Get Started Free
+                Get Started
               </button>
             </div>
           </div>

@@ -2,6 +2,11 @@
   "name": "trading-signal-platform",
   "version": "1.0.0",
   "description": "Trading signal platform with AI-powered strategies",
+  "workspaces": [
+    "frontend/web",
+    "frontend/packages/*",
+    "frontend/miniapp"
+  ],
   "scripts": {
     "test": "jest",
     "test:coverage": "jest --coverage",

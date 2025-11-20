@@ -15,6 +15,7 @@ PR-075 Trading Control endpoints:
 All endpoints require authentication. Admin endpoints require premium tier.
 """
 
+from datetime import datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,11 +23,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.dependencies import get_current_user
+from backend.app.auth.models import User, UserRole
 from backend.app.core.db import get_db
 from backend.app.risk.service import RiskService
 from backend.app.risk.trading_controls import TradingControlService
 
 router = APIRouter(prefix="/api/v1/risk", tags=["risk"])
+admin_router = APIRouter(prefix="/api/v1/admin/risk", tags=["risk-admin"])
 trading_router = APIRouter(prefix="/api/v1/trading", tags=["trading-controls"])
 
 
@@ -94,7 +97,7 @@ class RiskProfileOut(BaseModel):
     max_open_positions: int
     max_correlation_exposure: Decimal
     risk_per_trade_percent: Decimal
-    updated_at: str
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -118,7 +121,7 @@ class ExposureOut(BaseModel):
 
     id: str
     client_id: str
-    timestamp: str
+    timestamp: datetime
     total_exposure: Decimal
     exposure_by_instrument: dict
     exposure_by_direction: dict
@@ -177,7 +180,7 @@ class GlobalExposureOut(BaseModel):
 @router.get("/profile", response_model=RiskProfileOut)
 async def get_risk_profile(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get client's current risk profile.
 
@@ -198,18 +201,15 @@ async def get_risk_profile(
         >>> print(response.json()["max_drawdown_percent"])
         "20.00"
     """
-    try:
-        profile = await RiskService.get_or_create_risk_profile(current_user["id"], db)
-        return RiskProfileOut.model_validate(profile)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    profile = await RiskService.get_or_create_risk_profile(current_user.id, db)
+    return RiskProfileOut.model_validate(profile)
 
 
 @router.patch("/profile", response_model=RiskProfileOut)
 async def update_risk_profile(
     request: RiskLimitUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Update client risk profile limits.
 
@@ -234,7 +234,7 @@ async def update_risk_profile(
         >>> assert response.status_code == 200
     """
     try:
-        profile = await RiskService.get_or_create_risk_profile(current_user["id"], db)
+        profile = await RiskService.get_or_create_risk_profile(current_user.id, db)
 
         # Update only provided fields
         if request.max_drawdown_percent is not None:
@@ -265,7 +265,7 @@ async def update_risk_profile(
 @router.get("/exposure", response_model=ExposureOut)
 async def get_current_exposure(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get client's current exposure snapshot.
 
@@ -294,16 +294,16 @@ async def get_current_exposure(
         >>> print(f"Open positions: {data['open_positions_count']}")
     """
     try:
-        exposure = await RiskService.calculate_current_exposure(current_user["id"], db)
+        exposure = await RiskService.calculate_current_exposure(current_user.id, db)
         return ExposureOut.model_validate(exposure)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/admin/global-exposure", response_model=GlobalExposureOut)
+@admin_router.get("/global-exposure", response_model=GlobalExposureOut)
 async def get_global_exposure(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get platform-wide risk exposure (admin only).
 
@@ -327,7 +327,7 @@ async def get_global_exposure(
         >>> print(f"Utilization: {data['exposure_utilization_percent']}%")
     """
     # Check admin role
-    if current_user.get("role") != "admin":
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     try:
@@ -421,7 +421,7 @@ class TradingStatusOut(BaseModel):
 async def pause_trading(
     request: PauseRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Pause trading for current user.
 
@@ -451,13 +451,13 @@ async def pause_trading(
     """
     try:
         await TradingControlService.pause_trading(
-            user_id=current_user["id"],
+            user_id=current_user.id,
             db=db,
             actor="user",
             reason=request.reason,
         )
 
-        status = await TradingControlService.get_trading_status(current_user["id"], db)
+        status = await TradingControlService.get_trading_status(current_user.id, db)
         return TradingStatusOut(**status)
 
     except ValueError as e:
@@ -469,7 +469,7 @@ async def pause_trading(
 @trading_router.patch("/resume", response_model=TradingStatusOut)
 async def resume_trading(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Resume trading for current user.
 
@@ -494,10 +494,10 @@ async def resume_trading(
     """
     try:
         await TradingControlService.resume_trading(
-            user_id=current_user["id"], db=db, actor="user"
+            user_id=current_user.id, db=db, actor="user"
         )
 
-        status = await TradingControlService.get_trading_status(current_user["id"], db)
+        status = await TradingControlService.get_trading_status(current_user.id, db)
         return TradingStatusOut(**status)
 
     except ValueError as e:
@@ -510,7 +510,7 @@ async def resume_trading(
 async def update_position_size(
     request: PositionSizeUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Update position size override.
 
@@ -539,12 +539,12 @@ async def update_position_size(
     """
     try:
         await TradingControlService.update_position_size(
-            user_id=current_user["id"],
+            user_id=current_user.id,
             db=db,
             position_size=request.position_size,
         )
 
-        status = await TradingControlService.get_trading_status(current_user["id"], db)
+        status = await TradingControlService.get_trading_status(current_user.id, db)
         return TradingStatusOut(**status)
 
     except ValueError as e:
@@ -556,7 +556,7 @@ async def update_position_size(
 @trading_router.get("/status", response_model=TradingStatusOut)
 async def get_trading_status(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get current trading control status.
 
@@ -581,7 +581,7 @@ async def get_trading_status(
         >>> print(f"Trading: {'PAUSED' if response.json()['is_paused'] else 'RUNNING'}")
     """
     try:
-        status = await TradingControlService.get_trading_status(current_user["id"], db)
+        status = await TradingControlService.get_trading_status(current_user.id, db)
         return TradingStatusOut(**status)
 
     except Exception as e:

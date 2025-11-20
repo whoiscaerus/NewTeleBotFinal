@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -78,7 +78,11 @@ class AIAssistant:
         if session_id:
             result = await db.execute(
                 select(ChatSession).where(
-                    ChatSession.id == session_id, ChatSession.user_id == user_id
+                    or_(
+                        cast(ChatSession.id, String) == str(session_id),
+                        cast(ChatSession.id, String) == session_id.hex,
+                    ),
+                    ChatSession.user_id == str(user_id),
                 )
             )
             session = result.scalar_one_or_none()
@@ -86,7 +90,7 @@ class AIAssistant:
                 raise ValueError(f"Session {session_id} not found or not owned by user")
         else:
             # Create new session
-            session = ChatSession(user_id=user_id, title=question[:100])
+            session = ChatSession(user_id=str(user_id), title=question[:100])
             db.add(session)
             await db.flush()
 
@@ -274,7 +278,13 @@ class AIAssistant:
         """
         result = await db.execute(
             select(ChatSession)
-            .where(ChatSession.id == session_id, ChatSession.user_id == user_id)
+            .where(
+                or_(
+                    cast(ChatSession.id, String) == str(session_id),
+                    cast(ChatSession.id, String) == session_id.hex,
+                ),
+                ChatSession.user_id == str(user_id),
+            )
             .options(selectinload(ChatSession.messages))
         )
         session = result.scalar_one_or_none()
@@ -324,7 +334,11 @@ class AIAssistant:
         """
         result = await db.execute(
             select(ChatSession).where(
-                ChatSession.id == session_id, ChatSession.user_id == user_id
+                or_(
+                    cast(ChatSession.id, String) == str(session_id),
+                    cast(ChatSession.id, String) == session_id.hex,
+                ),
+                ChatSession.user_id == str(user_id),
             )
         )
         session = result.scalar_one_or_none()
@@ -365,7 +379,9 @@ class AIAssistant:
 
         # Get total count
         count_result = await db.execute(
-            select(func.count(ChatSession.id)).where(ChatSession.user_id == user_id)
+            select(func.count(ChatSession.id)).where(
+                ChatSession.user_id == str(user_id)
+            )
         )
         total = count_result.scalar() or 0
 
@@ -374,7 +390,7 @@ class AIAssistant:
 
         result = await db.execute(
             select(ChatSession)
-            .where(ChatSession.user_id == user_id)
+            .where(ChatSession.user_id == str(user_id))
             .options(selectinload(ChatSession.messages))
             .order_by(desc(ChatSession.updated_at))
             .limit(limit)

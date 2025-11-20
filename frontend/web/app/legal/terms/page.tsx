@@ -45,10 +45,10 @@ export default function TermsPage() {
         </p>
 
         <h2>5. Subscription Plans & Billing</h2>
-        <h3>5.1 Free Tier</h3>
+        <h3>5.1 Standard Tier</h3>
         <p>
-          Free tier provides access to signals with manual approval workflow.
-          We reserve the right to modify or discontinue the free tier at any time.
+          Standard tier provides access to signals with manual approval workflow.
+          We reserve the right to modify or discontinue the standard tier at any time.
         </p>
 
         <h3>5.2 Premium Tier (Copy-Trading)</h3>
@@ -57,7 +57,7 @@ export default function TermsPage() {
           us to charge your payment method on a recurring basis until you cancel.
         </p>
         <p>
-          Premium tier includes automated execution ("Copy-Trading") at a 30% premium over base pricing.
+          Premium tier includes automated execution ("Copy-Trading").
         </p>
 
         <h3>5.3 Cancellation & Refunds</h3>

@@ -8,6 +8,7 @@ Implements PR-004: AuthN/AuthZ Core
 """
 
 from datetime import datetime
+from uuid import uuid4
 
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -203,6 +204,7 @@ class AuthService:
             user_id=user.id,
             role=user.role,
             telegram_user_id=user.telegram_user_id if user.telegram_user_id else None,
+            jti=str(uuid4()),
         )
 
         logger.info(f"JWT token minted for user: {user.id}", extra={"user_id": user.id})

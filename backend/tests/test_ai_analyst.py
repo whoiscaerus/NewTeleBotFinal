@@ -10,11 +10,13 @@ Test Coverage:
 Total: 29 tests
 """
 
+from contextlib import asynccontextmanager
 from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +26,7 @@ from backend.app.ai.analyst import (
     is_analyst_enabled,
     is_analyst_owner_only,
 )
+from backend.app.ai.models import FeatureFlag
 from backend.app.ai.schemas import CorrelationPair, OutlookReport, VolatilityZone
 from backend.app.messaging.templates import (
     render_daily_outlook_email,
@@ -33,6 +36,23 @@ from backend.app.messaging.templates import (
 # ========================================
 # Toggle Tests (8 tests)
 # ========================================
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def seed_feature_flag(db_session: AsyncSession):
+    """Seed the feature_flags table with default values."""
+    # Check if flag exists
+    flag = await db_session.get(FeatureFlag, "ai_analyst")
+    if not flag:
+        flag = FeatureFlag(
+            name="ai_analyst",
+            enabled=False,
+            owner_only=True,
+            description="Daily AI-written Market Outlook",
+        )
+        db_session.add(flag)
+        await db_session.flush()
+    return flag
 
 
 @pytest.mark.asyncio
@@ -220,14 +240,18 @@ class TestOutlookGeneration:
                 "backend.app.ai.analyst._calculate_max_drawdown",
                 return_value=Decimal("-75.5"),  # Extreme drawdown
             ):
-                outlook = await build_outlook(db_session, target_date=date.today())
+                with patch(
+                    "backend.app.ai.analyst._fetch_equity_series",
+                    return_value=Mock(),
+                ):
+                    outlook = await build_outlook(db_session, target_date=date.today())
 
-                assert outlook is not None
-                assert (
-                    "extreme" in outlook.narrative.lower()
-                    or "ALERT" in outlook.narrative
-                )
-                assert len(outlook.narrative) > 200
+                    assert outlook is not None
+                    assert (
+                        "extreme" in outlook.narrative.lower()
+                        or "ALERT" in outlook.narrative
+                    )
+                    assert len(outlook.narrative) > 200
 
     async def test_zero_trades_handled(self, db_session: AsyncSession, enable_analyst):
         """Test outlook handles zero trades gracefully."""
@@ -278,13 +302,17 @@ class TestOutlookGeneration:
 
     async def test_narrative_coherence(self, db_session: AsyncSession, enable_analyst):
         """Test narrative meets minimum length and structure."""
-        outlook = await build_outlook(db_session, target_date=date.today())
+        with patch(
+            "backend.app.ai.analyst._fetch_equity_series",
+            return_value=Mock(),
+        ):
+            outlook = await build_outlook(db_session, target_date=date.today())
 
-        assert len(outlook.narrative) >= 200
-        assert "Daily Market Outlook" in outlook.narrative
-        assert "GOLD" in outlook.narrative
-        assert "Data Citations" in outlook.narrative
-        assert "Not financial advice" in outlook.narrative.lower()
+            assert len(outlook.narrative) >= 200
+            assert "Daily Market Outlook" in outlook.narrative
+            assert "GOLD" in outlook.narrative
+            assert "Data Citations" in outlook.narrative
+            assert "not financial advice" in outlook.narrative.lower()
 
     async def test_no_pii_leaked(self, db_session: AsyncSession, enable_analyst):
         """Test narrative doesn't leak PII or secrets."""
@@ -353,14 +381,16 @@ class TestOutlookGeneration:
         admin_headers: dict,
         auth_headers: dict,
         enable_analyst,
+        clear_auth_override,
     ):
         """Test owner-only mode restricts viewing to admin."""
         # Enable with owner-only
-        await client.post(
+        response = await client.post(
             "/api/v1/ai/analyst/toggle",
             json={"enabled": True, "owner_only": True},
             headers=admin_headers,
         )
+        assert response.status_code == 200
 
         # Admin can view
         response_admin = await client.get(
@@ -389,9 +419,17 @@ class TestScheduler:
         """Test disabled analyst skips outlook generation."""
         from backend.schedulers.daily_outlook import generate_daily_outlook
 
-        # Ensure disabled (default)
-        # Should log and return without error
-        await generate_daily_outlook()  # Should not raise
+        @asynccontextmanager
+        async def mock_factory():
+            yield db_session
+
+        with patch(
+            "backend.schedulers.daily_outlook.get_async_session",
+            side_effect=mock_factory,
+        ):
+            # Ensure disabled (default)
+            # Should log and return without error
+            await generate_daily_outlook()  # Should not raise
 
     async def test_scheduler_generates_when_enabled(
         self, db_session: AsyncSession, enable_analyst
@@ -399,8 +437,16 @@ class TestScheduler:
         """Test enabled analyst generates daily outlook."""
         from backend.schedulers.daily_outlook import generate_daily_outlook
 
-        # Should generate without error
-        await generate_daily_outlook()  # Should not raise
+        @asynccontextmanager
+        async def mock_factory():
+            yield db_session
+
+        with patch(
+            "backend.schedulers.daily_outlook.get_async_session",
+            side_effect=mock_factory,
+        ):
+            # Should generate without error
+            await generate_daily_outlook()  # Should not raise
 
     async def test_scheduler_owner_only_sends_to_owner(
         self, db_session: AsyncSession, enable_analyst
@@ -408,12 +454,20 @@ class TestScheduler:
         """Test owner-only mode sends to owner email only."""
         from backend.schedulers.daily_outlook import generate_daily_outlook
 
-        # Mock _send_to_owner
+        @asynccontextmanager
+        async def mock_factory():
+            yield db_session
+
         with patch(
-            "backend.schedulers.daily_outlook._send_to_owner", new=AsyncMock()
-        ) as mock_send:
-            await generate_daily_outlook()
-            mock_send.assert_called_once()
+            "backend.schedulers.daily_outlook.get_async_session",
+            side_effect=mock_factory,
+        ):
+            # Mock _send_to_owner
+            with patch(
+                "backend.schedulers.daily_outlook._send_to_owner", new=AsyncMock()
+            ) as mock_send:
+                await generate_daily_outlook()
+                mock_send.assert_called_once()
 
     async def test_scheduler_public_sends_to_all(
         self, db_session: AsyncSession, enable_analyst_public
@@ -421,18 +475,26 @@ class TestScheduler:
         """Test public mode sends to all users."""
         from backend.schedulers.daily_outlook import generate_daily_outlook
 
-        # Mock bulk send functions
+        @asynccontextmanager
+        async def mock_factory():
+            yield db_session
+
         with patch(
-            "backend.schedulers.daily_outlook._send_to_all_users_email",
-            new=AsyncMock(return_value=50),
-        ) as mock_email:
+            "backend.schedulers.daily_outlook.get_async_session",
+            side_effect=mock_factory,
+        ):
+            # Mock bulk send functions
             with patch(
-                "backend.schedulers.daily_outlook._send_to_all_users_telegram",
-                new=AsyncMock(return_value=30),
-            ) as mock_telegram:
-                await generate_daily_outlook()
-                mock_email.assert_called_once()
-                mock_telegram.assert_called_once()
+                "backend.schedulers.daily_outlook._send_to_all_users_email",
+                new=AsyncMock(return_value=50),
+            ) as mock_email:
+                with patch(
+                    "backend.schedulers.daily_outlook._send_to_all_users_telegram",
+                    new=AsyncMock(return_value=30),
+                ) as mock_telegram:
+                    await generate_daily_outlook()
+                    mock_email.assert_called_once()
+                    mock_telegram.assert_called_once()
 
     async def test_scheduler_increments_metrics(
         self, db_session: AsyncSession, enable_analyst
@@ -440,19 +502,27 @@ class TestScheduler:
         """Test metrics increment on publish."""
         from backend.schedulers.daily_outlook import generate_daily_outlook
 
-        # Mock metrics
-        with patch("backend.schedulers.daily_outlook.metrics") as mock_metrics:
-            mock_metrics.ai_outlook_published_total = Mock()
-            mock_metrics.ai_outlook_published_total.labels = Mock(
-                return_value=Mock(inc=Mock())
-            )
+        @asynccontextmanager
+        async def mock_factory():
+            yield db_session
 
-            await generate_daily_outlook()
+        with patch(
+            "backend.schedulers.daily_outlook.get_async_session",
+            side_effect=mock_factory,
+        ):
+            # Mock metrics
+            with patch("backend.schedulers.daily_outlook.metrics") as mock_metrics:
+                mock_metrics.ai_outlook_published_total = Mock()
+                mock_metrics.ai_outlook_published_total.labels = Mock(
+                    return_value=Mock(inc=Mock())
+                )
 
-            # Should increment email metric
-            mock_metrics.ai_outlook_published_total.labels.assert_called_with(
-                channel="email"
-            )
+                await generate_daily_outlook()
+
+                # Should increment email metric
+                mock_metrics.ai_outlook_published_total.labels.assert_called_with(
+                    channel="email"
+                )
 
 
 # ========================================
@@ -518,7 +588,7 @@ class TestTemplates:
 # ========================================
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def enable_analyst(db_session: AsyncSession):
     """Enable AI Analyst for testing."""
     from sqlalchemy import update
@@ -543,7 +613,7 @@ async def enable_analyst(db_session: AsyncSession):
     await db_session.commit()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def enable_analyst_public(db_session: AsyncSession):
     """Enable AI Analyst in public mode for testing."""
     from sqlalchemy import update

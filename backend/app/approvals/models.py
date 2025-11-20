@@ -104,6 +104,7 @@ class Approval(Base):
         "Execution",
         back_populates="approval",
         cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (

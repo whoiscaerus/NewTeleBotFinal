@@ -29,7 +29,10 @@ class Client(Base):
     )
 
     devices = relationship(
-        "Device", back_populates="client", cascade="all, delete-orphan"
+        "Device",
+        back_populates="client",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (

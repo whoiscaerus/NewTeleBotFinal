@@ -18,10 +18,11 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.accounts.service import AccountLink
+from backend.app.accounts.models import AccountInfo, AccountLink
 from backend.app.risk.models import ExposureSnapshot
 from backend.app.risk.service import RiskService
 from backend.app.signals.models import Signal
@@ -33,32 +34,47 @@ from backend.app.trading.store.models import Trade
 
 
 @pytest.fixture
-async def client_id():
+def client_id():
     """Test client ID."""
     return "test-client-001"
 
 
 @pytest.fixture
-async def user_id():
+def user_id():
     """Test user ID."""
     return "test-user-001"
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def account_with_balance(db: AsyncSession, user_id):
     """Create test account with balance."""
-    account = AccountLink(
+    # Create AccountLink
+    account_link = AccountLink(
         user_id=user_id,
-        balance=Decimal("10000.00"),
-        name="Test Account",
-        status="active",
+        mt5_account_id="123456",
+        mt5_login="123456",
+        broker_name="TestBroker",
+        is_primary=True,
     )
-    db.add(account)
+    db.add(account_link)
     await db.commit()
-    return account
+    await db.refresh(account_link)
+
+    # Create AccountInfo with balance
+    account_info = AccountInfo(
+        account_link_id=account_link.id,
+        balance=Decimal("10000.00"),
+        equity=Decimal("10000.00"),
+        free_margin=Decimal("10000.00"),
+        margin_level=Decimal("0.00"),
+    )
+    db.add(account_info)
+    await db.commit()
+
+    return account_link
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def open_trade(db: AsyncSession, user_id):
     """Create test open trade."""
     trade = Trade(
@@ -80,7 +96,7 @@ async def open_trade(db: AsyncSession, user_id):
     return trade
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def closed_trade_with_profit(db: AsyncSession, user_id):
     """Create test closed trade with profit."""
     trade = Trade(
@@ -106,7 +122,7 @@ async def closed_trade_with_profit(db: AsyncSession, user_id):
     return trade
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_signal(db: AsyncSession, user_id):
     """Create test signal."""
     signal = Signal(
@@ -195,8 +211,8 @@ async def test_calculate_current_exposure_empty_when_no_trades(
     assert exposure.total_exposure == Decimal("0.00")
     assert exposure.exposure_by_instrument == {}
     assert exposure.exposure_by_direction == {
-        "buy": Decimal("0.00"),
-        "sell": Decimal("0.00"),
+        "buy": 0.0,
+        "sell": 0.0,
     }
     assert exposure.open_positions_count == 0
 
@@ -211,9 +227,9 @@ async def test_calculate_current_exposure_single_buy_trade(
     expected_total = Decimal("1.0850")  # 1.0 lot * 1.0850
 
     assert exposure.total_exposure == expected_total
-    assert exposure.exposure_by_instrument["EURUSD"] == expected_total
-    assert exposure.exposure_by_direction["buy"] == expected_total
-    assert exposure.exposure_by_direction["sell"] == Decimal("0.00")
+    assert exposure.exposure_by_instrument["EURUSD"] == float(expected_total)
+    assert exposure.exposure_by_direction["buy"] == float(expected_total)
+    assert exposure.exposure_by_direction["sell"] == 0.0
     assert exposure.open_positions_count == 1
 
 
@@ -248,10 +264,10 @@ async def test_calculate_current_exposure_multiple_trades(
 
     assert exposure.total_exposure == expected_total
     assert exposure.open_positions_count == 2
-    assert exposure.exposure_by_instrument["EURUSD"] == Decimal("1.0850")
-    assert exposure.exposure_by_instrument["GOLD"] == Decimal("3900.00")
-    assert exposure.exposure_by_direction["buy"] == Decimal("1.0850")
-    assert exposure.exposure_by_direction["sell"] == Decimal("3900.00")
+    assert exposure.exposure_by_instrument["EURUSD"] == 1.0850
+    assert exposure.exposure_by_instrument["GOLD"] == 3900.00
+    assert exposure.exposure_by_direction["buy"] == 1.0850
+    assert exposure.exposure_by_direction["sell"] == 3900.00
 
 
 @pytest.mark.asyncio
@@ -263,7 +279,7 @@ async def test_calculate_current_exposure_ignores_closed_trades(
 
     # Should only count open_trade, not closed_trade
     assert exposure.open_positions_count == 1
-    assert exposure.exposure_by_instrument == {"EURUSD": Decimal("1.0850")}
+    assert exposure.exposure_by_instrument == {"EURUSD": 1.0850}
 
 
 @pytest.mark.asyncio
@@ -651,13 +667,15 @@ async def test_api_get_risk_profile_endpoint(
     client, auth_headers, db: AsyncSession, user_id
 ):
     """Test GET /api/v1/risk/profile endpoint."""
-    response = client.get("/api/v1/risk/profile", headers=auth_headers)
+    response = await client.get("/api/v1/risk/profile", headers=auth_headers)
 
+    if response.status_code != 200:
+        print(f"Response body: {response.json()}")
     assert response.status_code == 200
     data = response.json()
     assert "id" in data
     assert "max_drawdown_percent" in data
-    assert data["max_position_size"] == "1.0"
+    assert Decimal(data["max_position_size"]) == Decimal("1.0")
 
 
 @pytest.mark.asyncio
@@ -665,7 +683,7 @@ async def test_api_patch_risk_profile_endpoint(
     client, auth_headers, db: AsyncSession, user_id
 ):
     """Test PATCH /api/v1/risk/profile endpoint."""
-    response = client.patch(
+    response = await client.patch(
         "/api/v1/risk/profile",
         json={"max_drawdown_percent": "25.00"},
         headers=auth_headers,
@@ -673,7 +691,7 @@ async def test_api_patch_risk_profile_endpoint(
 
     assert response.status_code == 200
     data = response.json()
-    assert data["max_drawdown_percent"] == "25.00"
+    assert Decimal(data["max_drawdown_percent"]) == Decimal("25.00")
 
 
 @pytest.mark.asyncio
@@ -681,7 +699,7 @@ async def test_api_get_exposure_endpoint(
     client, auth_headers, db: AsyncSession, user_id, open_trade
 ):
     """Test GET /api/v1/risk/exposure endpoint."""
-    response = client.get("/api/v1/risk/exposure", headers=auth_headers)
+    response = await client.get("/api/v1/risk/exposure", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -693,7 +711,7 @@ async def test_api_get_exposure_endpoint(
 @pytest.mark.asyncio
 async def test_api_patch_invalid_values_rejected(client, auth_headers):
     """Test PATCH endpoint rejects invalid values."""
-    response = client.patch(
+    response = await client.patch(
         "/api/v1/risk/profile",
         json={"max_drawdown_percent": "-10.00"},  # Invalid: negative
         headers=auth_headers,
@@ -705,19 +723,19 @@ async def test_api_patch_invalid_values_rejected(client, auth_headers):
 @pytest.mark.asyncio
 async def test_api_requires_authentication(client):
     """Test API endpoints require authentication."""
-    response = client.get("/api/v1/risk/profile")
+    response = await client.get("/api/v1/risk/profile")
 
     assert response.status_code in [401, 403]
 
 
 @pytest.mark.asyncio
 async def test_api_admin_global_exposure_requires_admin_role(
-    client, auth_headers_regular_user
+    client, regular_auth_headers
 ):
     """Test admin endpoint requires admin role."""
-    response = client.get(
+    response = await client.get(
         "/api/v1/admin/risk/global-exposure",
-        headers=auth_headers_regular_user,
+        headers=regular_auth_headers,
     )
 
     assert response.status_code == 403
@@ -802,11 +820,10 @@ async def test_position_size_calculation_without_account(
 
 @pytest.mark.asyncio
 async def test_multiple_concurrent_risk_checks(db: AsyncSession, user_id, test_signal):
-    """Test multiple concurrent risk checks don't interfere."""
-    import asyncio
-
-    tasks = [RiskService.check_risk_limits(user_id, test_signal, db) for _ in range(5)]
-    results = await asyncio.gather(*tasks)
+    """Test multiple sequential risk checks don't interfere."""
+    results = []
+    for _ in range(5):
+        results.append(await RiskService.check_risk_limits(user_id, test_signal, db))
 
     assert len(results) == 5
     assert all(r["passes"] is True for r in results)

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 class CheckoutSessionIn(BaseModel):
     """Checkout session creation request."""
 
-    tier: str = Field(..., description="Subscription tier (free, premium, pro)")
+    tier_id: str = Field(..., description="Subscription tier ID (free, premium, pro)")
     success_url: str = Field(..., description="URL after successful payment")
     cancel_url: str = Field(..., description="URL if customer cancels")
 

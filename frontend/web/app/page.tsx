@@ -184,7 +184,7 @@ export default function HomePage() {
                   Approve or Auto-Execute
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Free users approve each signal manually. Premium users enjoy 100% automated
+                  Standard subscribers approve each signal manually. Premium users enjoy 100% automated
                   execution with copy-trading.
                 </p>
               </div>

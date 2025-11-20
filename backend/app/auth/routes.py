@@ -21,7 +21,7 @@ from backend.app.core.decorators import abuse_throttle, rate_limit
 from backend.app.core.errors import AuthenticationError
 from backend.app.core.logging import get_logger
 
-router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post(

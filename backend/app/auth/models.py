@@ -63,56 +63,56 @@ class User(Base):
         "AccountLink",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
     endorsements_given: Mapped[list] = relationship(
         "Endorsement",
         foreign_keys="[Endorsement.endorser_id]",
         back_populates="endorser",
-        lazy="select",
+        lazy="selectin",
         viewonly=False,
     )
     endorsements_received: Mapped[list] = relationship(
         "Endorsement",
         foreign_keys="[Endorsement.endorsee_id]",
         back_populates="endorsee",
-        lazy="select",
+        lazy="selectin",
         viewonly=False,
     )
     trust_score: Mapped[object] = relationship(
-        "UserTrustScore", back_populates="user", uselist=False, lazy="select"
+        "UserTrustScore", back_populates="user", uselist=False, lazy="selectin"
     )
     privacy_requests: Mapped[list] = relationship(
         "PrivacyRequest",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
     preferences: Mapped[object] = relationship(
         "UserPreferences",
         back_populates="user",
         uselist=False,
-        lazy="select",
+        lazy="selectin",
         cascade="all, delete-orphan",
     )
     paper_account: Mapped[object] = relationship(
         "PaperAccount",
         back_populates="user",
         uselist=False,
-        lazy="select",
+        lazy="selectin",
         cascade="all, delete-orphan",
     )
     earned_badges: Mapped[list] = relationship(
         "EarnedBadge",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
     leaderboard_optin: Mapped[object] = relationship(
         "LeaderboardOptIn",
         back_populates="user",
         uselist=False,
-        lazy="select",
+        lazy="selectin",
         cascade="all, delete-orphan",
     )
     given_verifications: Mapped[list] = relationship(
@@ -120,32 +120,32 @@ class User(Base):
         foreign_keys="VerificationEdge.verifier_id",
         back_populates="verifier",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
     received_verifications: Mapped[list] = relationship(
         "VerificationEdge",
         foreign_keys="VerificationEdge.verified_id",
         back_populates="verified",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
     recommendations: Mapped[list] = relationship(
         "Recommendation",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
     exposures: Mapped[list] = relationship(
         "Exposure",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
     reports: Mapped[list] = relationship(
         "Report",
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="select",
+        lazy="selectin",
     )
 
     def __init__(self, **kwargs):

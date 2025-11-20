@@ -5,17 +5,17 @@ import Link from 'next/link';
  * Pricing Page
  *
  * Displays tiered pricing with clear feature breakdowns:
- * - Free tier: Manual approval
- * - Premium tier: Auto-execution (+30% for copy-trading)
+ * - Standard tier: Manual approval
+ * - Premium tier: Auto-execution (Copy-Trading)
  * - Enterprise tier: Custom solutions
  */
 export default function PricingPage() {
   const tiers = [
     {
-      name: 'Free',
-      price: '£0',
-      period: 'forever',
-      description: 'Perfect for getting started with manual trading',
+      name: 'Standard',
+      price: '£39',
+      period: 'per month',
+      description: 'Perfect for traders who want full control with manual approvals',
       features: [
         'Unlimited trading signals',
         'Manual approval workflow',
@@ -25,16 +25,16 @@ export default function PricingPage() {
         '1 MT5 account connection',
       ],
       cta: 'Get Started',
-      ctaLink: 'https://t.me/YourBot',
+      ctaLink: '/pricing#checkout',
       badge: null,
     },
     {
       name: 'Premium',
-      price: '£49',
+      price: '£59',
       period: 'per month',
       description: '100% automated copy-trading with advanced features',
       features: [
-        'Everything in Free, plus:',
+        'Everything in Standard, plus:',
         '✨ 100% auto-execution (copy-trading)',
         'Advanced analytics & reports',
         'Priority support',
@@ -156,8 +156,8 @@ export default function PricingPage() {
                 What's the difference between manual and auto-execution?
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
-                Free tier requires you to approve each signal manually via Telegram before it's executed.
-                Premium tier (+30% pricing) enables copy-trading where signals are executed automatically
+                Standard tier requires you to approve each signal manually via Telegram before it's executed.
+                Premium tier enables copy-trading where signals are executed automatically
                 on your MT5 account without approval.
               </p>
             </Card>

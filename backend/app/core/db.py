@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from sqlalchemy import Text, TypeDecorator, create_engine
 from sqlalchemy.dialects.postgresql import JSONB as PostgreSQLJSONB
@@ -44,14 +45,43 @@ class JSONBType(TypeDecorator):
         return value
 
 
+# Global engine instance to be shared across requests
+_engine: AsyncEngine | None = None
+
+
+def get_engine() -> AsyncEngine:
+    """Get or create the global database engine."""
+    global _engine
+    if _engine is None:
+        settings = get_settings()
+
+        # Configure engine arguments based on DB type
+        kwargs = {
+            "echo": settings.app.debug,
+            "pool_pre_ping": settings.db.pool_pre_ping,
+            "pool_recycle": settings.db.pool_recycle,
+        }
+
+        # SQLite (used in tests) doesn't support pool_size/max_overflow with StaticPool
+        if "sqlite" not in settings.db.url:
+            kwargs.update(
+                {
+                    "pool_size": settings.db.pool_size,
+                    "max_overflow": settings.db.max_overflow,
+                }
+            )
+
+        _engine = create_async_engine(settings.db.url, **kwargs)
+    return _engine
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency for getting AsyncSession in FastAPI endpoints.
 
     Yields:
         AsyncSession: Database session
     """
-    settings = get_settings()
-    engine: AsyncEngine = create_async_engine(settings.db.url, echo=settings.app.debug)
+    engine = get_engine()
     async_session = async_sessionmaker(
         bind=engine, class_=AsyncSession, expire_on_commit=False
     )
@@ -64,6 +94,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 # Standalone async session factory for schedulers/background jobs
+@asynccontextmanager
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Create standalone async session for background jobs and schedulers.
 
@@ -78,12 +109,9 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         ...     result = await session.execute(select(User))
         ...     users = result.scalars().all()
     """
-    settings = get_settings()
-    engine: AsyncEngine = create_async_engine(
-        settings.db.url,
-        echo=settings.app.debug,
-        pool_pre_ping=True,
-    )
+    # For standalone scripts, we might want a separate engine or reuse the global one.
+    # Reusing the global one is safer for connection limits.
+    engine = get_engine()
     async_session = async_sessionmaker(
         bind=engine,
         class_=AsyncSession,
@@ -95,7 +123,8 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
             yield session
         finally:
             await session.close()
-            await engine.dispose()
+            # Note: We do NOT dispose the engine here as it is shared.
+            # Cleanup should happen at app shutdown.
 
 
 # For non-async contexts (imports, etc.)

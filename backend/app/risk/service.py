@@ -19,7 +19,7 @@ from typing import Optional
 from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.accounts.service import AccountLink
+from backend.app.accounts.models import AccountInfo, AccountLink
 from backend.app.risk.models import ExposureSnapshot, RiskProfile
 from backend.app.signals.models import Signal
 from backend.app.trading.store.models import Trade
@@ -393,15 +393,20 @@ class RiskService:
         profile = await RiskService.get_or_create_risk_profile(client_id, db)
         risk_pct = risk_percent or profile.risk_per_trade_percent
 
-        # Get account equity (from AccountLink - assumes exists)
-        stmt = select(AccountLink).where(AccountLink.user_id == client_id)
+        # Get account equity (from AccountInfo via AccountLink)
+        stmt = (
+            select(AccountInfo)
+            .join(AccountLink)
+            .where(AccountLink.user_id == client_id)
+            .order_by(desc(AccountInfo.last_updated))
+        )
         result = await db.execute(stmt)
-        account = result.scalars().first()
+        account_info = result.scalars().first()
 
-        if not account or not account.balance:
+        if not account_info or not account_info.balance:
             return Decimal("0.01")  # Minimum
 
-        equity = Decimal(str(account.balance))
+        equity = Decimal(str(account_info.balance))
 
         # Calculate risk amount in USD
         risk_amount = equity * (risk_pct / Decimal("100"))
@@ -468,14 +473,19 @@ class RiskService:
             >>> print(f"Current drawdown: {dd}%")
         """
         # Get account balance
-        stmt = select(AccountLink).where(AccountLink.user_id == client_id)
+        stmt = (
+            select(AccountInfo)
+            .join(AccountLink)
+            .where(AccountLink.user_id == client_id)
+            .order_by(desc(AccountInfo.last_updated))
+        )
         result = await db.execute(stmt)
-        account = result.scalars().first()
+        account_info = result.scalars().first()
 
-        if not account or account.balance is None:
+        if not account_info or account_info.balance is None:
             return Decimal("0.00")
 
-        current_balance = Decimal(str(account.balance))
+        current_balance = Decimal(str(account_info.balance))
 
         # Get all closed trades to find historical high
         stmt = (

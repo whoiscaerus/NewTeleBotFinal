@@ -83,6 +83,7 @@ def pytest_configure(config):
 
     # Import all models to register with Base.metadata BEFORE test collection
     from backend.app.accounts.models import AccountLink  # noqa: F401
+    from backend.app.ai.models import FeatureFlag  # noqa: F401
     from backend.app.approvals.models import Approval  # noqa: F401
     from backend.app.audit.models import AuditLog  # noqa: F401
     from backend.app.auth.models import User  # noqa: F401
@@ -416,7 +417,7 @@ async def client(db_session: AsyncSession, monkeypatch):
     from httpx import ASGITransport
 
     from backend.app.core.db import get_db
-    from backend.app.orchestrator.main import app
+    from backend.app.main import app
 
     # Create a simple callable that returns an async generator yielding the session
     # This ensures the endpoint uses the EXACT same session object as the test
