@@ -54,7 +54,7 @@ class ThemeService:
             )
             theme = DEFAULT_THEME
 
-        return theme  # type: ignore
+        return theme
 
     async def set_theme(self, user: User, theme_name: str) -> ThemeName:
         """Set user's theme preference.

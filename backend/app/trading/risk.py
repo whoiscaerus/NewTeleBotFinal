@@ -4,7 +4,6 @@ Enforces pre-trade risk limits (Daily Loss, Leverage, Position Size).
 """
 
 from datetime import datetime
-from typing import Optional
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +26,7 @@ class RiskEngine:
     Uses Redis for real-time P&L tracking and configuration.
     """
 
-    def __init__(self, redis: Optional[Redis] = None):
+    def __init__(self, redis: Redis | None = None):
         self.redis = redis or _redis_client
 
     async def check_risk(

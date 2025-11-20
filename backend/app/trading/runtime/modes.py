@@ -270,7 +270,7 @@ class PaperTradingEngine:
         # Update strategy paper metrics
         await self._update_strategy_paper_metrics(position.strategy_name, db_session)
 
-        return pnl
+        return float(pnl)
 
     async def get_portfolio_state(
         self, strategy_name: str, db_session: AsyncSession

@@ -18,7 +18,6 @@ import json
 import logging
 from datetime import date, datetime, timedelta
 from io import StringIO
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -97,8 +96,8 @@ class MetricsResponse(BaseModel):
 
 @router.get("/equity", response_model=EquityResponse, summary="Get equity curve")
 async def get_equity_curve(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     initial_balance: float = Query(
         10000, description="Initial balance in base currency"
     ),
@@ -145,7 +144,7 @@ async def get_equity_curve(
                 equity_series.dates,
                 equity_series.equity,
                 equity_series.cumulative_pnl,
-                equity_series.drawdown,
+                equity_series.drawdown, strict=False,
             )
         ]
 
@@ -172,8 +171,8 @@ async def get_equity_curve(
     "/drawdown", response_model=DrawdownStats, summary="Get drawdown statistics"
 )
 async def get_drawdown_stats(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -392,8 +391,8 @@ class CalendarMonthBucketResponse(BaseModel):
     summary="Get hour-of-day buckets",
 )
 async def get_hour_buckets(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -448,8 +447,8 @@ async def get_hour_buckets(
     summary="Get day-of-week buckets",
 )
 async def get_dow_buckets(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -508,8 +507,8 @@ async def get_dow_buckets(
     summary="Get month buckets",
 )
 async def get_month_buckets(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -564,8 +563,8 @@ async def get_month_buckets(
     summary="Get calendar month buckets",
 )
 async def get_calendar_month_buckets(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -625,8 +624,8 @@ async def get_calendar_month_buckets(
 
 @router.get("/export/csv", summary="Export analytics as CSV")
 async def export_csv(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -738,8 +737,8 @@ async def export_csv(
 
 @router.get("/export/json", summary="Export analytics as JSON")
 async def export_json(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     include_metrics: bool = Query(True, description="Include performance metrics"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -872,8 +871,8 @@ async def export_json(
 
 @router.get("/export/png", summary="Export equity chart as PNG")
 async def export_png(
-    start_date: Optional[date] = Query(None, description="Start date (YYYY-MM-DD)"),
-    end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_date: date | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="End date (YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

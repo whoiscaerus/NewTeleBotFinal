@@ -7,7 +7,6 @@ Uses rates.py for FX conversions and catalog.py for base plans.
 """
 
 import logging
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,7 +33,7 @@ class QuoteService:
         "SGD": 1.72,
     }
 
-    def __init__(self, db: AsyncSession, rate_fetcher: Optional[RateFetcher] = None):
+    def __init__(self, db: AsyncSession, rate_fetcher: RateFetcher | None = None):
         """Initialize quote service.
 
         Args:
@@ -82,7 +81,7 @@ class QuoteService:
 
             # 2. Convert to target currency
             if currency == "GBP":
-                return round(base_price_gbp, 2)
+                return float(round(base_price_gbp, 2))
 
             # Use rate fetcher if available (for live rates)
             if self.rate_fetcher:
@@ -140,7 +139,7 @@ class QuoteService:
                 },
             )
 
-            return round(converted_price, 2)
+            return float(round(converted_price, 2))
 
         except ValueError as e:
             logger.error(f"Invalid quote request: {e}")

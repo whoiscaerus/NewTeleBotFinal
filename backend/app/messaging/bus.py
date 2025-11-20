@@ -36,13 +36,15 @@ import asyncio
 import json
 import logging
 import uuid
+from datetime import datetime, UTC
+from typing import Any, Literal, cast
 from collections.abc import Callable
-from datetime import UTC, datetime
-from typing import Any, Literal
 
 import redis.asyncio as aioredis
 
 from backend.app.core.settings import get_settings
+
+UTC = UTC
 from backend.app.observability.metrics import (
     message_fail_total,
     messages_enqueued_total,
@@ -106,7 +108,7 @@ class MessagingBus:
     async def close(self) -> None:
         """Close Redis connection."""
         if self.redis_client:
-            await self.redis_client.aclose()
+            await self.redis_client.close()
             logger.info("Messaging bus closed")
 
     async def enqueue_message(
@@ -344,7 +346,7 @@ class MessagingBus:
                 extra={"message_id": message["message_id"], "queue": queue_name},
             )
 
-            return message
+            return cast(dict[str, Any], message)
 
         except Exception as e:
             logger.error(f"Failed to dequeue message: {e}", exc_info=True)

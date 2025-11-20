@@ -513,7 +513,7 @@ def render_daily_outlook_email(outlook) -> dict[str, str]:
             <div class="narrative">
 {outlook.narrative}
             </div>
-            
+
             <div class="data-box">
                 <h3>Data Citations</h3>
                 <ul>
@@ -526,16 +526,16 @@ def render_daily_outlook_email(outlook) -> dict[str, str]:
                     <li><strong>ROC (10):</strong> {outlook.data_citations.get('roc', 'N/A'):.2f}%</li>
                 </ul>
             </div>
-            
+
             <h3>Volatility Zones</h3>
             {"".join([f'<div class="zone {zone.level}"><strong>{zone.level.upper()}</strong>: {zone.description}</div>' for zone in outlook.volatility_zones])}
-            
+
             <div class="correlations">
                 <h3>Key Correlations</h3>
                 {"".join([f'<div class="correlation">{corr.instrument_b}: {corr.coefficient:+.2f}</div>' for corr in outlook.correlations])}
             </div>
         </div>
-        
+
         <div class="footer">
             <p><em>This is an AI-generated analysis based on historical data.</em></p>
             <p><em>Past performance does not guarantee future results. Not financial advice.</em></p>

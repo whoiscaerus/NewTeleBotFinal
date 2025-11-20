@@ -6,7 +6,7 @@ Business logic for admin operations: refunds, KYC, fraud resolution, etc.
 
 import logging
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import stripe
@@ -27,7 +27,7 @@ async def process_refund(
     amount: float,
     reason: str,
     admin_user: User,
-    stripe_payment_intent_id: Optional[str] = None,
+    stripe_payment_intent_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Process a refund for a user with Stripe integration and audit logging.
@@ -136,7 +136,7 @@ async def approve_kyc(
     db: AsyncSession,
     user_id: str,
     admin_user: User,
-    notes: Optional[str] = None,
+    notes: str | None = None,
 ) -> User:
     """
     Approve KYC for a user and update entitlements.
@@ -204,7 +204,7 @@ async def resolve_fraud_event(
     resolution: str,
     action_taken: str,
     admin_user: User,
-    notes: Optional[str] = None,
+    notes: str | None = None,
 ) -> AnomalyEvent:
     """
     Resolve a fraud event with specified action.

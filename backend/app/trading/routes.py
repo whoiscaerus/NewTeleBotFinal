@@ -27,6 +27,7 @@ Date: 2024-10-26
 
 import logging
 from datetime import datetime
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,6 +47,7 @@ from backend.app.trading.query_service import (
     PositionQueryService,
     ReconciliationQueryService,
 )
+from backend.app.trading.risk_config_service import RiskConfigService
 from backend.app.trading.schemas import (
     GuardsStatusOut,
     PositionsListOut,
@@ -405,7 +407,7 @@ async def trading_health_check() -> dict:
 async def get_risk_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict:
+) -> dict[str, Any]:
     """
     Get global risk configuration.
 
@@ -422,8 +424,6 @@ async def get_risk_config(
         >>> assert "fixed_risk_percent" in data
         >>> assert data["fixed_risk_percent"] == 3.0
     """
-    from backend.app.trading.risk_config_service import RiskConfigService
-
     try:
         config = await RiskConfigService.get_global_risk_config(db)
         logger.info(
@@ -433,7 +433,7 @@ async def get_risk_config(
                 "fixed_risk_percent": config.get("fixed_risk_percent"),
             },
         )
-        return config
+        return cast(dict[str, Any], config)
     except Exception as e:
         logger.error(f"Failed to get risk config: {e}", exc_info=True)
         raise HTTPException(
@@ -453,7 +453,7 @@ async def update_risk_config(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_owner),
-) -> dict:
+) -> dict[str, Any]:
     """
     Update global fixed risk percent (owner-only).
 
@@ -480,8 +480,6 @@ async def update_risk_config(
         >>> data = response.json()
         >>> assert data["new_risk_percent"] == 2.5
     """
-    from backend.app.trading.risk_config_service import RiskConfigService
-
     try:
         result = await RiskConfigService.update_global_risk_percent(
             db=db, new_risk_percent=new_risk_percent, updated_by_user_id=current_user.id
@@ -494,7 +492,7 @@ async def update_risk_config(
                 "new_risk_percent": result["new_risk_percent"],
             },
         )
-        return result
+        return cast(dict[str, Any], result)
     except ValueError as e:
         logger.warning(
             f"Invalid risk percent: {e}",

@@ -318,6 +318,7 @@ def _extract_fib_rsi_prediction(features: dict[str, Any]) -> float:
     # RSI < 30 → buy signal (high prob, close to 1.0)
     # RSI > 70 → sell signal (high prob, close to 0.0)
     # RSI ~ 50 → neutral (prob ~ 0.5)
+    rsi = float(rsi)
     if rsi < 30:
         # Oversold: strong buy signal → high probability (0.5 - 0.9)
         return 0.5 + (30 - rsi) / 30 * 0.4  # 0.5 - 0.9
@@ -345,7 +346,7 @@ def _extract_ppo_prediction(features: dict[str, Any]) -> float:
         Prediction value (action probability)
     """
     ppo_data = features.get("ppo", {})
-    return ppo_data.get("action_prob", 0.5)
+    return float(ppo_data.get("action_prob", 0.5))
 
 
 async def compute_feature_importance(

@@ -6,7 +6,6 @@ Models for recommendations, A/B experiments, variants, and exposure tracking.
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -179,17 +178,17 @@ class Experiment(Base):
         """Calculate control CTR."""
         if self.control_exposures == 0:
             return 0.0
-        return self.control_conversions / self.control_exposures
+        return float(self.control_conversions) / float(self.control_exposures)
 
     @property
     def variant_ctr(self) -> float:
         """Calculate variant CTR."""
         if self.variant_exposures == 0:
             return 0.0
-        return self.variant_conversions / self.variant_exposures
+        return float(self.variant_conversions) / float(self.variant_exposures)
 
     @property
-    def uplift(self) -> Optional[float]:
+    def uplift(self) -> float | None:
         """Calculate uplift (variant vs control)."""
         if self.control_ctr == 0:
             return None

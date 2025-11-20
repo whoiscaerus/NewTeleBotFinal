@@ -552,7 +552,7 @@ class RedisIdempotencyStorage(IdempotencyStorage):
         try:
             cached = await self.redis.get(f"idempotency:response:{key}")
             if cached:
-                return json.loads(cached)
+                return dict(json.loads(cached))
         except Exception as e:
             logger.error(f"Redis get error: {e}")
         return None

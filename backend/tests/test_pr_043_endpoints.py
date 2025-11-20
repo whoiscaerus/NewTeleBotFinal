@@ -344,7 +344,9 @@ async def test_get_account_details_other_user(
 
 
 @pytest.mark.asyncio
-async def test_get_account_details_unauthorized(client: AsyncClient, linked_account):
+async def test_get_account_details_unauthorized(
+    client: AsyncClient, linked_account, clear_auth_override
+):
     """Test getting account without authentication fails."""
     response = await client.get(f"/api/v1/accounts/{linked_account.id}")
 
@@ -451,6 +453,7 @@ async def test_set_primary_account_other_user(
 async def test_set_primary_account_unauthorized(
     client: AsyncClient,
     linked_account,
+    clear_auth_override,
 ):
     """Test setting primary without authentication fails."""
     response = await client.put(f"/api/v1/accounts/{linked_account.id}/primary")
@@ -574,7 +577,9 @@ async def test_unlink_account_other_user(
 
 
 @pytest.mark.asyncio
-async def test_unlink_account_unauthorized(client: AsyncClient, linked_account):
+async def test_unlink_account_unauthorized(
+    client: AsyncClient, linked_account, clear_auth_override
+):
     """Test unlinking without authentication fails."""
     response = await client.delete(f"/api/v1/accounts/{linked_account.id}")
 

@@ -48,7 +48,7 @@ async def sample_trades(db_session: AsyncSession, test_user: User) -> list[Trade
     # Normal trades (10 trades)
     for i in range(10):
         trade = Trade(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             signal_id=f"signal-{i}",
             symbol="GOLD",
             strategy="fib_rsi",
@@ -70,7 +70,7 @@ async def sample_trades(db_session: AsyncSession, test_user: User) -> list[Trade
     # Extreme slippage trades (5 trades) - for anomaly detection
     for i in range(5):
         trade = Trade(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             signal_id=f"signal-extreme-{i}",
             symbol="GOLD",
             strategy="fib_rsi",
@@ -97,12 +97,12 @@ async def sample_trades(db_session: AsyncSession, test_user: User) -> list[Trade
     return trades
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def high_latency_trade(db_session: AsyncSession, test_user: User) -> Trade:
     """Create a trade with high execution latency."""
     # signal_time = datetime.utcnow() - timedelta(seconds=5)  # 5 second delay
     trade = Trade(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         signal_id="signal-latency-test",
         symbol="EURUSD",
         strategy="channel",
@@ -159,7 +159,22 @@ async def test_slippage_zscore_extreme_detects_anomaly(
         - Expected: Anomaly detected with HIGH/CRITICAL severity
     """
     test_trade = sample_trades[-1]  # Extreme slippage trade
+
+    # Remove other extreme trades to ensure baseline is "normal"
+    # The fixture creates 5 extreme trades at the end.
+    # We need to remove the others so they don't skew the baseline stats.
+    for trade in sample_trades[-5:-1]:
+        await db_session.delete(trade)
+    await db_session.commit()
+
     expected_price = Decimal("1950.00")  # 10 pips away from 1960
+
+    # Increase slippage to ensure z-score > 6 (High Severity)
+    # Baseline stddev is ~1.5. We need z-score > 6.
+    # Delta > 6 * 1.5 + 2.25 = 11.25.
+    # Let's make entry price 1970.00 (20 pips slippage).
+    test_trade.entry_price = Decimal("1970.00")
+    await db_session.commit()
 
     anomaly = await detect_slippage_zscore(db_session, test_trade, expected_price)
 
@@ -199,7 +214,7 @@ async def test_slippage_zscore_insufficient_data(
     # Create just 2 trades
     for i in range(2):
         trade = Trade(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             symbol="BTCUSD",
             strategy="breakout",
             timeframe="H1",
@@ -220,7 +235,7 @@ async def test_slippage_zscore_insufficient_data(
 
     # Create test trade
     test_trade = Trade(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         symbol="BTCUSD",
         strategy="breakout",
         timeframe="H1",
@@ -258,6 +273,14 @@ async def test_slippage_zscore_score_scaling(
         - Score = min(|z-score| / 10, 1.0)
     """
     test_trade = sample_trades[-2]
+
+    # Remove other extreme trades to ensure baseline is "normal"
+    # We are using -2.
+    # We need to remove -5, -4, -3, -1.
+    for i in [-5, -4, -3, -1]:
+        await db_session.delete(sample_trades[i])
+    await db_session.commit()
+
     expected_price = Decimal("1950.00")
 
     anomaly = await detect_slippage_zscore(db_session, test_trade, expected_price)
@@ -288,7 +311,7 @@ async def test_latency_spike_under_threshold(db_session: AsyncSession, test_user
     """
     # signal_time = datetime.utcnow() - timedelta(milliseconds=500)
     trade = Trade(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         symbol="GOLD",
         strategy="fib_rsi",
         timeframe="H1",
@@ -360,7 +383,7 @@ async def test_latency_spike_severity_thresholds(
     for latency_ms, expected_severity in test_cases:
         signal_time = datetime.utcnow() - timedelta(milliseconds=latency_ms)
         trade = Trade(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             symbol="GOLD",
             strategy="test",
             timeframe="H1",
@@ -402,7 +425,7 @@ async def test_out_of_band_within_range(db_session: AsyncSession, test_user: Use
         - Expected: No anomaly
     """
     trade = Trade(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         symbol="GOLD",
         strategy="fib_rsi",
         timeframe="H1",
@@ -437,7 +460,7 @@ async def test_out_of_band_below_range(db_session: AsyncSession, test_user: User
         - Expected: HIGH/CRITICAL severity anomaly
     """
     trade = Trade(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         symbol="GOLD",
         strategy="fib_rsi",
         timeframe="H1",
@@ -480,7 +503,7 @@ async def test_out_of_band_above_range(db_session: AsyncSession, test_user: User
         - Expected: Anomaly with direction="above"
     """
     trade = Trade(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         symbol="GOLD",
         strategy="fib_rsi",
         timeframe="H1",
@@ -590,7 +613,7 @@ async def test_get_fraud_events_admin_success(
     """
     # Create test anomaly
     anomaly = AnomalyEvent(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         trade_id="trade-123",
         anomaly_type=AnomalyType.SLIPPAGE_EXTREME,
         severity=AnomalySeverity.HIGH.value,
@@ -630,7 +653,7 @@ async def test_get_fraud_events_filtering(
     # Create diverse anomalies
     anomalies = [
         AnomalyEvent(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             anomaly_type=AnomalyType.SLIPPAGE_EXTREME,
             severity=AnomalySeverity.HIGH.value,
             score=Decimal("0.80"),
@@ -638,7 +661,7 @@ async def test_get_fraud_events_filtering(
             status="open",
         ),
         AnomalyEvent(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             anomaly_type=AnomalyType.LATENCY_SPIKE,
             severity=AnomalySeverity.CRITICAL.value,
             score=Decimal("0.95"),
@@ -693,14 +716,14 @@ async def test_get_fraud_summary_admin(
     # Create test anomalies
     anomalies = [
         AnomalyEvent(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             anomaly_type=AnomalyType.SLIPPAGE_EXTREME,
             severity=AnomalySeverity.HIGH.value,
             score=Decimal("0.70"),
             details=json.dumps({}),
         ),
         AnomalyEvent(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             anomaly_type=AnomalyType.LATENCY_SPIKE,
             severity=AnomalySeverity.CRITICAL.value,
             score=Decimal("0.90"),
@@ -744,7 +767,7 @@ async def test_review_fraud_event_admin(
     """
     # Create anomaly
     anomaly = AnomalyEvent(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         anomaly_type=AnomalyType.SLIPPAGE_EXTREME,
         severity=AnomalySeverity.HIGH.value,
         score=Decimal("0.75"),
@@ -769,7 +792,7 @@ async def test_review_fraud_event_admin(
     data = response.json()
 
     assert data["status"] == "investigating"
-    assert data["reviewed_by"] == admin_user.user_id
+    assert data["reviewed_by"] == admin_user.id
     assert data["reviewed_at"] is not None
     assert "Investigating" in data["resolution_note"]
 
@@ -790,7 +813,7 @@ async def test_review_fraud_event_invalid_transition(
     """
     # Create resolved anomaly
     anomaly = AnomalyEvent(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         anomaly_type=AnomalyType.SLIPPAGE_EXTREME,
         severity=AnomalySeverity.HIGH.value,
         score=Decimal("0.75"),
@@ -829,7 +852,7 @@ async def test_slippage_zero_stddev_handling(db_session: AsyncSession, test_user
     # Create 10 trades with identical entry prices
     for i in range(10):
         trade = Trade(
-            user_id=test_user.user_id,
+            user_id=test_user.id,
             symbol="TEST",
             strategy="test",
             timeframe="H1",
@@ -850,7 +873,7 @@ async def test_slippage_zero_stddev_handling(db_session: AsyncSession, test_user
 
     # Create test trade with different price
     test_trade = Trade(
-        user_id=test_user.user_id,
+        user_id=test_user.id,
         symbol="TEST",
         strategy="test",
         timeframe="H1",
@@ -894,12 +917,12 @@ async def test_false_positive_rate_validation(
         # Normal distribution: mean=1950, stddev=0.5
         price_variation = Decimal(str((i % 10) * 0.1 - 0.5))  # ±0.5 variation
         trade = Trade(
-            user_id=test_user.user_id,
-            symbol="FP_TEST",
-            strategy="test",
+            user_id=test_user.id,
+            symbol="GOLD",
+            strategy="test_strategy",
             timeframe="H1",
-            trade_type="BUY",
-            direction=0,
+            trade_type="buy",
+            direction="long",
             entry_price=Decimal("1950.00") + price_variation,
             entry_time=datetime.utcnow() - timedelta(hours=i),
             stop_loss=Decimal("1945.00"),
@@ -945,13 +968,24 @@ async def test_fraud_events_metric_increments(
         - Metric should be labeled by type
         - Multiple anomaly types should have separate counters
     """
+    from contextlib import asynccontextmanager
     from unittest.mock import MagicMock
 
+    import backend.schedulers.fraud_scan
     from backend.app.observability.metrics import metrics_collector
 
     # Mock the metric
     mock_counter = MagicMock()
     monkeypatch.setattr(metrics_collector, "fraud_events_total", mock_counter)
+
+    # Patch get_async_session to return our test session
+    @asynccontextmanager
+    async def mock_get_session():
+        yield db_session
+
+    monkeypatch.setattr(
+        backend.schedulers.fraud_scan, "get_async_session", mock_get_session
+    )
 
     # Run scan
     from backend.schedulers.fraud_scan import run_fraud_scan

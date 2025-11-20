@@ -7,9 +7,9 @@ Detects suspicious MT5 execution patterns:
 """
 
 import logging
+import statistics
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ LOOKBACK_WINDOW_DAYS = 30  # Days to look back for baseline calculation
 
 
 async def detect_slippage_zscore(
-    db: AsyncSession, trade: Trade, expected_price: Optional[Decimal] = None
+    db: AsyncSession, trade: Trade, expected_price: Decimal | None = None
 ) -> AnomalyEvent | None:
     """Detect extreme slippage using z-score analysis.
 
@@ -65,34 +65,68 @@ async def detect_slippage_zscore(
     # Get historical baseline for this symbol
     lookback = datetime.utcnow() - timedelta(days=LOOKBACK_WINDOW_DAYS)
 
-    # Calculate mean and stddev of historical slippage
-    stmt = select(
-        func.avg(func.abs(Trade.entry_price - expected_price)).label("mean_slippage"),
-        func.stddev(func.abs(Trade.entry_price - expected_price)).label(
-            "stddev_slippage"
-        ),
-        func.count(Trade.trade_id).label("trade_count"),
-    ).where(
-        and_(
-            Trade.symbol == trade.symbol,
-            Trade.entry_time >= lookback,
-            Trade.trade_id != trade.trade_id,  # Exclude current trade
+    # Check if running on SQLite (for tests)
+    is_sqlite = False
+    if db.bind:
+        dialect = getattr(db.bind, "dialect", None)
+        if dialect and dialect.name == "sqlite":
+            is_sqlite = True
+
+    if is_sqlite:
+        # SQLite fallback: Calculate stddev in Python
+        stmt = select(func.abs(Trade.entry_price - expected_price)).where(
+            and_(
+                Trade.symbol == trade.symbol,
+                Trade.entry_time >= lookback,
+                Trade.trade_id != trade.trade_id,
+            )
         )
-    )
+        result = await db.execute(stmt)
+        slippages = [float(s) for s in result.scalars().all()]
 
-    result = await db.execute(stmt)
-    row = result.one_or_none()
+        trade_count = len(slippages)
+        if trade_count < MIN_TRADES_FOR_ZSCORE:
+            logger.info(
+                f"Insufficient historical data for slippage z-score on {trade.symbol} "
+                f"(need {MIN_TRADES_FOR_ZSCORE}, have {trade_count})"
+            )
+            return None
 
-    if row is None or row.trade_count < MIN_TRADES_FOR_ZSCORE:
-        # Not enough data for statistical analysis
-        logger.info(
-            f"Insufficient historical data for slippage z-score on {trade.symbol} "
-            f"(need {MIN_TRADES_FOR_ZSCORE}, have {row.trade_count if row else 0})"
+        mean_slippage = statistics.mean(slippages)
+        stddev_slippage = statistics.stdev(slippages) if trade_count > 1 else 0.0
+
+    else:
+        # Calculate mean and stddev of historical slippage (Postgres optimized)
+        stmt = select(
+            func.avg(func.abs(Trade.entry_price - expected_price)).label(
+                "mean_slippage"
+            ),
+            func.stddev(func.abs(Trade.entry_price - expected_price)).label(
+                "stddev_slippage"
+            ),
+            func.count(Trade.trade_id).label("trade_count"),
+        ).where(
+            and_(
+                Trade.symbol == trade.symbol,
+                Trade.entry_time >= lookback,
+                Trade.trade_id != trade.trade_id,  # Exclude current trade
+            )
         )
-        return None
 
-    mean_slippage = float(row.mean_slippage or 0)
-    stddev_slippage = float(row.stddev_slippage or 1)
+        result = await db.execute(stmt)
+        row = result.one_or_none()
+
+        if row is None or row.trade_count < MIN_TRADES_FOR_ZSCORE:
+            # Not enough data for statistical analysis
+            logger.info(
+                f"Insufficient historical data for slippage z-score on {trade.symbol} "
+                f"(need {MIN_TRADES_FOR_ZSCORE}, have {row.trade_count if row else 0})"
+            )
+            return None
+
+        mean_slippage = float(row.mean_slippage or 0)
+        stddev_slippage = float(row.stddev_slippage or 1)
+        trade_count = row.trade_count
 
     # Avoid division by zero
     if stddev_slippage < 0.0001:
@@ -134,7 +168,7 @@ async def detect_slippage_zscore(
             "z_score": z_score,
             "mean_slippage": mean_slippage,
             "stddev_slippage": stddev_slippage,
-            "trade_count_baseline": row.trade_count,
+            "trade_count_baseline": trade_count,
             "threshold": SLIPPAGE_ZSCORE_THRESHOLD,
         },
     )
@@ -148,7 +182,7 @@ async def detect_slippage_zscore(
 
 
 async def detect_latency_spike(
-    db: AsyncSession, trade: Trade, signal_time: Optional[datetime] = None
+    db: AsyncSession, trade: Trade, signal_time: datetime | None = None
 ) -> AnomalyEvent | None:
     """Detect execution latency spikes.
 

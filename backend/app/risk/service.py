@@ -14,7 +14,6 @@ All functions follow async/await pattern for database operations.
 from datetime import datetime
 from decimal import Decimal
 from logging import getLogger
-from typing import Optional
 
 from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -174,18 +173,20 @@ class RiskService:
             exposure_by_direction[direction_key] += position_value
 
         # Convert Decimals to floats for JSON serialization
-        exposure_by_instrument = {
+        exposure_by_instrument_float = {
             k: float(v) for k, v in exposure_by_instrument.items()
         }
-        exposure_by_direction = {k: float(v) for k, v in exposure_by_direction.items()}
+        exposure_by_direction_float = {
+            k: float(v) for k, v in exposure_by_direction.items()
+        }
 
         # Create snapshot record
         snapshot = ExposureSnapshot(
             client_id=client_id,
             timestamp=datetime.utcnow(),
             total_exposure=total_exposure,
-            exposure_by_instrument=exposure_by_instrument,
-            exposure_by_direction=exposure_by_direction,
+            exposure_by_instrument=exposure_by_instrument_float,
+            exposure_by_direction=exposure_by_direction_float,
             open_positions_count=len(open_trades),
             current_drawdown_percent=await RiskService.calculate_current_drawdown(
                 client_id, db
@@ -357,8 +358,8 @@ class RiskService:
     async def calculate_position_size(
         client_id: str,
         signal: Signal,
-        risk_percent: Optional[Decimal] = None,
-        db: Optional[AsyncSession] = None,
+        risk_percent: Decimal | None = None,
+        db: AsyncSession | None = None,
     ) -> Decimal:
         """Calculate safe position size using Kelly-like criterion.
 
@@ -447,7 +448,7 @@ class RiskService:
             },
         )
 
-        return safe_size
+        return Decimal(safe_size)
 
     @staticmethod
     async def calculate_current_drawdown(client_id: str, db: AsyncSession) -> Decimal:
@@ -512,7 +513,7 @@ class RiskService:
         for trade in reversed(closed_trades):
             # Remove profit from trade to get prior equity
             if trade.profit:
-                historical_equity = historical_equity - trade.profit
+                historical_equity = historical_equity - Decimal(str(trade.profit))
                 max_equity = max(max_equity, historical_equity)
 
         # Calculate drawdown
@@ -618,8 +619,8 @@ class RiskService:
             violations.append(
                 {
                     "check": "platform_max_positions",
-                    "limit": RiskService.PLATFORM_MAX_OPEN_POSITIONS,
-                    "current": len(all_open_trades),
+                    "limit": str(RiskService.PLATFORM_MAX_OPEN_POSITIONS),
+                    "current": str(len(all_open_trades)),
                 }
             )
 
@@ -657,7 +658,7 @@ class RiskService:
         }
 
     @staticmethod
-    async def _find_instrument_group(instrument: str) -> Optional[list]:
+    async def _find_instrument_group(instrument: str) -> list | None:
         """Find which correlation group an instrument belongs to.
 
         Args:
@@ -666,7 +667,7 @@ class RiskService:
         Returns:
             List of related instruments or None
         """
-        for group_name, instruments in RiskService.RELATED_INSTRUMENTS.items():
+        for _group_name, instruments in RiskService.RELATED_INSTRUMENTS.items():
             if instrument in instruments:
                 return instruments
         return None
@@ -695,6 +696,9 @@ class RiskService:
         result = await db.execute(stmt)
         related_trades = result.scalars().all()
 
+        if not related_trades:
+            return Decimal("0.00")
+
         total = sum((t.volume * t.entry_price) for t in related_trades)
 
-        return total
+        return Decimal(str(total))

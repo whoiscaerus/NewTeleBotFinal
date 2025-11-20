@@ -73,6 +73,11 @@ def get_redis_client() -> Any | None:
     return _redis_client
 
 
+def get_redis() -> Any | None:
+    """Get global Redis client."""
+    return _redis_client
+
+
 def cache_key(prefix: str, *args, **kwargs) -> str:
     """
     Generate cache key from prefix and arguments.

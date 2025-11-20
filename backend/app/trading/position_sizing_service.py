@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Owner-controlled global risk parameters
 # Owner can change these values via API - changes apply to ALL clients immediately
-GLOBAL_RISK_CONFIG = {
+GLOBAL_RISK_CONFIG: dict[str, Any] = {
     "fixed_risk_percent": 3.0,  # Default 3% - Owner can change to any % (applies to ALL users)
     "entry_splits": {
         "entry_1_percent": 0.50,  # 50% of risk budget (Entry 1)
@@ -199,6 +199,7 @@ class PositionSizingService:
         )
 
         # Step 6: Validate risk budget
+        rejection_reason: str | None = None
         # Handle zero balance edge case
         if account_state.balance <= 0:
             validation_status = "rejected_risk"

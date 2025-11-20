@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Index, String, Text
+from sqlalchemy import JSON, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.core.db import Base
@@ -89,7 +89,7 @@ class AnomalyEvent(Base):
 
     # Metadata
     details: Mapped[dict] = mapped_column(
-        type_=Text,
+        type_=JSON,
         nullable=False,
         doc="JSON details: slippage_pips, latency_ms, expected_range, etc.",
     )

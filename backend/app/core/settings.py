@@ -357,7 +357,7 @@ def get_settings() -> Settings:
     Pydantic BaseSettings auto-instantiates nested settings from environment.
     Mypy doesn't understand this pattern, hence the type ignore.
     """
-    return Settings()  # type: ignore[call-arg]
+    return Settings()
 
 
 # Global instance

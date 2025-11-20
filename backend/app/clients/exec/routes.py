@@ -17,7 +17,7 @@ from backend.app.clients.exec.service import ExecutionService
 from backend.app.core.db import get_db
 from backend.app.core.errors import APIError
 
-router = APIRouter(prefix="/api/v1", tags=["executions"])
+router = APIRouter(tags=["executions"])
 
 
 @router.post("/exec/ack", status_code=201, response_model=ExecutionRecordOut)

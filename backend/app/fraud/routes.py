@@ -1,12 +1,12 @@
 """Fraud detection API routes (admin-only)."""
 
+import json
 import logging
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from sqlalchemy import and_, func, select
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import and_, func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.dependencies import require_admin
@@ -38,6 +38,16 @@ class AnomalyEventOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator("details", mode="before")
+    @classmethod
+    def parse_details(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return {}
+        return v
 
 
 class AnomalyListOut(BaseModel):
@@ -99,7 +109,10 @@ async def get_fraud_events(
     if user_id:
         conditions.append(AnomalyEvent.user_id == user_id)
 
-    where_clause = and_(*conditions) if conditions else True
+    if conditions:
+        where_clause = and_(*conditions)
+    else:
+        where_clause = true()
 
     # Count total
     count_stmt = select(func.count(AnomalyEvent.event_id)).where(where_clause)
@@ -120,7 +133,7 @@ async def get_fraud_events(
     events = result.scalars().all()
 
     logger.info(
-        f"Admin {current_user.user_id} fetched fraud events: "
+        f"Admin {current_user.id} fetched fraud events: "
         f"{len(events)} of {total} (page {page})"
     )
 
@@ -185,7 +198,7 @@ async def get_fraud_summary(
     recent_result = await db.execute(recent_stmt)
     recent_critical = recent_result.scalar() or 0
 
-    logger.info(f"Admin {current_user.user_id} fetched fraud summary")
+    logger.info(f"Admin {current_user.id} fetched fraud summary")
 
     return AnomalySummaryOut(
         total_events=total_events,
@@ -210,12 +223,12 @@ async def get_fraud_event(
     """
     stmt = select(AnomalyEvent).where(AnomalyEvent.event_id == event_id)
     result = await db.execute(stmt)
-    event = result.scalar_one_or_none()
+    event: AnomalyEvent | None = result.scalar_one_or_none()
 
     if not event:
         raise HTTPException(status_code=404, detail="Anomaly event not found")
 
-    logger.info(f"Admin {current_user.user_id} viewed fraud event {event_id}")
+    logger.info(f"Admin {current_user.id} viewed fraud event {event_id}")
 
     return AnomalyEventOut.model_validate(event)
 
@@ -238,20 +251,20 @@ async def review_fraud_event(
     # Fetch event
     stmt = select(AnomalyEvent).where(AnomalyEvent.event_id == event_id)
     result = await db.execute(stmt)
-    event = result.scalar_one_or_none()
+    event: AnomalyEvent | None = result.scalar_one_or_none()
 
     if not event:
         raise HTTPException(status_code=404, detail="Anomaly event not found")
 
     # Validate status transition
-    valid_transitions = {
+    valid_transitions: dict[str, list[str]] = {
         "open": ["investigating", "false_positive"],
         "investigating": ["resolved", "false_positive"],
         "resolved": [],  # Terminal state
         "false_positive": [],  # Terminal state
     }
 
-    if request.status not in valid_transitions.get(event.status, []):
+    if request.status not in valid_transitions.get(str(event.status), []):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid status transition: {event.status} → {request.status}",
@@ -260,7 +273,7 @@ async def review_fraud_event(
     # Update event
     event.status = request.status
     event.reviewed_at = datetime.utcnow()
-    event.reviewed_by = current_user.user_id
+    event.reviewed_by = current_user.id
     if request.resolution_note:
         event.resolution_note = request.resolution_note
 
@@ -268,7 +281,7 @@ async def review_fraud_event(
     await db.refresh(event)
 
     logger.info(
-        f"Admin {current_user.user_id} reviewed fraud event {event_id}: "
+        f"Admin {current_user.id} reviewed fraud event {event_id}: "
         f"status={request.status}"
     )
 

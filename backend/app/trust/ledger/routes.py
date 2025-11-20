@@ -3,7 +3,6 @@
 Provides read-only access to on-chain trade proofs.
 """
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException

@@ -21,10 +21,12 @@ from backend.app.kb.models import ArticleStatus
 from backend.app.kb.schemas import (
     ArticleCreateIn,
     ArticleDetailOut,
+    ArticleListOut,
     ArticleListResponse,
     ArticlePublishIn,
     ArticleRejectIn,
     ArticleUpdateIn,
+    ArticleVersionOut,
     ArticleVersionsResponse,
     ArticleViewStatsOut,
 )

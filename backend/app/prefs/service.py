@@ -10,7 +10,6 @@ Integrates with:
 """
 
 from datetime import datetime
-from typing import Optional
 
 import pytz
 from sqlalchemy import select
@@ -163,10 +162,10 @@ def is_quiet_hours_active(
 
     # Handle overnight quiet hours (e.g., 22:00-08:00)
     if start > end:
-        return local_time >= start or local_time <= end
+        return bool(local_time >= start or local_time <= end)
     # Handle same-day quiet hours (e.g., 12:00-14:00)
     else:
-        return start <= local_time <= end
+        return bool(start <= local_time <= end)
 
 
 def should_send_notification(

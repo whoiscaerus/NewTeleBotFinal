@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, DateTime, Float, Index, Integer, String, select
@@ -161,7 +161,7 @@ def calculate_trust_band(
 
 async def calculate_trust_index(
     user_id: str, db: AsyncSession
-) -> Optional[PublicTrustIndexSchema]:
+) -> PublicTrustIndexSchema | None:
     """
     Calculate public trust index for a user.
 

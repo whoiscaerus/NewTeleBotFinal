@@ -14,7 +14,7 @@ Smart rule conditions beyond simple price triggers:
 import logging
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, cast
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, validator
@@ -31,7 +31,7 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from backend.app.core.db import Base
 from backend.app.core.errors import ValidationError
@@ -79,36 +79,36 @@ class SmartAlertRule(Base):
 
     __tablename__ = "smart_alert_rules"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
-    symbol = Column(String(50), nullable=False, index=True)
-    rule_type = Column(String(50), nullable=False)  # RuleType enum value
-    threshold_value = Column(Float, nullable=False)
+    id: Mapped[str] = Column(String(36), primary_key=True, default=lambda: str(uuid4()))  # type: ignore
+    user_id: Mapped[str] = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)  # type: ignore
+    symbol: Mapped[str] = Column(String(50), nullable=False, index=True)  # type: ignore
+    rule_type: Mapped[str] = Column(String(50), nullable=False)  # type: ignore
+    threshold_value: Mapped[float] = Column(Float, nullable=False)  # type: ignore
 
     # Optional parameters based on rule type
-    window_minutes = Column(
+    window_minutes: Mapped[int | None] = Column(  # type: ignore
         Integer
     )  # For percent_change: lookback window (e.g., 60 for 1hr)
-    rsi_period = Column(Integer)  # For RSI: period (default 14)
+    rsi_period: Mapped[int | None] = Column(Integer)  # type: ignore
 
     # Cooldown and mute
-    cooldown_minutes = Column(
+    cooldown_minutes: Mapped[int] = Column(  # type: ignore
         Integer, nullable=False, default=60
     )  # Min time between triggers
-    is_muted = Column(Boolean, nullable=False, default=False)
+    is_muted: Mapped[bool] = Column(Boolean, nullable=False, default=False)  # type: ignore
 
     # Multi-channel preferences
-    channels = Column(JSON, nullable=False)  # List of NotificationChannel values
+    channels: Mapped[list[str]] = Column(JSON, nullable=False)  # type: ignore
 
     # State tracking
-    last_triggered_at = Column(DateTime)
-    previous_price = Column(Float)  # For cross detection
-    last_evaluation_at = Column(DateTime)
+    last_triggered_at: Mapped[datetime | None] = Column(DateTime)  # type: ignore
+    previous_price: Mapped[float | None] = Column(Float)  # type: ignore
+    last_evaluation_at: Mapped[datetime | None] = Column(DateTime)  # type: ignore
 
     # Metadata
-    is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(
+    is_active: Mapped[bool] = Column(Boolean, nullable=False, default=True)  # type: ignore
+    created_at: Mapped[datetime] = Column(DateTime, nullable=False, default=datetime.utcnow)  # type: ignore
+    updated_at: Mapped[datetime] = Column(  # type: ignore
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
@@ -132,16 +132,16 @@ class RuleNotification(Base):
 
     __tablename__ = "rule_notifications"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    rule_id = Column(
+    id: Mapped[str] = Column(String(36), primary_key=True, default=lambda: str(uuid4()))  # type: ignore
+    rule_id: Mapped[str] = Column(  # type: ignore
         String(36), ForeignKey("smart_alert_rules.id"), nullable=False, index=True
     )
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
-    channel = Column(String(50), nullable=False)  # NotificationChannel value
-    message = Column(String(1000), nullable=False)
-    sent_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    delivered = Column(Boolean, default=False)
-    error_message = Column(String(500))
+    user_id: Mapped[str] = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)  # type: ignore
+    channel: Mapped[str] = Column(String(50), nullable=False)  # type: ignore
+    message: Mapped[str] = Column(String(1000), nullable=False)  # type: ignore
+    sent_at: Mapped[datetime] = Column(DateTime, nullable=False, default=datetime.utcnow)  # type: ignore
+    delivered: Mapped[bool | None] = Column(Boolean, default=False)  # type: ignore
+    error_message: Mapped[str | None] = Column(String(500))  # type: ignore
 
     # Relationships
     rule = relationship("SmartAlertRule", back_populates="notifications")
@@ -168,8 +168,8 @@ class SmartRuleCreate(BaseModel):
     symbol: str = Field(..., min_length=2, max_length=50)
     rule_type: RuleType
     threshold_value: float = Field(..., gt=0)
-    window_minutes: Optional[int] = Field(None, gt=0, le=1440)  # Max 24 hours
-    rsi_period: Optional[int] = Field(None, gt=1, le=200)
+    window_minutes: int | None = Field(None, gt=0, le=1440)  # Max 24 hours
+    rsi_period: int | None = Field(None, gt=1, le=200)
     cooldown_minutes: int = Field(60, ge=5, le=10080)  # 5 min to 1 week
     channels: list[NotificationChannel] = Field(
         default_factory=lambda: [NotificationChannel.TELEGRAM]
@@ -203,10 +203,10 @@ class SmartRuleCreate(BaseModel):
 class SmartRuleUpdate(BaseModel):
     """Request to update a smart alert rule."""
 
-    threshold_value: Optional[float] = Field(None, gt=0)
-    cooldown_minutes: Optional[int] = Field(None, ge=5, le=10080)
-    is_muted: Optional[bool] = None
-    channels: Optional[list[NotificationChannel]] = None
+    threshold_value: float | None = Field(None, gt=0)
+    cooldown_minutes: int | None = Field(None, ge=5, le=10080)
+    is_muted: bool | None = None
+    channels: list[NotificationChannel] | None = None
 
 
 class SmartRuleOut(BaseModel):
@@ -216,13 +216,13 @@ class SmartRuleOut(BaseModel):
     symbol: str
     rule_type: str
     threshold_value: float
-    window_minutes: Optional[int]
-    rsi_period: Optional[int]
+    window_minutes: int | None
+    rsi_period: int | None
     cooldown_minutes: int
     is_muted: bool
     channels: list[str]
     is_active: bool
-    last_triggered_at: Optional[datetime]
+    last_triggered_at: datetime | None
     created_at: datetime
 
     class Config:
@@ -240,7 +240,7 @@ class SmartRuleEvaluator:
     @staticmethod
     async def evaluate_cross_above(
         rule: SmartAlertRule, current_price: float
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """Evaluate cross-above condition.
 
         Triggers when price crosses above threshold from below.
@@ -268,7 +268,7 @@ class SmartRuleEvaluator:
     @staticmethod
     async def evaluate_cross_below(
         rule: SmartAlertRule, current_price: float
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """Evaluate cross-below condition.
 
         Triggers when price crosses below threshold from above.
@@ -296,7 +296,7 @@ class SmartRuleEvaluator:
         rule: SmartAlertRule,
         current_price: float,
         historical_prices: list[tuple[datetime, float]],
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """Evaluate percent change condition.
 
         Triggers when % change over window exceeds threshold.
@@ -340,8 +340,8 @@ class SmartRuleEvaluator:
 
     @staticmethod
     async def evaluate_rsi_threshold(
-        rule: SmartAlertRule, current_rsi: float
-    ) -> tuple[bool, Optional[str]]:
+        rule: SmartAlertRule, current_rsi: float | None
+    ) -> tuple[bool, str | None]:
         """Evaluate RSI threshold condition.
 
         Triggers when RSI crosses threshold (overbought/oversold).
@@ -375,8 +375,8 @@ class SmartRuleEvaluator:
 
     @staticmethod
     async def evaluate_daily_high_touch(
-        rule: SmartAlertRule, current_price: float, daily_high: float
-    ) -> tuple[bool, Optional[str]]:
+        rule: SmartAlertRule, current_price: float, daily_high: float | None
+    ) -> tuple[bool, str | None]:
         """Evaluate daily high touch condition.
 
         Triggers when price touches or exceeds daily high.
@@ -405,8 +405,8 @@ class SmartRuleEvaluator:
 
     @staticmethod
     async def evaluate_daily_low_touch(
-        rule: SmartAlertRule, current_price: float, daily_low: float
-    ) -> tuple[bool, Optional[str]]:
+        rule: SmartAlertRule, current_price: float, daily_low: float | None
+    ) -> tuple[bool, str | None]:
         """Evaluate daily low touch condition.
 
         Triggers when price touches or falls below daily low.
@@ -453,10 +453,10 @@ class SmartRuleService:
         symbol: str,
         rule_type: RuleType,
         threshold_value: float,
-        window_minutes: Optional[int] = None,
-        rsi_period: Optional[int] = None,
+        window_minutes: int | None = None,
+        rsi_period: int | None = None,
         cooldown_minutes: int = 60,
-        channels: Optional[list[NotificationChannel]] = None,
+        channels: list[NotificationChannel] | None = None,
     ) -> dict[str, Any]:
         """Create a new smart alert rule.
 
@@ -661,7 +661,7 @@ class SmartRuleService:
 
     async def check_cooldown(
         self, rule: SmartAlertRule
-    ) -> tuple[bool, Optional[datetime]]:
+    ) -> tuple[bool, datetime | None]:
         """Check if rule is in cooldown period.
 
         Args:
@@ -688,7 +688,7 @@ class SmartRuleService:
         db: AsyncSession,
         rule: SmartAlertRule,
         market_data: dict[str, Any],
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """Evaluate a smart rule against market data.
 
         Args:
@@ -732,15 +732,15 @@ class SmartRuleService:
             )
         elif rule_type == RuleType.RSI_THRESHOLD:
             triggered, reason = await self.evaluator.evaluate_rsi_threshold(
-                rule, market_data.get("rsi")
+                rule, cast(float, market_data.get("rsi"))
             )
         elif rule_type == RuleType.DAILY_HIGH_TOUCH:
             triggered, reason = await self.evaluator.evaluate_daily_high_touch(
-                rule, current_price, market_data.get("daily_high")
+                rule, current_price, cast(float, market_data.get("daily_high"))
             )
         elif rule_type == RuleType.DAILY_LOW_TOUCH:
             triggered, reason = await self.evaluator.evaluate_daily_low_touch(
-                rule, current_price, market_data.get("daily_low")
+                rule, current_price, cast(float, market_data.get("daily_low"))
             )
 
         # Update state

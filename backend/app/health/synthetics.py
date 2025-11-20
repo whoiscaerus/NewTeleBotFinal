@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -25,8 +25,8 @@ class SyntheticProbeResult:
         self,
         probe_name: str,
         status: SyntheticStatus,
-        latency_ms: float = None,
-        error_message: str = None,
+        latency_ms: float | None = None,
+        error_message: str | None = None,
     ):
         self.probe_name = probe_name
         self.status = status
@@ -91,7 +91,7 @@ async def ping_websocket(ws_url: str, timeout: float = 5.0) -> SyntheticProbeRes
                     error_message=f"HTTP {response.status_code}",
                 )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error(f"WebSocket ping timeout after {timeout}s")
         return SyntheticProbeResult(
             probe_name="websocket_ping",
@@ -166,7 +166,7 @@ async def poll_mt5(endpoint_url: str, timeout: float = 10.0) -> SyntheticProbeRe
                     error_message=f"HTTP {response.status_code}",
                 )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error(f"MT5 poll timeout after {timeout}s")
         return SyntheticProbeResult(
             probe_name="mt5_poll",
@@ -237,7 +237,7 @@ async def echo_telegram(
                     error_message=f"HTTP {response.status_code}: {response.text}",
                 )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error(f"Telegram echo timeout after {timeout}s")
         return SyntheticProbeResult(
             probe_name="telegram_echo",
@@ -336,7 +336,7 @@ async def replay_stripe(
                     error_message=f"HTTP {response.status_code}",
                 )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error(f"Stripe replay timeout after {timeout}s")
         return SyntheticProbeResult(
             probe_name="stripe_replay",
@@ -414,7 +414,7 @@ async def run_synthetics(config: dict[str, str]) -> list[SyntheticProbeResult]:
                 )
             )
         else:
-            final_results.append(result)
+            final_results.append(cast(SyntheticProbeResult, result))
 
     # Log summary
     failed_probes = [r for r in final_results if r.status != SyntheticStatus.PASS]

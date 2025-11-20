@@ -160,7 +160,7 @@ class CopyService:
             ab_group=variant_data.ab_group,
             is_control=variant_data.is_control,
             text=variant_data.text,
-            metadata=variant_data.metadata,
+            variant_metadata=variant_data.metadata,
         )
 
         self.db.add(variant)

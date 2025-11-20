@@ -42,7 +42,7 @@ class Course(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     title = Column(String(200), nullable=False, index=True)
     description = Column(String(2000), nullable=False)
-    status = Column(
+    status: Column[CourseStatus] = Column(
         SQLEnum(CourseStatus, name="course_status_enum"),
         nullable=False,
         default=CourseStatus.DRAFT,

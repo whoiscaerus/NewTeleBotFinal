@@ -6,7 +6,7 @@ No PII leak. Strong disclaimers. For marketing and transparency.
 
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Optional
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from prometheus_client import Counter
@@ -54,7 +54,7 @@ class PerformanceResponse:
         calmar_ratio: float = 0.0,
         avg_rr: float = 0.0,
         max_drawdown_percent: float = 0.0,
-        data_as_of: Optional[datetime] = None,
+        data_as_of: datetime | None = None,
         delay_applied_minutes: int = 1440,
         disclaimer: str = "Past performance is not indicative of future results. This data is provided for informational purposes only and should not be used as investment advice.",
     ):
@@ -126,8 +126,8 @@ def _validate_delay(delay_minutes: int) -> None:
 async def _get_closed_trades_with_delay(
     db: AsyncSession,
     delay_minutes: int,
-    from_date: Optional[datetime] = None,
-    to_date: Optional[datetime] = None,
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
 ) -> list[Trade]:
     """Fetch closed trades respecting T+X delay.
 
@@ -158,7 +158,7 @@ async def _get_closed_trades_with_delay(
     query = query.order_by(Trade.exit_time.asc())
 
     result = await db.execute(query)
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
 async def _calculate_performance_metrics(trades: list[Trade]) -> PerformanceResponse:
@@ -181,12 +181,16 @@ async def _calculate_performance_metrics(trades: list[Trade]) -> PerformanceResp
     win_rate = len(winning_trades) / total_trades if total_trades > 0 else 0.0
 
     # Profit factor
-    gross_profit = sum(Decimal(t.profit) for t in winning_trades if t.profit)
-    gross_loss = abs(sum(Decimal(t.profit) for t in losing_trades if t.profit))
+    gross_profit = sum(
+        (Decimal(str(t.profit)) for t in winning_trades if t.profit), Decimal(0)
+    )
+    gross_loss = abs(
+        sum((Decimal(str(t.profit)) for t in losing_trades if t.profit), Decimal(0))
+    )
     profit_factor = float(gross_profit / gross_loss) if gross_loss > 0 else 0.0
 
     # Total return
-    total_profit = sum(Decimal(t.profit) for t in trades if t.profit)
+    total_profit = sum((Decimal(str(t.profit)) for t in trades if t.profit), Decimal(0))
     return_percent = float(total_profit) if total_profit else 0.0
 
     # Average R:R
@@ -260,8 +264,8 @@ def _calculate_max_drawdown(trades: list[Trade]) -> float:
 @router.get("/performance/summary")
 async def get_performance_summary(
     delay_minutes: int = Query(1440, ge=0, le=1_000_000),
-    from_date: Optional[datetime] = Query(None),
-    to_date: Optional[datetime] = Query(None),
+    from_date: datetime | None = Query(None),
+    to_date: datetime | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Get aggregated performance summary with T+X delay.
@@ -334,7 +338,7 @@ async def get_performance_summary(
             extra={"total_trades": metrics.total_trades},
         )
 
-        return metrics.to_dict()
+        return cast(dict[Any, Any], metrics.to_dict())
 
     except ValueError as e:
         logger.warning(f"Validation error: {e}")
@@ -354,8 +358,8 @@ async def get_performance_summary(
 @router.get("/performance/equity")
 async def get_equity_curve(
     delay_minutes: int = Query(1440, ge=0, le=1_000_000),
-    from_date: Optional[datetime] = Query(None),
-    to_date: Optional[datetime] = Query(None),
+    from_date: datetime | None = Query(None),
+    to_date: datetime | None = Query(None),
     granularity: str = Query("daily"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:

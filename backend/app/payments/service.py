@@ -13,7 +13,7 @@ Handles:
 import os
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import stripe
@@ -35,8 +35,8 @@ class StripeService:
         tier: str,
         success_url: str,
         cancel_url: str,
-        custom_metadata: Optional[dict] = None,
-        db: Optional[AsyncSession] = None,
+        custom_metadata: dict | None = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """
         Create Stripe checkout session for subscription.
@@ -249,7 +249,7 @@ class StripeService:
     async def update_subscription_tier(
         subscription_id: str,
         new_tier_id: str,
-        db: Optional[AsyncSession] = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """Update subscription tier."""
         return {"status": "active", "id": subscription_id, "tier": new_tier_id}
@@ -257,7 +257,7 @@ class StripeService:
     @staticmethod
     async def handle_subscription_updated(
         event_data: dict[str, Any],
-        db: Optional[AsyncSession] = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """Handle subscription updated webhook."""
         return {"status": "updated"}
@@ -265,7 +265,7 @@ class StripeService:
     @staticmethod
     async def handle_subscription_deleted(
         event_data: dict[str, Any],
-        db: Optional[AsyncSession] = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """Handle subscription deleted webhook."""
         if not db:
@@ -293,7 +293,7 @@ class StripeService:
     async def user_has_entitlement(
         user_id: str,
         feature: str,
-        db: Optional[AsyncSession] = None,
+        db: AsyncSession | None = None,
     ) -> bool:
         """Check if user has entitlement."""
         if not db:
@@ -476,8 +476,8 @@ class StripeService:
     @staticmethod
     async def cancel_subscription(
         subscription_id: str,
-        user_id: Optional[str] = None,
-        db: Optional[AsyncSession] = None,
+        user_id: str | None = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """
         Cancel active subscription.

@@ -13,7 +13,6 @@ Features:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, validator
@@ -277,7 +276,7 @@ class PriceAlertService:
 
     async def get_alert(
         self, db: AsyncSession, alert_id: str, user_id: str
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Get single alert by ID.
 
@@ -393,8 +392,10 @@ class PriceAlertService:
             "operator": alert.operator,
             "price_level": alert.price_level,
             "is_active": alert.is_active,
-            "last_triggered": alert.last_triggered_at,
-            "created_at": alert.created_at,
+            "last_triggered": (
+                alert.last_triggered_at.isoformat() if alert.last_triggered_at else None
+            ),
+            "created_at": alert.created_at.isoformat(),
         }
 
     async def evaluate_alerts(
@@ -420,7 +421,7 @@ class PriceAlertService:
         result = await db.execute(
             select(PriceAlert).where(
                 and_(
-                    PriceAlert.is_active == True,
+                    PriceAlert.is_active.is_(True),
                     PriceAlert.symbol.in_(list(current_prices.keys())),
                 )
             )

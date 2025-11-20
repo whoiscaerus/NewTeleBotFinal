@@ -26,9 +26,11 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pyarrow.parquet as pq
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -427,13 +429,13 @@ class DatabaseAdapter(DataAdapter):
         query += " ORDER BY timestamp ASC"
 
         # Execute query
-        params = {"symbol": symbol}
+        params: dict[str, Any] = {"symbol": symbol}
         if start:
             params["start"] = start
         if end:
             params["end"] = end
 
-        result = await self.db_session.execute(query, params)
+        result = await self.db_session.execute(text(query), params)
         rows = result.fetchall()
 
         if not rows:

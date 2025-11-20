@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -196,8 +196,8 @@ class EquityEngine:
     async def compute_equity_series(
         self,
         user_id: str,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         initial_balance: Decimal = Decimal("10000"),
     ) -> EquitySeries:
         """Compute equity curve from trades.
@@ -366,8 +366,8 @@ class EquityEngine:
     async def get_summary_stats(
         self,
         user_id: str,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> dict:
         """Get comprehensive equity/drawdown statistics.
 

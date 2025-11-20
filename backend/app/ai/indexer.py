@@ -79,7 +79,7 @@ class EmbeddingGenerator:
         """
         import math
 
-        dot_product = sum(a * b for a, b in zip(vec1, vec2))
+        dot_product = sum(a * b for a, b in zip(vec1, vec2, strict=False))
         magnitude1 = math.sqrt(sum(a**2 for a in vec1))
         magnitude2 = math.sqrt(sum(a**2 for a in vec2))
 

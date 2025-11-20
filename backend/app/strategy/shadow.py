@@ -82,10 +82,10 @@ try:
 except ImportError:
     logger.warning("MetricsCollector not available, metrics disabled")
 
-    def get_metrics():  # type: ignore[no-redef]
+    def get_metrics() -> Any | None:
         return None
 
-    def set_metrics(metrics):  # type: ignore[no-redef]
+    def set_metrics(metrics: Any) -> None:
         pass
 
 
@@ -169,6 +169,7 @@ class ShadowExecutor:
             )
 
             # Extract decision details
+            features: dict[str, Any]
             if not signal_candidates or len(signal_candidates) == 0:
                 decision = "hold"
                 features = {"reason": "no_signal", "timestamp": timestamp.isoformat()}
@@ -469,7 +470,7 @@ class ShadowExecutor:
 
         return comparison
 
-    async def validate_shadow_isolation(self, shadow_log_id: str) -> dict[str, bool]:
+    async def validate_shadow_isolation(self, shadow_log_id: str) -> dict[str, Any]:
         """Validate that shadow decision had no production side effects.
 
         Checks that shadow execution did NOT:

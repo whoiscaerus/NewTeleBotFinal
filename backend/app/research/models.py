@@ -70,7 +70,7 @@ class StrategyMetadata(Base):
 
     name = Column(String(50), primary_key=True)
     version = Column(String(20), nullable=False, default="1.0.0")
-    status = Column(
+    status: Column[StrategyStatus] = Column(
         Enum(StrategyStatus),
         nullable=False,
         default=StrategyStatus.development,

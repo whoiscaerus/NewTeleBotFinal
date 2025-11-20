@@ -10,13 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.approvals.models import Approval, ApprovalDecision
 from backend.app.approvals.schema import ApprovalCreate, ApprovalOut, PendingApprovalOut
 from backend.app.approvals.service import ApprovalService
-from backend.app.audit.service import AuditService
 from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.jwt_handler import JWTHandler
 from backend.app.auth.models import User
 from backend.app.core.db import get_db
 from backend.app.observability import get_metrics
-from backend.app.risk.service import RiskService
 from backend.app.signals.models import Signal, SignalStatus
 
 logger = logging.getLogger(__name__)

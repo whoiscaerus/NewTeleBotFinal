@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -141,7 +141,7 @@ class LedgerService:
             # Store proof in database (if proof table exists)
             # await self._store_proof(trade.trade_id, trade_hash, result)
 
-            return result
+            return cast(dict[str, Any], result)
 
         except BlockchainSubmissionError as e:
             logger.error(

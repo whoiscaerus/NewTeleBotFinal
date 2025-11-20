@@ -8,7 +8,7 @@ PR-064 Implementation.
 
 import logging
 from datetime import datetime
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from prometheus_client import Counter
@@ -64,10 +64,10 @@ class CourseOut(BaseModel):
     status: str
     duration_minutes: int
     difficulty_level: int
-    reward_percent: Optional[float] = None
-    reward_expires_days: Optional[int] = None
+    reward_percent: float | None = None
+    reward_expires_days: int | None = None
     order_index: int
-    thumbnail_url: Optional[str] = None
+    thumbnail_url: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -111,9 +111,9 @@ class QuizOut(BaseModel):
     id: str
     lesson_id: str
     title: str
-    description: Optional[str]
+    description: str | None
     passing_score: float
-    max_attempts: Optional[int]
+    max_attempts: int | None
     retry_delay_minutes: int
     questions: list[QuizQuestionOut]
     created_at: datetime
@@ -131,7 +131,7 @@ class AttemptSubmit(BaseModel):
     answers: dict[str, list[int]] = Field(
         ..., description="User answers: {question_id: [option_indices]}"
     )
-    time_taken_seconds: Optional[int] = Field(
+    time_taken_seconds: int | None = Field(
         None, description="Time spent on quiz", ge=1
     )
 
@@ -159,9 +159,9 @@ class AttemptOut(BaseModel):
     quiz_id: str
     score: float
     passed: bool
-    time_taken_seconds: Optional[int]
+    time_taken_seconds: int | None
     created_at: datetime
-    grading_details: Optional[dict[str, Any]] = None
+    grading_details: dict[str, Any] | None = None
 
     class Config:
         from_attributes = True
@@ -175,11 +175,11 @@ class RewardOut(BaseModel):
     course_id: str
     reward_type: str
     reward_value: float
-    currency: Optional[str]
+    currency: str | None
     issued_at: datetime
     expires_at: datetime
-    redeemed_at: Optional[datetime]
-    redemption_order_id: Optional[str]
+    redeemed_at: datetime | None
+    redemption_order_id: str | None
 
     class Config:
         from_attributes = True
@@ -202,9 +202,9 @@ class ProgressOut(BaseModel):
 
 @router.get("/courses", response_model=list[CourseOut])
 async def list_courses(
-    status_filter: Optional[str] = None,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    status_filter: str | None = None,
 ):
     """List all available courses.
 
@@ -223,17 +223,17 @@ async def list_courses(
     service = EducationService(db)
 
     # Parse status filter
-    status = None
+    course_status = None
     if status_filter:
         try:
-            status = CourseStatus(status_filter)
+            course_status = CourseStatus(status_filter)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid status: {status_filter}. Must be draft/published/archived",
             )
 
-    courses = await service.list_courses(status=status)
+    courses = await service.list_courses(status=course_status)
 
     logger.info(
         f"Listed courses: user={current_user.id} status={status_filter} count={len(courses)}",
@@ -250,8 +250,8 @@ async def list_courses(
 @router.get("/courses/{course_id}", response_model=CourseOut)
 async def get_course(
     course_id: str,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get course by ID.
 
@@ -284,8 +284,8 @@ async def get_course(
 @router.get("/lessons/{lesson_id}", response_model=LessonOut)
 async def get_lesson(
     lesson_id: str,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get lesson by ID.
 
@@ -318,8 +318,8 @@ async def get_lesson(
 @router.get("/quizzes/{quiz_id}", response_model=QuizOut)
 async def get_quiz(
     quiz_id: str,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get quiz by ID with questions.
 
@@ -380,8 +380,8 @@ async def get_quiz(
 )
 async def submit_attempt(
     attempt_data: AttemptSubmit,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Submit a quiz attempt for grading.
 
@@ -503,8 +503,8 @@ async def submit_attempt(
 @router.get("/progress/{course_id}", response_model=ProgressOut)
 async def get_progress(
     course_id: str,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get user's progress in a course.
 
@@ -544,9 +544,9 @@ async def get_progress(
 
 @router.get("/rewards", response_model=list[RewardOut])
 async def list_rewards(
-    reward_type: Optional[str] = None,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    reward_type: str | None = None,
 ):
     """List user's active rewards.
 

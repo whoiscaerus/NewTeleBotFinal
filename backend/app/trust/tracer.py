@@ -11,7 +11,7 @@ Responsibilities:
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import redis.asyncio as redis
 
@@ -56,7 +56,7 @@ class TraceQueue:
             now = datetime.utcnow()
             deadline = now + timedelta(minutes=delay_minutes)
 
-            queue_entry = {
+            queue_entry: dict[str, str | int] = {
                 "trade_id": trade_id,
                 "adapter_types": json.dumps(adapter_types),
                 "deadline": deadline.isoformat() + "Z",
@@ -66,7 +66,7 @@ class TraceQueue:
 
             # Store in Redis hash
             key = f"{self.queue_prefix}{trade_id}"
-            await self.redis.hset(key, mapping=queue_entry)
+            await self.redis.hset(key, mapping=cast(Any, queue_entry))
 
             # Add to sorted set for efficient deadline lookup
             deadline_score = deadline.timestamp()

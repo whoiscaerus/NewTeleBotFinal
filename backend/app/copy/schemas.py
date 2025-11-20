@@ -113,7 +113,7 @@ class CopyEntryResponse(BaseModel):
 class CopyResolveRequest(BaseModel):
     """Schema for resolving copy text."""
 
-    keys: list[str] = Field(..., min_items=1, description="Copy keys to resolve")
+    keys: list[str] = Field(..., min_length=1, description="Copy keys to resolve")
     locale: str = Field("en", description="Desired locale")
     ab_group: str | None = Field(None, description="A/B test group")
     record_impression: bool = Field(False, description="Whether to record impression")
@@ -124,7 +124,7 @@ class CopyResolveResponse(BaseModel):
 
     locale: str
     ab_group: str | None
-    copy: dict[str, str]  # key -> text
+    copy_text: dict[str, str] = Field(..., alias="copy")  # key -> text
     missing: list[str]  # Keys not found
 
 

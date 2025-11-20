@@ -126,7 +126,7 @@ class DataDeleter:
         from backend.app.signals.models import Signal
 
         result = await self.db.execute(delete(Signal).filter(Signal.user_id == user_id))
-        count = result.rowcount
+        count = result.rowcount  # type: ignore[attr-defined]
         logger.info(f"Deleted {count} signals for user {user_id}")
 
     async def _delete_devices(self, user_id: str) -> None:
@@ -134,7 +134,7 @@ class DataDeleter:
         from backend.app.ea.models import Device
 
         result = await self.db.execute(delete(Device).filter(Device.user_id == user_id))
-        count = result.rowcount
+        count = result.rowcount  # type: ignore[attr-defined]
         logger.info(f"Deleted {count} devices for user {user_id}")
 
     async def _delete_approvals(self, user_id: str) -> None:
@@ -144,7 +144,7 @@ class DataDeleter:
         result = await self.db.execute(
             delete(Approval).filter(Approval.user_id == user_id)
         )
-        count = result.rowcount
+        count = result.rowcount  # type: ignore[attr-defined]
         logger.info(f"Deleted {count} approvals for user {user_id}")
 
     async def _delete_billing(self, user_id: str) -> None:
@@ -196,7 +196,7 @@ class DataDeleter:
             .filter(PrivacyRequest.user_id == user_id)
             .filter(PrivacyRequest.id != current_request_id)
         )
-        count = result.rowcount
+        count = result.rowcount  # type: ignore[attr-defined]
         logger.info(f"Deleted {count} old privacy requests for user {user_id}")
 
     async def _delete_user_record(self, user_id: str) -> None:
@@ -204,7 +204,7 @@ class DataDeleter:
         from backend.app.auth.models import User
 
         result = await self.db.execute(delete(User).filter(User.id == user_id))
-        count = result.rowcount
+        count = result.rowcount  # type: ignore[attr-defined]
         if count == 0:
             logger.warning(f"User {user_id} not found during deletion")
         else:

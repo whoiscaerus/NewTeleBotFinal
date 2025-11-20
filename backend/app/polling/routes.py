@@ -15,7 +15,6 @@ Features:
 
 import json
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
@@ -137,7 +136,7 @@ async def poll_v2(
     accept_encoding: str = Header(
         "gzip", alias="Accept-Encoding", description="Supported compression algorithms"
     ),
-    if_modified_since: Optional[str] = Header(
+    if_modified_since: str | None = Header(
         None,
         alias="If-Modified-Since",
         description="ISO 8601 timestamp for conditional requests",
@@ -292,9 +291,9 @@ async def poll_v2(
                 EncryptedSignalEnvelope.approval_id.in_(approval_ids)
             )
             result = await db.execute(stmt)
-            envelopes = result.scalars().all()
+            result.scalars().all()
         else:
-            envelopes = []
+            pass
 
         # Build response data
         response_data = {
@@ -374,7 +373,7 @@ async def poll_v2(
 
         if compress and algo != "identity":
             compressed_response = json.loads(response_json).copy()
-            compressed_response_json = json.dumps(compressed_response)
+            json.dumps(compressed_response)
             compressed_bytes, _ = compress_response(
                 compressed_response, accept_encoding
             )

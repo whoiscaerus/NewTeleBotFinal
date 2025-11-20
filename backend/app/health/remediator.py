@@ -7,7 +7,7 @@ Self-healing operations to resolve detected incidents automatically.
 import asyncio
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -21,8 +21,8 @@ class RemediationResult:
         self,
         action_type: str,
         success: bool,
-        message: str = None,
-        details: dict[str, Any] = None,
+        message: str | None = None,
+        details: dict[str, Any] | None = None,
     ):
         self.action_type = action_type
         self.success = success
@@ -74,7 +74,7 @@ async def restart_service(
             max_wait_seconds = 30
             healthcheck_url = f"http://{service_name}:8000/health"
 
-            for attempt in range(max_wait_seconds):
+            for _attempt in range(max_wait_seconds):
                 try:
                     async with httpx.AsyncClient(timeout=2.0) as client:
                         response = await client.get(healthcheck_url)
@@ -240,7 +240,7 @@ async def rotate_token(
 
 
 async def drain_queue(
-    queue_name: str, dlq_name: Optional[str] = None
+    queue_name: str, dlq_name: str | None = None
 ) -> RemediationResult:
     """
     Drain a message queue by moving messages to dead-letter queue.
@@ -323,8 +323,7 @@ async def failover_replica(
         # engine = create_engine(f"postgresql://{replica_host}/{database_name}")
 
         # Test replica connectivity
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            health_url = f"http://{replica_host}:5432/health"
+        async with httpx.AsyncClient(timeout=5.0):
             try:
                 # Simulate connectivity test
                 await asyncio.sleep(0.3)

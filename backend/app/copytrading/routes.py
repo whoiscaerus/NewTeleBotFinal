@@ -12,7 +12,6 @@ Endpoints for managing copy-trading risk parameters and compliance:
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -40,16 +39,16 @@ disclosure_service = DisclosureService()
 class UpdateCopyRiskSettingsRequest(BaseModel):
     """Request to update copy-trading risk parameters."""
 
-    max_leverage: Optional[float] = Field(
+    max_leverage: float | None = Field(
         None, ge=1.0, le=10.0, description="Max leverage per trade"
     )
-    max_per_trade_risk_percent: Optional[float] = Field(
+    max_per_trade_risk_percent: float | None = Field(
         None, ge=0.1, le=10.0, description="Max risk per trade as % of account"
     )
-    total_exposure_percent: Optional[float] = Field(
+    total_exposure_percent: float | None = Field(
         None, ge=20.0, le=100.0, description="Max total exposure % across all positions"
     )
-    daily_stop_percent: Optional[float] = Field(
+    daily_stop_percent: float | None = Field(
         None, ge=1.0, le=50.0, description="Max daily loss % before pause"
     )
 
@@ -60,10 +59,10 @@ class CopyRiskSettingsResponse(BaseModel):
     user_id: str
     enabled: bool
     is_paused: bool
-    pause_reason: Optional[str]
+    pause_reason: str | None
     risk_parameters: dict = Field(description="Current risk parameter values")
-    last_breach_at: Optional[str]
-    last_breach_reason: Optional[str]
+    last_breach_at: str | None
+    last_breach_reason: str | None
 
 
 class CopyStatusResponse(BaseModel):
@@ -72,13 +71,13 @@ class CopyStatusResponse(BaseModel):
     user_id: str
     enabled: bool
     is_paused: bool
-    pause_reason: Optional[str]
-    paused_at: Optional[str]
-    last_breach_at: Optional[str]
-    last_breach_reason: Optional[str]
+    pause_reason: str | None
+    paused_at: str | None
+    last_breach_at: str | None
+    last_breach_reason: str | None
     risk_parameters: dict
     consent_version: str
-    consent_accepted_at: Optional[str]
+    consent_accepted_at: str | None
 
 
 class DisclosureResponse(BaseModel):
@@ -363,7 +362,7 @@ async def get_current_disclosure(
 @router.post("/consent", status_code=201, response_model=ConsentRecordResponse)
 async def accept_disclosure(
     current_user: User = Depends(get_current_user),
-    request: Request = None,
+    request: Request = None,  # type: ignore
     db: AsyncSession = Depends(get_db),
 ) -> ConsentRecordResponse:
     """
@@ -403,7 +402,7 @@ async def accept_disclosure(
         )
 
     # Extract client info
-    ip_address = request.client.host if request else None
+    ip_address = request.client.host if request and request.client else None
     user_agent = request.headers.get("user-agent") if request else None
 
     # Record consent

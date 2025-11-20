@@ -77,7 +77,7 @@ class PaperPosition(Base):
         String(36), ForeignKey("paper_accounts.id"), nullable=False, index=True
     )
     symbol = Column(String(20), nullable=False)
-    side = Column(SQLEnum(TradeSide), nullable=False)
+    side: Column[TradeSide] = Column(SQLEnum(TradeSide), nullable=False)
     volume = Column(Numeric(10, 2), nullable=False)
     entry_price = Column(Numeric(15, 5), nullable=False)
     current_price = Column(Numeric(15, 5), nullable=False)
@@ -114,7 +114,7 @@ class PaperTrade(Base):
         String(36), ForeignKey("paper_accounts.id"), nullable=False, index=True
     )
     symbol = Column(String(20), nullable=False)
-    side = Column(SQLEnum(TradeSide), nullable=False)
+    side: Column[TradeSide] = Column(SQLEnum(TradeSide), nullable=False)
     volume = Column(Numeric(10, 2), nullable=False)
     entry_price = Column(Numeric(15, 5), nullable=False)
     exit_price = Column(

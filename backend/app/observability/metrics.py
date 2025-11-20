@@ -1071,3 +1071,6 @@ position_failure_alerts_sent_total = metrics.position_failure_alerts_sent_total
 # Export CRM metrics for convenient access (PR-098)
 crm_playbook_fired_total = metrics.crm_playbook_fired_total
 crm_rescue_recovered_total = metrics.crm_rescue_recovered_total
+
+# Alias for backward compatibility
+metrics_collector = metrics

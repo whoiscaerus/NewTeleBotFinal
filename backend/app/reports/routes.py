@@ -5,7 +5,6 @@ Endpoints for on-demand report generation and history viewing.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -38,12 +37,12 @@ class ReportOut(BaseModel):
     status: ReportStatus
     period_start: datetime
     period_end: datetime
-    html_url: Optional[str]
-    pdf_url: Optional[str]
-    summary: Optional[str]
+    html_url: str | None
+    pdf_url: str | None
+    summary: str | None
     delivered_channels: list[str]
     created_at: datetime
-    generated_at: Optional[datetime]
+    generated_at: datetime | None
 
     class Config:
         from_attributes = True
@@ -98,9 +97,9 @@ async def generate_report(
 
 @router.get("/", response_model=ReportsListResponse)
 async def list_reports(
-    type: Optional[ReportType] = Query(None, description="Filter by report type"),
-    period: Optional[ReportPeriod] = Query(None, description="Filter by period"),
-    status: Optional[ReportStatus] = Query(None, description="Filter by status"),
+    type: ReportType | None = Query(None, description="Filter by report type"),
+    period: ReportPeriod | None = Query(None, description="Filter by period"),
+    status: ReportStatus | None = Query(None, description="Filter by status"),
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),

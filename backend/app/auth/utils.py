@@ -15,13 +15,13 @@ pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 def hash_password(password: str) -> str:
     """Hash password using Argon2."""
     # passlib's hash may be typed as Any in stubs — cast to str for mypy
-    return cast(str, pwd_context.hash(password))
+    return pwd_context.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """Verify password against hash."""
     # cast to bool to satisfy static typing if stubs are imprecise
-    return cast(bool, pwd_context.verify(plain, hashed))
+    return pwd_context.verify(plain, hashed)
 
 
 def create_access_token(

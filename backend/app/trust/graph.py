@@ -9,7 +9,6 @@ All calculations are deterministic: same graph → same scores.
 """
 
 from datetime import datetime
-from typing import Optional
 
 import networkx as nx
 from sqlalchemy import select
@@ -66,7 +65,7 @@ def _build_graph_from_endorsements(endorsements: list[Endorsement]) -> nx.DiGrap
 
 
 def _calculate_performance_score(
-    user_id: str, performance_data: Optional[dict]
+    user_id: str, performance_data: dict | None
 ) -> float:
     """Calculate performance component of trust score.
 
@@ -91,21 +90,21 @@ def _calculate_performance_score(
     score = 0.0
 
     # Win rate: 0.5 (50%) → 0, 0.7 (70%) → 100, capped at 100
-    win_rate = performance_data.get("win_rate", 0.5)
+    win_rate = float(performance_data.get("win_rate", 0.5))
     win_score = min((win_rate - 0.5) * 500, 100.0) if win_rate > 0.5 else 0.0
     score += win_score * 0.5
 
     # Sharpe ratio: 0 → 0, 2.0 → 100, capped
-    sharpe = performance_data.get("sharpe_ratio", 0.0)
+    sharpe = float(performance_data.get("sharpe_ratio", 0.0))
     sharpe_score = min(sharpe * 50, 100.0)
     score += sharpe_score * 0.3
 
     # Profit factor: 1.0 → 0, 3.0 → 100, capped
-    pf = performance_data.get("profit_factor", 1.0)
+    pf = float(performance_data.get("profit_factor", 1.0))
     pf_score = min((pf - 1.0) * 50, 100.0) if pf > 1.0 else 0.0
     score += pf_score * 0.2
 
-    return min(score, 100.0)
+    return float(min(score, 100.0))
 
 
 def _calculate_tenure_score(user_created_at: datetime) -> float:
@@ -335,7 +334,7 @@ def import_graph(data: dict) -> nx.DiGraph:
     return graph
 
 
-async def get_single_user_score(user_id: str, db: AsyncSession) -> Optional[dict]:
+async def get_single_user_score(user_id: str, db: AsyncSession) -> dict | None:
     """Get cached trust score for single user.
 
     Args:

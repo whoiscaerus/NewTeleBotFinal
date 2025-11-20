@@ -6,7 +6,6 @@ Uses matplotlib with Agg backend (server-safe, no display required).
 """
 
 from io import BytesIO
-from typing import Optional
 
 import matplotlib
 
@@ -37,7 +36,7 @@ class ChartRenderer:
         self.figsize = figsize
 
     def render_equity_chart(
-        self, equity_data: EquitySeriesOut, title: Optional[str] = None
+        self, equity_data: EquitySeriesOut, title: str | None = None
     ) -> bytes:
         """Render equity curve as PNG bytes.
 
@@ -122,12 +121,12 @@ class ChartRenderer:
             transform=ax.transAxes,
             fontsize=10,
             verticalalignment="top",
-            bbox=dict(
-                boxstyle="round,pad=0.5",
-                facecolor="white",
-                edgecolor="#2E86AB",
-                alpha=0.9,
-            ),
+            bbox={
+                "boxstyle": "round,pad=0.5",
+                "facecolor": "white",
+                "edgecolor": "#2E86AB",
+                "alpha": 0.9,
+            },
         )
 
         # Tight layout
@@ -149,7 +148,7 @@ class ChartRenderer:
         win_rate: float,
         num_wins: int,
         num_losses: int,
-        title: Optional[str] = None,
+        title: str | None = None,
     ) -> bytes:
         """Render win rate donut chart as PNG bytes.
 
@@ -182,7 +181,7 @@ class ChartRenderer:
         ax = fig.add_subplot(111)
 
         # Donut chart
-        ax.pie(  # type: ignore[misc]
+        ax.pie(
             sizes,
             labels=labels,
             colors=colors,

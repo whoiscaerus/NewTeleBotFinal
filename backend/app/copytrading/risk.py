@@ -12,7 +12,7 @@ All evaluations trigger Telegram alerts on breach and force pause on violation.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -74,7 +74,7 @@ class RiskEvaluator:
         user_id: str,
         proposed_trade: dict,
         account_state: dict,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Evaluate if proposed trade violates risk parameters.
 

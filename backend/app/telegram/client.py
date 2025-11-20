@@ -3,7 +3,7 @@ Telegram Client with Circuit Breaker protection.
 Wraps python-telegram-bot methods to prevent cascading failures.
 """
 
-from typing import Any, Optional, Union
+from typing import Any, cast
 
 from telegram import Bot, Message
 from telegram.request import HTTPXRequest
@@ -31,10 +31,10 @@ class TelegramClient:
         # Use connection pooling for better performance
         request = HTTPXRequest(connection_pool_size=8)
         self.bot = Bot(token=token, request=request)
-        self._circuit_breaker: Optional[CircuitBreaker] = None
+        self._circuit_breaker: CircuitBreaker | None = None
 
     @property
-    def circuit_breaker(self) -> Optional[CircuitBreaker]:
+    def circuit_breaker(self) -> CircuitBreaker | None:
         """Lazy load circuit breaker to ensure Redis is connected."""
         if self._circuit_breaker is None and _redis_client:
             self._circuit_breaker = CircuitBreaker(
@@ -46,7 +46,7 @@ class TelegramClient:
         return self._circuit_breaker
 
     async def send_message(
-        self, chat_id: Union[int, str], text: str, **kwargs
+        self, chat_id: int | str, text: str, **kwargs
     ) -> Message:
         """
         Send message with circuit breaker protection.
@@ -66,8 +66,11 @@ class TelegramClient:
         cb = self.circuit_breaker
 
         if cb:
-            return await cb.call(
-                self.bot.send_message, chat_id=chat_id, text=text, **kwargs
+            return cast(
+                Message,
+                await cb.call(
+                    self.bot.send_message, chat_id=chat_id, text=text, **kwargs
+                ),
             )
 
         # Fallback if Redis not available

@@ -344,7 +344,7 @@ class PromotionEngine:
 
     def _check_backtest_thresholds(self, result: WalkForwardValidationResult) -> bool:
         """Check if validation result passes thresholds."""
-        return (
+        return bool(
             result.overall_sharpe >= self.min_sharpe
             and result.overall_max_dd <= self.max_drawdown
             and result.overall_win_rate >= self.min_win_rate

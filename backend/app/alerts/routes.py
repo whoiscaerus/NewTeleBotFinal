@@ -22,7 +22,7 @@ from backend.app.core.errors import ValidationError
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/alerts", tags=["alerts"])
+router = APIRouter(prefix="/alerts", tags=["alerts"])
 alert_service = PriceAlertService()
 
 

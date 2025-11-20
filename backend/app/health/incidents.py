@@ -6,7 +6,7 @@ Handles incident lifecycle: creation, investigation, resolution, auto-closure.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -172,7 +172,7 @@ async def resolve_incident(
     db: AsyncSession,
     incident_id: int,
     resolution: str,
-    remediation_result: Optional[RemediationResult] = None,
+    remediation_result: RemediationResult | None = None,
 ) -> Incident:
     """
     Mark incident as resolved.
@@ -343,8 +343,8 @@ async def auto_close_stale_incidents(
 
 async def get_incidents(
     db: AsyncSession,
-    status: Optional[IncidentStatus] = None,
-    severity: Optional[IncidentSeverity] = None,
+    status: IncidentStatus | None = None,
+    severity: IncidentSeverity | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[Incident]:
@@ -374,10 +374,10 @@ async def get_incidents(
     result = await db.execute(stmt)
     incidents = result.scalars().all()
 
-    return incidents
+    return list(incidents)
 
 
-async def get_incident(db: AsyncSession, incident_id: int) -> Optional[Incident]:
+async def get_incident(db: AsyncSession, incident_id: int) -> Incident | None:
     """Get a single incident by ID."""
     stmt = select(Incident).where(Incident.id == incident_id)
     result = await db.execute(stmt)

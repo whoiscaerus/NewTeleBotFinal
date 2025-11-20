@@ -376,7 +376,11 @@ class JourneyEngine:
         elif op == "lte":
             return actual <= expected if actual is not None else False
         elif op == "in":
-            return actual in expected if actual is not None else False
+            return (
+                actual in expected
+                if actual is not None and expected is not None
+                else False
+            )
         elif op == "contains":
             return expected in actual if actual is not None else False
         else:

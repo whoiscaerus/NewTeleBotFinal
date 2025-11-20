@@ -79,7 +79,7 @@ class SignalCreate(BaseModel):
         return v
 
     @validator("payload", pre=True, always=True)
-    def validate_payload(cls, v: dict[str, Any]) -> dict[str, Any]:
+    def validate_payload(cls, v: dict[str, Any] | None) -> dict[str, Any]:
         """Validate payload size. Convert None to empty dict."""
         if v is None:
             return {}

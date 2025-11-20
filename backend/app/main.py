@@ -21,6 +21,7 @@ from backend.app.alerts.routes_smart import router as smart_alerts_router
 from backend.app.analytics.routes import router as analytics_router
 from backend.app.approvals.routes import router as approvals_router
 from backend.app.auth.routes import router as auth_router
+from backend.app.billing.routes import router as billing_router
 from backend.app.clients.devices.routes import router as devices_router
 from backend.app.clients.exec.routes import router as exec_router
 from backend.app.copy.routes import router as copy_router
@@ -37,11 +38,13 @@ from backend.app.ea.routes_admin import router as ea_admin_router
 from backend.app.education.routes import router as education_router
 from backend.app.explain.routes import router as explain_router
 from backend.app.exports.routes import router as exports_router
+from backend.app.fraud.routes import router as fraud_router
 from backend.app.health.routes import (
     router as health_router,  # PR-100: Health Monitoring
 )
 from backend.app.journeys.routes import router as journeys_router
 from backend.app.messaging.routes import router as messaging_router
+from backend.app.observability.metrics import metrics
 from backend.app.payments.routes import router as payments_router
 from backend.app.polling.routes import router as polling_v2_router
 from backend.app.prefs.routes import router as prefs_router
@@ -105,6 +108,7 @@ app.include_router(admin_router, tags=["admin"])  # PR-099: Admin Portal
 app.include_router(ai_router, tags=["ai"])  # PR-091: AI Analyst
 app.include_router(health_router, tags=["health"])  # PR-100: Health Monitoring
 app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
+app.include_router(billing_router, prefix="/api/v1", tags=["billing"])
 app.include_router(alerts_router, prefix="/api/v1", tags=["alerts"])
 app.include_router(smart_alerts_router, tags=["smart-alerts"])
 app.include_router(analytics_router, tags=["analytics"])
@@ -136,6 +140,7 @@ app.include_router(
 app.include_router(ea_admin_router, tags=["executions"])
 app.include_router(education_router, tags=["education"])
 app.include_router(exports_router, prefix="/api/v1", tags=["exports"])
+app.include_router(fraud_router, tags=["fraud"])
 app.include_router(journeys_router, tags=["journeys"])
 app.include_router(trust_router, tags=["trust"])
 app.include_router(messaging_router, tags=["messaging"])
@@ -166,10 +171,12 @@ async def health():
 
 
 @app.get("/metrics")
-async def metrics():
+async def metrics_endpoint():
     """Prometheus metrics endpoint."""
     if PROMETHEUS_AVAILABLE:
-        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+        return Response(
+            generate_latest(metrics.registry), media_type=CONTENT_TYPE_LATEST
+        )
     else:
         return {"error": "Prometheus metrics not available"}
 

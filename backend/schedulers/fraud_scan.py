@@ -7,8 +7,7 @@ import asyncio
 import logging
 from datetime import datetime
 
-
-from backend.app.core.db import async_session_maker
+from backend.app.core.db import get_async_session
 from backend.app.fraud.detectors import scan_recent_trades
 from backend.app.observability.metrics import metrics_collector
 
@@ -34,7 +33,7 @@ async def run_fraud_scan(hours: int = 24) -> int:
     logger.info(f"Starting fraud scan for last {hours} hours")
     start_time = datetime.utcnow()
 
-    async with async_session_maker() as db:
+    async with get_async_session() as db:
         try:
             # Run scan
             anomalies = await scan_recent_trades(db, hours=hours)

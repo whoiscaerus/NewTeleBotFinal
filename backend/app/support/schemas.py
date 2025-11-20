@@ -1,7 +1,7 @@
 """Pydantic schemas for support tickets."""
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, validator
 
@@ -15,7 +15,7 @@ class TicketCreateIn(BaseModel):
     body: str = Field(..., min_length=10, description="Detailed issue description")
     severity: str = Field(default="medium", pattern="^(low|medium|high|urgent)$")
     channel: str = Field(default="web", pattern="^(ai_chat|web|telegram|email|api)$")
-    context: Optional[dict[str, Any]] = Field(
+    context: dict[str, Any] | None = Field(
         default=None, description="Additional metadata"
     )
 
@@ -37,16 +37,16 @@ class TicketCreateIn(BaseModel):
 class TicketUpdateIn(BaseModel):
     """Request to update an existing ticket."""
 
-    status: Optional[str] = Field(
+    status: str | None = Field(
         None, pattern="^(open|in_progress|waiting_on_customer|resolved|closed)$"
     )
-    assigned_to: Optional[str] = Field(
+    assigned_to: str | None = Field(
         None, min_length=36, max_length=36, description="User ID to assign"
     )
-    resolution_note: Optional[str] = Field(
+    resolution_note: str | None = Field(
         None, description="Resolution summary (visible to user)"
     )
-    internal_notes: Optional[str] = Field(
+    internal_notes: str | None = Field(
         None, description="Internal staff notes (not visible to user)"
     )
 
@@ -76,14 +76,14 @@ class TicketOut(BaseModel):
     severity: str
     status: str
     channel: str
-    context: Optional[dict[str, Any]] = None
+    context: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
-    resolved_at: Optional[datetime] = None
-    closed_at: Optional[datetime] = None
-    assigned_to: Optional[str] = None
-    resolution_note: Optional[str] = None
-    internal_notes: Optional[str] = None
+    resolved_at: datetime | None = None
+    closed_at: datetime | None = None
+    assigned_to: str | None = None
+    resolution_note: str | None = None
+    internal_notes: str | None = None
 
     class Config:
         orm_mode = True

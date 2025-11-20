@@ -17,6 +17,7 @@ New WebSocket Events:
 import asyncio
 import logging
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 
@@ -197,7 +198,7 @@ async def send_position_updates(websocket: WebSocket):
             # positions = await mt5_async.positions_get(symbol=symbol)
 
             # Simulated positions (replace with real MT5 data)
-            positions = []  # Mock: no positions
+            positions: list[dict[str, Any]] = []  # Mock: no positions
 
             current_tickets = {pos["ticket"] for pos in positions}
 

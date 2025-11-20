@@ -7,7 +7,6 @@ Abstraction layer for file storage (S3 or local filesystem).
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

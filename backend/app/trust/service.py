@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from prometheus_client import Counter, Histogram
 from sqlalchemy import select
@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.trust.graph import (
     _build_graph_from_endorsements,
-    _calculate_percentiles,
     calculate_trust_scores,
 )
 from backend.app.trust.models import (
@@ -195,7 +194,7 @@ class TrustScoringService:
     @staticmethod
     async def calculate_single_user_score(
         user_id: str, db: AsyncSession
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Calculate trust score for a single user.
 

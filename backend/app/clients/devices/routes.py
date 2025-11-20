@@ -19,7 +19,7 @@ from backend.app.observability.metrics import metrics
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/devices", tags=["devices"])
+router = APIRouter(prefix="/devices", tags=["devices"])
 
 
 @router.post("/register", status_code=201, response_model=DeviceCreateResponse)

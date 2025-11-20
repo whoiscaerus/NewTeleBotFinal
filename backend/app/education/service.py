@@ -8,7 +8,7 @@ PR-064 Implementation.
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,7 @@ class EducationService:
 
     async def list_courses(
         self,
-        status: Optional[CourseStatus] = None,
+        status: CourseStatus | None = None,
         include_lessons: bool = False,
     ) -> list[Course]:
         """List all courses, optionally filtered by status.
@@ -76,7 +76,7 @@ class EducationService:
 
         return courses
 
-    async def get_course(self, course_id: str) -> Optional[Course]:
+    async def get_course(self, course_id: str) -> Course | None:
         """Get course by ID with lessons and quizzes.
 
         Args:
@@ -93,7 +93,7 @@ class EducationService:
 
         return course
 
-    async def get_lesson(self, lesson_id: str) -> Optional[Lesson]:
+    async def get_lesson(self, lesson_id: str) -> Lesson | None:
         """Get lesson by ID with quiz.
 
         Args:
@@ -110,7 +110,7 @@ class EducationService:
 
         return lesson
 
-    async def get_quiz(self, quiz_id: str) -> Optional[Quiz]:
+    async def get_quiz(self, quiz_id: str) -> Quiz | None:
         """Get quiz by ID with questions.
 
         Args:
@@ -147,7 +147,7 @@ class EducationService:
 
     async def check_rate_limit(
         self, user_id: str, quiz_id: str, retry_delay_minutes: int
-    ) -> tuple[bool, Optional[datetime]]:
+    ) -> tuple[bool, datetime | None]:
         """Check if user can attempt quiz (rate limiting).
 
         Args:
@@ -201,7 +201,7 @@ class EducationService:
         return True, None
 
     async def check_max_attempts(
-        self, user_id: str, quiz_id: str, max_attempts: Optional[int]
+        self, user_id: str, quiz_id: str, max_attempts: int | None
     ) -> tuple[bool, int]:
         """Check if user has remaining attempts.
 
@@ -305,7 +305,7 @@ class EducationService:
         course_id: str,
         quiz_id: str,
         answers: dict[str, list[int]],
-        time_taken_seconds: Optional[int] = None,
+        time_taken_seconds: int | None = None,
     ) -> tuple[Attempt, dict[str, Any]]:
         """Submit and grade a quiz attempt.
 
@@ -336,9 +336,8 @@ class EducationService:
             user_id, quiz_id, quiz.retry_delay_minutes
         )
         if not can_attempt:
-            raise ValueError(
-                f"Rate limited. Next attempt available at {available_at.isoformat()}"
-            )
+            available_str = available_at.isoformat() if available_at else "unknown"
+            raise ValueError(f"Rate limited. Next attempt available at {available_str}")
 
         # Check max attempts
         can_attempt, attempts_used = await self.check_max_attempts(
@@ -473,7 +472,7 @@ class EducationService:
 
     async def issue_course_reward(
         self, user_id: str, course_id: str
-    ) -> Optional[Reward]:
+    ) -> Reward | None:
         """Issue reward for course completion if eligible.
 
         Args:

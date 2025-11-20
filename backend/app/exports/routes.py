@@ -18,7 +18,7 @@ from backend.app.exports.service import ExportService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/exports", tags=["exports"])
+router = APIRouter(prefix="/exports", tags=["exports"])
 
 
 class ExportRequest(BaseModel):

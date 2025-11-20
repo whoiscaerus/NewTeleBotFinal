@@ -15,7 +15,7 @@ Risk-free rate configurable via environment.
 import math
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,7 +58,7 @@ class PerformanceMetrics:
     RISK_FREE_DAILY = DEFAULT_RISK_FREE_RATE / Decimal(252)  # 252 trading days/year
 
     def __init__(
-        self, db_session: AsyncSession, risk_free_rate: Optional[Decimal] = None
+        self, db_session: AsyncSession, risk_free_rate: Decimal | None = None
     ):
         """Initialize metrics calculator.
 

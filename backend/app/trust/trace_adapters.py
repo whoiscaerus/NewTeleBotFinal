@@ -19,7 +19,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 import aiohttp
 import boto3
@@ -63,7 +63,7 @@ class TraceAdapter(ABC):
     def __init__(self, config: AdapterConfig):
         """Initialize adapter with configuration."""
         self.config = config
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -216,7 +216,7 @@ class MyfxbookAdapter(TraceAdapter):
                     body = await response.text()
                     raise AdapterError(f"Myfxbook {response.status}: {body}")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 f"Myfxbook timeout, will retry: {trade_data['trade_id']}",
                 extra={
@@ -254,9 +254,9 @@ class FileExportAdapter(TraceAdapter):
         self,
         config: AdapterConfig,
         export_type: str = "local",
-        local_path: Optional[str] = None,
-        s3_bucket: Optional[str] = None,
-        s3_prefix: Optional[str] = None,
+        local_path: str | None = None,
+        s3_bucket: str | None = None,
+        s3_prefix: str | None = None,
     ):
         """Initialize with export configuration."""
         super().__init__(config)
@@ -389,8 +389,8 @@ class WebhookAdapter(TraceAdapter):
         self,
         config: AdapterConfig,
         endpoint: str,
-        auth_header: Optional[str] = None,
-        auth_token: Optional[str] = None,
+        auth_header: str | None = None,
+        auth_token: str | None = None,
     ):
         """Initialize with webhook configuration."""
         super().__init__(config)
@@ -463,7 +463,7 @@ class WebhookAdapter(TraceAdapter):
                     body = await response.text()
                     raise AdapterError(f"Webhook {response.status}: {body}")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 "Webhook timeout, will retry",
                 extra={
@@ -497,7 +497,7 @@ class AdapterRegistry:
         """Register an adapter."""
         self._adapters[adapter.name] = adapter
 
-    def get(self, name: str) -> Optional[TraceAdapter]:
+    def get(self, name: str) -> TraceAdapter | None:
         """Get adapter by name."""
         return self._adapters.get(name)
 

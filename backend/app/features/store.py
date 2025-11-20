@@ -262,7 +262,7 @@ class FeatureStore:
         result = await self.session.execute(stmt)
         await self.session.commit()
 
-        deleted_count = result.rowcount
+        deleted_count = result.rowcount  # type: ignore[attr-defined]
 
         logger.info(
             f"Deleted {deleted_count} old snapshots for {symbol}",
@@ -273,4 +273,4 @@ class FeatureStore:
             },
         )
 
-        return deleted_count
+        return int(deleted_count)

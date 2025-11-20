@@ -5,7 +5,6 @@ Request/response models for admin API endpoints.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -15,11 +14,11 @@ from pydantic import BaseModel, Field, validator
 class UserSearchRequest(BaseModel):
     """Request schema for searching users."""
 
-    query: Optional[str] = Field(
+    query: str | None = Field(
         None, description="Search by email, telegram_id, or name"
     )
-    tier: Optional[str] = Field(None, description="Filter by subscription tier")
-    status: Optional[str] = Field(None, description="Filter by account status")
+    tier: str | None = Field(None, description="Filter by subscription tier")
+    status: str | None = Field(None, description="Filter by account status")
     limit: int = Field(50, ge=1, le=500)
     offset: int = Field(0, ge=0)
 
@@ -28,13 +27,13 @@ class UserOut(BaseModel):
     """Response schema for user details."""
 
     id: str
-    email: Optional[str]
-    telegram_id: Optional[str]
+    email: str | None
+    telegram_id: str | None
     tier: str
     status: str
     kyc_status: str
     created_at: datetime
-    last_active_at: Optional[datetime]
+    last_active_at: datetime | None
     total_approvals: int
     total_devices: int
 
@@ -45,10 +44,10 @@ class UserOut(BaseModel):
 class UserUpdateRequest(BaseModel):
     """Request schema for updating user."""
 
-    tier: Optional[str] = Field(None, pattern="^(free|standard|premium|elite)$")
-    status: Optional[str] = Field(None, pattern="^(active|suspended|banned)$")
-    kyc_status: Optional[str] = Field(None, pattern="^(pending|approved|rejected)$")
-    notes: Optional[str] = Field(None, max_length=1000)
+    tier: str | None = Field(None, pattern="^(free|standard|premium|elite)$")
+    status: str | None = Field(None, pattern="^(active|suspended|banned)$")
+    kyc_status: str | None = Field(None, pattern="^(pending|approved|rejected)$")
+    notes: str | None = Field(None, max_length=1000)
 
 
 # ===== Device Management =====
@@ -57,8 +56,8 @@ class UserUpdateRequest(BaseModel):
 class DeviceSearchRequest(BaseModel):
     """Request schema for searching devices."""
 
-    user_id: Optional[str] = None
-    status: Optional[str] = Field(None, pattern="^(active|revoked|expired)$")
+    user_id: str | None = None
+    status: str | None = Field(None, pattern="^(active|revoked|expired)$")
     limit: int = Field(50, ge=1, le=500)
     offset: int = Field(0, ge=0)
 
@@ -71,7 +70,7 @@ class DeviceOut(BaseModel):
     device_name: str
     status: str
     created_at: datetime
-    last_poll_at: Optional[datetime]
+    last_poll_at: datetime | None
     total_positions: int
 
     class Config:
@@ -87,7 +86,7 @@ class RefundRequest(BaseModel):
     user_id: str = Field(..., min_length=1)
     amount: float = Field(..., gt=0, description="Refund amount in GBP")
     reason: str = Field(..., min_length=10, max_length=500)
-    stripe_payment_intent_id: Optional[str] = None
+    stripe_payment_intent_id: str | None = None
 
     @validator("amount")
     def validate_amount(cls, v):
@@ -104,7 +103,7 @@ class RefundOut(BaseModel):
     user_id: str
     amount: float
     status: str
-    stripe_refund_id: Optional[str]
+    stripe_refund_id: str | None
     processed_at: datetime
     processed_by: str
 
@@ -122,8 +121,8 @@ class FraudEventOut(BaseModel):
     details: dict
     status: str
     created_at: datetime
-    resolved_at: Optional[datetime]
-    resolved_by: Optional[str]
+    resolved_at: datetime | None
+    resolved_by: str | None
 
     class Config:
         orm_mode = True
@@ -137,7 +136,7 @@ class FraudResolutionRequest(BaseModel):
         ..., pattern="^(false_positive|confirmed_fraud|needs_review)$"
     )
     action_taken: str = Field(..., min_length=10, max_length=500)
-    notes: Optional[str] = Field(None, max_length=1000)
+    notes: str | None = Field(None, max_length=1000)
 
 
 # ===== Support Tickets =====
@@ -153,8 +152,8 @@ class TicketOut(BaseModel):
     status: str
     channel: str
     created_at: datetime
-    assigned_to: Optional[str]
-    resolved_at: Optional[datetime]
+    assigned_to: str | None
+    resolved_at: datetime | None
 
     class Config:
         orm_mode = True
@@ -163,10 +162,10 @@ class TicketOut(BaseModel):
 class TicketUpdateRequest(BaseModel):
     """Request schema for updating ticket."""
 
-    status: Optional[str] = Field(None, pattern="^(open|assigned|resolved|closed)$")
-    assigned_to: Optional[str] = None
-    response: Optional[str] = Field(None, max_length=2000)
-    internal_notes: Optional[str] = Field(None, max_length=1000)
+    status: str | None = Field(None, pattern="^(open|assigned|resolved|closed)$")
+    assigned_to: str | None = None
+    response: str | None = Field(None, max_length=2000)
+    internal_notes: str | None = Field(None, max_length=1000)
 
 
 # ===== Analytics Dashboard =====
@@ -220,7 +219,7 @@ class ArticleOut(BaseModel):
     author_id: str
     created_at: datetime
     updated_at: datetime
-    published_at: Optional[datetime]
+    published_at: datetime | None
     views: int
 
     class Config:

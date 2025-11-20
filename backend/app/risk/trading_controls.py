@@ -18,6 +18,7 @@ from decimal import Decimal
 from sqlalchemy import Boolean, Column, DateTime, Float, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import Mapped
 
 from backend.app.core.db import Base
 from backend.app.observability.metrics import MetricsCollector
@@ -35,26 +36,26 @@ class TradingControl(Base):
 
     __tablename__ = "trading_controls"
 
-    id = Column(String(36), primary_key=True)
-    user_id = Column(String(36), nullable=False, unique=True, index=True)
+    id: Mapped[str] = Column(String(36), primary_key=True)  # type: ignore[assignment]
+    user_id: Mapped[str] = Column(String(36), nullable=False, unique=True, index=True)  # type: ignore[assignment]
 
     # Pause/Resume state
-    is_paused = Column(Boolean, nullable=False, default=False)
-    paused_at = Column(DateTime, nullable=True)
-    paused_by = Column(String(50), nullable=True)  # user, admin, system
-    pause_reason = Column(String(500), nullable=True)
+    is_paused: Mapped[bool] = Column(Boolean, nullable=False, default=False)  # type: ignore[assignment]
+    paused_at: Mapped[datetime | None] = Column(DateTime, nullable=True)  # type: ignore[assignment]
+    paused_by: Mapped[str | None] = Column(String(50), nullable=True)  # type: ignore[assignment]
+    pause_reason: Mapped[str | None] = Column(String(500), nullable=True)  # type: ignore[assignment]
 
     # Position sizing override (None = use default risk %)
-    position_size_override = Column(Float, nullable=True)
+    position_size_override: Mapped[float | None] = Column(Float, nullable=True)  # type: ignore[assignment]
 
     # Notification toggles
-    notifications_enabled = Column(Boolean, nullable=False, default=True)
+    notifications_enabled: Mapped[bool] = Column(Boolean, nullable=False, default=True)  # type: ignore[assignment]
 
     # Audit fields
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(
+    created_at: Mapped[datetime] = Column(DateTime, nullable=False, default=datetime.utcnow)  # type: ignore[assignment]
+    updated_at: Mapped[datetime] = Column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    )  # type: ignore[assignment]
 
     def __repr__(self):
         status = "PAUSED" if self.is_paused else "RUNNING"

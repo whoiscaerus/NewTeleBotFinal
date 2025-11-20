@@ -101,7 +101,7 @@ class PrivacyRequest(Base):
             return False
         if not self.scheduled_deletion_at:
             return False
-        return datetime.utcnow() >= self.scheduled_deletion_at
+        return bool(datetime.utcnow() >= self.scheduled_deletion_at)
 
     @property
     def cooling_off_hours_remaining(self) -> int | None:
@@ -118,7 +118,7 @@ class PrivacyRequest(Base):
         """Check if export URL is still valid."""
         if not self.export_url or not self.export_expires_at:
             return False
-        return datetime.utcnow() < self.export_expires_at
+        return bool(datetime.utcnow() < self.export_expires_at)
 
     def place_hold(self, reason: str, admin_user_id: str) -> None:
         """
@@ -128,13 +128,13 @@ class PrivacyRequest(Base):
             reason: Reason for hold (e.g., "Active chargeback dispute")
             admin_user_id: ID of admin placing hold
         """
-        self.status = RequestStatus.ON_HOLD
-        self.hold_reason = reason
-        self.hold_by = admin_user_id
-        self.hold_at = datetime.utcnow()
+        self.status = RequestStatus.ON_HOLD  # type: ignore[assignment]
+        self.hold_reason = reason  # type: ignore[assignment]
+        self.hold_by = admin_user_id  # type: ignore[assignment]
+        self.hold_at = datetime.utcnow()  # type: ignore[assignment]
 
     def release_hold(self) -> None:
         """Release admin hold and return to pending status."""
         if self.status == RequestStatus.ON_HOLD:
-            self.status = RequestStatus.PENDING
+            self.status = RequestStatus.PENDING  # type: ignore[assignment]
             # Keep hold metadata for audit trail but don't clear it

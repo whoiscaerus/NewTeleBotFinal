@@ -358,7 +358,7 @@ class QualityMonitor:
             >>> len(violations)
             0
         """
-        violations = []
+        violations: list[QualityViolation] = []
 
         # Get last 7 days of snapshots for baseline
         lookback = datetime.now() - timedelta(days=7)

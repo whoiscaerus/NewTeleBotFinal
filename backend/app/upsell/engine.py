@@ -6,7 +6,6 @@ Generates personalized recommendations using behavioral & performance signals.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -360,7 +359,7 @@ class UpsellEngine:
 
     async def _assign_variant(
         self, user_id: str, rec_type: RecommendationType
-    ) -> Optional[Variant]:
+    ) -> Variant | None:
         """
         Assign user to A/B test variant for this recommendation type.
 
@@ -419,7 +418,7 @@ class UpsellEngine:
         return variant
 
     def _generate_copy(
-        self, rec_type: RecommendationType, variant: Optional[Variant]
+        self, rec_type: RecommendationType, variant: Variant | None
     ) -> tuple[str, str]:
         """
         Generate headline and copy for recommendation.
@@ -466,7 +465,7 @@ class UpsellEngine:
             ),
         )
 
-    async def _get_user_subscription(self, user_id: str) -> Optional[Subscription]:
+    async def _get_user_subscription(self, user_id: str) -> Subscription | None:
         """Get user's current subscription."""
         query = (
             select(Subscription)

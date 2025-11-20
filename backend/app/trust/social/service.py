@@ -5,7 +5,6 @@ PR-094: Core verification logic with anti-sybil protections.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import func, select

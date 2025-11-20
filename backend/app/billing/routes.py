@@ -17,7 +17,7 @@ from backend.app.core.db import get_db
 from backend.app.observability.metrics import get_metrics
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
+router = APIRouter(prefix="/billing", tags=["billing"])
 
 
 @router.post("/checkout", response_model=CheckoutSessionResponse, status_code=201)

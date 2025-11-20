@@ -8,7 +8,7 @@ HTML and PDF reports for clients and owners.
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import and_, select
@@ -49,7 +49,7 @@ class ReportGenerator:
         self,
         period: ReportPeriod,
         report_type: ReportType,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> Report:
         """
         Build a complete report with data collection, HTML generation, and AI summary.
@@ -96,6 +96,8 @@ class ReportGenerator:
         try:
             # Collect data
             if report_type == ReportType.CLIENT:
+                if not user_id:
+                    raise ValueError("User ID required for client report")
                 data = await self._collect_client_data(
                     user_id, period_start, period_end
                 )
@@ -109,7 +111,7 @@ class ReportGenerator:
             report.summary = summary
 
             # Render HTML
-            html_content = self._render_html(report_type, data, summary)
+            self._render_html(report_type, data, summary)
 
             # In production: save to S3 and get signed URL
             # For now: store locally or in memory
@@ -306,7 +308,7 @@ class ReportGenerator:
         # TODO: Implement actual MRR calculation from subscriptions
         # For now, return mock data for testing
         users_result = await self.db.execute(
-            select(User).where(User.tier != "free", User.suspended == False)
+            select(User).where(User.tier != "free", not User.suspended)
         )
         paid_users = users_result.scalars().all()
 
@@ -330,13 +332,13 @@ class ReportGenerator:
         churn_rate = await self._calculate_churn_rate()
 
         # Previous period for comparison (stub)
-        prev_start = start - (end - start)
+        start - (end - start)
         prev_mrr = mrr * 0.95  # Assume 5% growth for mock
         mrr_change = ((mrr - prev_mrr) / prev_mrr * 100) if prev_mrr > 0 else 0.0
 
         # Active users
         users_result = await self.db.execute(
-            select(User).where(User.tier != "free", User.suspended == False)
+            select(User).where(User.tier != "free", not User.suspended)
         )
         active_users = len(users_result.scalars().all())
 
@@ -405,7 +407,7 @@ class ReportGenerator:
         ticket_change = -5
 
         # Churn risks
-        churn_risks = []  # TODO: Identify from engagement patterns
+        churn_risks: list[Any] = []  # TODO: Identify from engagement patterns
 
         # Recommendations
         recommendations = [

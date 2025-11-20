@@ -12,7 +12,7 @@ All consent acceptance is logged immutably for compliance.
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -141,7 +141,7 @@ class DisclosureService:
         """
         # If making this active, deactivate others
         if is_active:
-            stmt = select(Disclosure).where(Disclosure.is_active == True)
+            stmt = select(Disclosure).where(Disclosure.is_active)
             result = await db.execute(stmt)
             current_disclosures = result.scalars().all()
             for d in current_disclosures:
@@ -172,7 +172,7 @@ class DisclosureService:
     async def get_current_disclosure(
         self,
         db: AsyncSession,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Get the current active disclosure.
 
@@ -184,7 +184,7 @@ class DisclosureService:
         """
         stmt = (
             select(Disclosure)
-            .where(Disclosure.is_active == True)
+            .where(Disclosure.is_active)
             .order_by(Disclosure.created_at.desc())
         )
         result = await db.execute(stmt)
@@ -205,7 +205,7 @@ class DisclosureService:
         self,
         db: AsyncSession,
         version: str,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Get specific disclosure version.
 
@@ -236,8 +236,8 @@ class DisclosureService:
         db: AsyncSession,
         user_id: str,
         disclosure_version: str,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> dict:
         """
         Record user's acceptance of disclosure (immutable audit trail).
@@ -406,7 +406,7 @@ class DisclosureService:
         self,
         db: AsyncSession,
         user_id: str,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Check if user needs to accept new disclosure version.
 

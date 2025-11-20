@@ -3,7 +3,6 @@ Upsell API schemas.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -15,9 +14,9 @@ class RecommendationOut(BaseModel):
     recommendation_type: str
     score: float = Field(ge=0.0, le=1.0)
     headline: str
-    copy: str
-    discount_percent: Optional[int] = Field(None, ge=0, le=100)
-    expires_at: Optional[datetime]
+    copy_text: str = Field(..., alias="copy")
+    discount_percent: int | None = Field(None, ge=0, le=100)
+    expires_at: datetime | None
     shown: bool
     clicked: bool
     converted: bool
@@ -32,8 +31,10 @@ class ExposureCreate(BaseModel):
 
     experiment_id: str
     variant_id: str
-    recommendation_id: Optional[str] = None
-    channel: Optional[str] = Field(None, regex="^(telegram|miniapp|web|email)$")
+    recommendation_id: str | None = None
+    channel: str | None = Field(
+        default=None, pattern="^(telegram|miniapp|web|email)$"
+    )
 
 
 class ExposureOut(BaseModel):
@@ -43,10 +44,10 @@ class ExposureOut(BaseModel):
     user_id: str
     experiment_id: str
     variant_id: str
-    recommendation_id: Optional[str]
+    recommendation_id: str | None
     converted: bool
-    converted_at: Optional[datetime]
-    channel: Optional[str]
+    converted_at: datetime | None
+    channel: str | None
     created_at: datetime
 
     class Config:
@@ -57,8 +58,8 @@ class ConversionEvent(BaseModel):
     """Conversion webhook event."""
 
     exposure_id: str
-    plan_id: Optional[str] = None
-    revenue_amount: Optional[float] = None
+    plan_id: str | None = None
+    revenue_amount: float | None = None
 
 
 class ExperimentOut(BaseModel):
@@ -66,7 +67,7 @@ class ExperimentOut(BaseModel):
 
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
     recommendation_type: str
     traffic_split_percent: int = Field(ge=0, le=100)
     status: str
@@ -76,10 +77,10 @@ class ExperimentOut(BaseModel):
     variant_conversions: int
     control_ctr: float
     variant_ctr: float
-    uplift: Optional[float]
+    uplift: float | None
     created_at: datetime
-    started_at: Optional[datetime]
-    ended_at: Optional[datetime]
+    started_at: datetime | None
+    ended_at: datetime | None
 
     class Config:
         orm_mode = True
@@ -96,12 +97,12 @@ class ExperimentCreate(BaseModel):
     """Create experiment."""
 
     name: str = Field(..., min_length=3, max_length=200)
-    description: Optional[str] = None
+    description: str | None = None
     recommendation_type: str
     traffic_split_percent: int = Field(50, ge=0, le=100)
     min_sample_size: int = Field(100, ge=10)
-    min_ctr: Optional[float] = Field(None, ge=0.0, le=1.0)
-    max_duration_days: Optional[int] = Field(None, ge=1, le=365)
+    min_ctr: float | None = Field(None, ge=0.0, le=1.0)
+    max_duration_days: int | None = Field(None, ge=1, le=365)
 
 
 class VariantCreate(BaseModel):
@@ -110,9 +111,9 @@ class VariantCreate(BaseModel):
     experiment_id: str
     name: str = Field(..., min_length=1, max_length=200)
     headline: str = Field(..., min_length=5, max_length=200)
-    copy: str = Field(..., min_length=10)
+    copy_text: str = Field(..., min_length=10, alias="copy")
     cta_text: str = Field("Upgrade Now", min_length=1, max_length=100)
-    discount_percent: Optional[int] = Field(None, ge=0, le=100)
+    discount_percent: int | None = Field(None, ge=0, le=100)
     is_control: bool = False
 
 
@@ -123,9 +124,9 @@ class VariantOut(BaseModel):
     experiment_id: str
     name: str
     headline: str
-    copy: str
+    copy_text: str = Field(..., alias="copy")
     cta_text: str
-    discount_percent: Optional[int]
+    discount_percent: int | None
     is_control: bool
     created_at: datetime
 

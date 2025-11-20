@@ -337,7 +337,7 @@ async def _execute_step(
     execution: CRMPlaybookExecution,
 ) -> None:
     """Execute a single playbook step."""
-    playbook = PLAYBOOKS.get(execution.playbook_name)  # type: ignore
+    playbook = PLAYBOOKS.get(execution.playbook_name)
     if not playbook:
         raise ValueError(f"Playbook {execution.playbook_name} not found")
 
@@ -431,7 +431,7 @@ async def _execute_send_message(
     # Send message
     message_id = await messaging_bus.enqueue_message(
         user_id=execution.user_id,
-        channel=channel,  # type: ignore
+        channel=channel,
         template_name=template,
         template_vars=template_vars,
         priority="campaign",
@@ -537,7 +537,7 @@ async def _advance_to_next_step(
     db: AsyncSession, execution: CRMPlaybookExecution
 ) -> None:
     """Advance execution to next step or mark completed."""
-    playbook = PLAYBOOKS.get(execution.playbook_name)  # type: ignore
+    playbook = PLAYBOOKS.get(execution.playbook_name)
     if not playbook:
         return
 

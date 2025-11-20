@@ -4,7 +4,6 @@ Health Monitoring API Routes - PR-100
 Public and admin endpoints for health monitoring and incident management.
 """
 
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -34,10 +33,10 @@ class IncidentOut(BaseModel):
     severity: str
     status: str
     opened_at: str
-    resolved_at: Optional[str]
-    closed_at: Optional[str]
-    notes: Optional[str]
-    error_message: Optional[str]
+    resolved_at: str | None
+    closed_at: str | None
+    notes: str | None
+    error_message: str | None
     owner_notified: int
 
     class Config:
@@ -62,9 +61,9 @@ class SyntheticCheckOut(BaseModel):
     id: int
     probe_name: str
     status: str
-    latency_ms: Optional[float]
+    latency_ms: float | None
     checked_at: str
-    error_message: Optional[str]
+    error_message: str | None
 
     class Config:
         from_attributes = True
@@ -76,7 +75,7 @@ class SystemHealthStatus(BaseModel):
     status: str
     uptime_percent: float
     open_incidents: dict
-    last_check: Optional[str]
+    last_check: str | None
     recent_incidents: list[dict]
 
 
@@ -102,8 +101,8 @@ async def get_status(db: AsyncSession = Depends(get_db)):
 
 @router.get("/incidents", response_model=list[IncidentOut])
 async def list_incidents(
-    status: Optional[str] = Query(None, description="Filter by status"),
-    severity: Optional[str] = Query(None, description="Filter by severity"),
+    status: str | None = Query(None, description="Filter by status"),
+    severity: str | None = Query(None, description="Filter by severity"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),

@@ -180,7 +180,7 @@ async def poll_approved_signals(
                 # PR-104: Build REDACTED execution params (NO SL/TP sent to client)
                 # The hidden owner_sl/owner_tp from owner_data will be stored in
                 # OpenPosition when EA acknowledges (Phase 3) but NOT sent here
-                exec_params = ExecutionParamsOut(
+                ExecutionParamsOut(
                     entry_price=float(entry_price),
                     volume=float(volume),
                     ttl_minutes=int(ttl_minutes),

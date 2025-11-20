@@ -30,7 +30,6 @@ Leaderboard Ranking:
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import and_, func, select
@@ -275,7 +274,7 @@ class GamificationService:
             )
             return 0
 
-    async def get_user_level(self, user_id: str) -> Optional[Level]:
+    async def get_user_level(self, user_id: str) -> Level | None:
         """Get current level for a user based on XP.
 
         Args:
@@ -358,7 +357,7 @@ class GamificationService:
 
         return newly_earned
 
-    async def _award_badge(self, user_id: str, badge_key: str) -> Optional[EarnedBadge]:
+    async def _award_badge(self, user_id: str, badge_key: str) -> EarnedBadge | None:
         """Award a badge to a user if not already earned.
 
         Args:
@@ -507,7 +506,7 @@ class GamificationService:
             return False
 
     async def opt_in_leaderboard(
-        self, user_id: str, display_name: Optional[str] = None
+        self, user_id: str, display_name: str | None = None
     ) -> LeaderboardOptIn:
         """Opt user into leaderboard with optional display name.
 
@@ -606,7 +605,7 @@ class GamificationService:
             List of leaderboard entries with rank, display_name, xp, sharpe, return_pct
         """
         # Get opted-in users
-        stmt = select(LeaderboardOptIn.user_id).where(LeaderboardOptIn.opted_in == True)
+        stmt = select(LeaderboardOptIn.user_id).where(LeaderboardOptIn.opted_in)
         result = await self.db.execute(stmt)
         opted_in_user_ids = [row[0] for row in result.fetchall()]
 
@@ -720,7 +719,7 @@ class GamificationService:
 
             sharpe = (mean_return / std_return) * (252**0.5)  # Annualized
 
-            return round(sharpe, 2)
+            return float(round(sharpe, 2))
 
         except Exception as e:
             logger.warning(f"Failed to calculate Sharpe for user {user_id}: {e}")
@@ -756,7 +755,7 @@ class GamificationService:
 
             return_pct = ((final_equity - initial_equity) / initial_equity) * 100
 
-            return round(return_pct, 2)
+            return float(round(return_pct, 2))
 
         except Exception as e:
             logger.warning(f"Failed to calculate return % for user {user_id}: {e}")
@@ -772,7 +771,7 @@ async def seed_badges_and_levels(db: AsyncSession) -> None:
         db: Database session
     """
     # Seed badges
-    for badge_key, badge_def in GamificationService.BADGE_DEFINITIONS.items():
+    for _badge_key, badge_def in GamificationService.BADGE_DEFINITIONS.items():
         stmt = select(Badge).where(Badge.name == badge_def["name"])
         result = await db.execute(stmt)
         existing = result.scalar_one_or_none()

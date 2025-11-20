@@ -21,7 +21,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from backend.app.core.db import Base, JSONBType
 
@@ -73,7 +73,7 @@ class CopyEntry(Base):
     updated_by = Column(String(36), nullable=True)  # User ID
 
     # Relationships
-    variants = relationship(
+    variants: Mapped[list["CopyVariant"]] = relationship(
         "CopyVariant",
         back_populates="entry",
         cascade="all, delete-orphan",
@@ -181,17 +181,17 @@ class CopyVariant(Base):
 
     def record_impression(self) -> None:
         """Record that this variant was shown."""
-        self.impressions += 1
+        self.impressions += 1  # type: ignore[assignment]
         self._update_conversion_rate()
 
     def record_conversion(self) -> None:
         """Record that this variant led to conversion."""
-        self.conversions += 1
+        self.conversions += 1  # type: ignore[assignment]
         self._update_conversion_rate()
 
     def _update_conversion_rate(self) -> None:
         """Recompute conversion rate."""
         if self.impressions > 0:
-            self.conversion_rate = self.conversions / self.impressions
+            self.conversion_rate = self.conversions / self.impressions  # type: ignore[assignment]
         else:
-            self.conversion_rate = 0.0
+            self.conversion_rate = 0.0  # type: ignore[assignment]

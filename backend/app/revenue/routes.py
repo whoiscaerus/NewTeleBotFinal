@@ -24,7 +24,7 @@ from backend.app.revenue.service import RevenueService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/revenue", tags=["revenue"])
+router = APIRouter(prefix="/revenue", tags=["revenue"])
 
 
 # ============================================================================

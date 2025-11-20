@@ -230,7 +230,7 @@ class MT5AccountSyncService:
         position_value = volume_lots * contract_size * entry_price
         margin_required = position_value / account_state.account_leverage
 
-        return margin_required
+        return float(margin_required)
 
     @staticmethod
     async def calculate_multi_position_margin(

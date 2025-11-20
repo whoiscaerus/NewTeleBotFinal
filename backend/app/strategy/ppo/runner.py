@@ -26,6 +26,7 @@ Example:
 import logging
 import os
 from datetime import datetime
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -74,8 +75,8 @@ class PPOStrategy:
         self.loader = PPOModelLoader(base_path=self.model_path)
 
         # Load model artifacts
-        self.model = None
-        self.scaler = None
+        self.model: Any | None = None
+        self.scaler: Any | None = None
         self._load_artifacts()
 
         logger.info(

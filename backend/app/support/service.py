@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,7 @@ async def create_ticket(
     body: str,
     severity: str = "medium",
     channel: str = "web",
-    context: Optional[dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
 ) -> Ticket:
     """
     Create a new support ticket.
@@ -89,8 +89,8 @@ async def create_ticket(
 
 
 async def get_ticket(
-    db: AsyncSession, ticket_id: str, user_id: Optional[str] = None
-) -> Optional[Ticket]:
+    db: AsyncSession, ticket_id: str, user_id: str | None = None
+) -> Ticket | None:
     """
     Get a ticket by ID with optional user access control.
 
@@ -121,10 +121,10 @@ async def get_ticket(
 
 async def list_tickets(
     db: AsyncSession,
-    user_id: Optional[str] = None,
-    status: Optional[str] = None,
-    severity: Optional[str] = None,
-    assigned_to: Optional[str] = None,
+    user_id: str | None = None,
+    status: str | None = None,
+    severity: str | None = None,
+    assigned_to: str | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[Ticket], int]:
@@ -193,10 +193,10 @@ async def list_tickets(
 async def update_ticket(
     db: AsyncSession,
     ticket_id: str,
-    status: Optional[str] = None,
-    assigned_to: Optional[str] = None,
-    resolution_note: Optional[str] = None,
-    internal_notes: Optional[str] = None,
+    status: str | None = None,
+    assigned_to: str | None = None,
+    resolution_note: str | None = None,
+    internal_notes: str | None = None,
 ) -> Ticket:
     """
     Update an existing ticket.
@@ -345,7 +345,7 @@ async def close_ticket(
 
 
 async def get_ticket_stats(
-    db: AsyncSession, user_id: Optional[str] = None
+    db: AsyncSession, user_id: str | None = None
 ) -> dict[str, Any]:
     """
     Get ticket statistics.

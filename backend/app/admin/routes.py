@@ -6,7 +6,6 @@ Owner/admin-only endpoints for managing platform operations.
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from prometheus_client import Counter
@@ -234,7 +233,7 @@ async def update_user(
 @router.post("/users/{user_id}/kyc/approve")
 async def approve_user_kyc(
     user_id: str,
-    notes: Optional[str] = None,
+    notes: str | None = None,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_owner),  # Owner only
 ):
@@ -522,8 +521,10 @@ async def get_analytics_dashboard(
 
 @router.get("/fraud/events", response_model=list[FraudEventOut])
 async def get_fraud_events(
-    status: Optional[str] = Query(None, pattern="^(open|resolved)$"),
-    severity: Optional[str] = Query(None, pattern="^(low|medium|high|critical)$"),
+    event_status: str | None = Query(
+        None, alias="status", pattern="^(open|resolved)$"
+    ),
+    severity: str | None = Query(None, pattern="^(low|medium|high|critical)$"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -537,8 +538,8 @@ async def get_fraud_events(
     try:
         query = select(AnomalyEvent)
 
-        if status:
-            query = query.where(AnomalyEvent.status == status)
+        if event_status:
+            query = query.where(AnomalyEvent.status == event_status)
 
         if severity:
             query = query.where(AnomalyEvent.severity == severity)
@@ -613,8 +614,10 @@ async def resolve_fraud(
 
 @router.get("/support/tickets", response_model=list[TicketOut])
 async def get_tickets(
-    status: Optional[str] = Query(None, pattern="^(open|assigned|resolved|closed)$"),
-    severity: Optional[str] = Query(None, pattern="^(low|medium|high|critical)$"),
+    ticket_status: str | None = Query(
+        None, alias="status", pattern="^(open|assigned|resolved|closed)$"
+    ),
+    severity: str | None = Query(None, pattern="^(low|medium|high|critical)$"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -628,8 +631,8 @@ async def get_tickets(
     try:
         query = select(Ticket)
 
-        if status:
-            query = query.where(Ticket.status == status)
+        if ticket_status:
+            query = query.where(Ticket.status == ticket_status)
 
         if severity:
             query = query.where(Ticket.severity == severity)
@@ -718,8 +721,10 @@ async def update_ticket(
 
 @router.get("/kb/articles", response_model=list[ArticleOut])
 async def get_articles(
-    status: Optional[str] = Query(None, pattern="^(draft|published)$"),
-    locale: Optional[str] = None,
+    article_status: str | None = Query(
+        None, alias="status", pattern="^(draft|published)$"
+    ),
+    locale: str | None = None,
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -733,8 +738,8 @@ async def get_articles(
     try:
         query = select(Article)
 
-        if status:
-            query = query.where(Article.status == status)
+        if article_status:
+            query = query.where(Article.status == article_status)
 
         if locale:
             query = query.where(Article.locale == locale)

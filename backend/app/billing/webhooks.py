@@ -41,7 +41,7 @@ except ImportError:
         from stripe import SignatureVerificationError
     except ImportError:
         # Fallback: define our own for compatibility
-        class SignatureVerificationError(Exception):
+        class SignatureVerificationError(Exception):  # type: ignore[no-redef]
             """Stripe signature verification failed."""
 
             pass

@@ -135,7 +135,7 @@ class AIAssistant:
                 "I couldn't find relevant articles to answer your question. "
                 "Please contact our support team for assistance."
             )
-            citations = []
+            citations: list[Any] = []
             requires_escalation = True
             escalation_reason = "No relevant KB articles found"
         else:

@@ -19,7 +19,7 @@ Example:
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
@@ -149,7 +149,7 @@ async def detect_user_locale(
                 locale = prefs.locale
                 if locale in SUPPORTED_LOCALES:
                     logger.debug(f"Using locale from user prefs: {locale}")
-                    return locale
+                    return str(locale)
         except Exception as e:
             logger.warning(f"Failed to fetch user preferences: {e}")
 
@@ -308,7 +308,7 @@ def get_position_failure_template(
             f"Failed to interpolate position failure template: {e} "
             f"(type: {failure_type}, locale: {locale})"
         )
-        return template
+        return cast(dict[str, str], template)
 
 
 def clear_translations_cache():

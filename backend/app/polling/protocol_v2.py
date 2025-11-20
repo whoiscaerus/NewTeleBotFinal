@@ -14,7 +14,6 @@ import hashlib
 import json
 import logging
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 try:
@@ -134,7 +133,7 @@ def generate_etag(data: dict) -> str:
     return etag
 
 
-def check_if_modified(approvals: list, since: Optional[datetime]) -> bool:
+def check_if_modified(approvals: list, since: datetime | None) -> bool:
     """
     Check if any approvals were created after 'since' timestamp.
 

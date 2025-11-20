@@ -5,7 +5,7 @@ CRUD operations for journey definitions (owner/admin only).
 """
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -468,4 +468,4 @@ async def execute_journey_steps(
         extra={"user_journey_id": user_journey_id, "result": result},
     )
 
-    return result
+    return cast(dict[str, Any], result)

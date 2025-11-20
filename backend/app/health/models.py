@@ -6,6 +6,7 @@ Database models for autonomous health monitoring system.
 
 import enum
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import (
     Column,
@@ -73,10 +74,10 @@ class Incident(Base):
     type = Column(
         String(50), nullable=False, index=True
     )  # websocket_down, mt5_unreachable, etc.
-    severity = Column(
+    severity: Column[IncidentSeverity] = Column(
         Enum(IncidentSeverity), nullable=False, default=IncidentSeverity.MEDIUM
     )
-    status = Column(
+    status: Column[IncidentStatus] = Column(
         Enum(IncidentStatus), nullable=False, default=IncidentStatus.OPEN, index=True
     )
     opened_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -119,7 +120,9 @@ class Incident(Base):
             IncidentStatus.CLOSED: [],  # Terminal state (except reopen)
         }
 
-        return new_status in valid_transitions.get(self.status, [])
+        return new_status in valid_transitions.get(
+            cast(IncidentStatus, self.status), []
+        )
 
 
 class SyntheticCheck(Base):
@@ -135,7 +138,9 @@ class SyntheticCheck(Base):
     probe_name = Column(
         String(50), nullable=False, index=True
     )  # websocket_ping, mt5_poll, etc.
-    status = Column(Enum(SyntheticStatus), nullable=False, index=True)
+    status: Column[SyntheticStatus] = Column(
+        Enum(SyntheticStatus), nullable=False, index=True
+    )
     latency_ms = Column(Float, nullable=True)  # Response time in milliseconds
     checked_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     error_message = Column(Text, nullable=True)
@@ -168,7 +173,7 @@ class RemediationAction(Base):
     action_type = Column(
         String(50), nullable=False
     )  # restart_service, rotate_token, etc.
-    status = Column(
+    status: Column[RemediationStatus] = Column(
         Enum(RemediationStatus), nullable=False, default=RemediationStatus.PENDING
     )
     executed_at = Column(DateTime, nullable=True)

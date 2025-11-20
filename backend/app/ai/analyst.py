@@ -16,6 +16,7 @@ Depends on:
 import logging
 from datetime import date, datetime
 from decimal import Decimal
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,7 +52,7 @@ async def is_analyst_enabled(db: AsyncSession) -> bool:
         logger.warning("AI Analyst feature flag not found, assuming disabled")
         return False
 
-    return flag.enabled
+    return cast(bool, flag.enabled)
 
 
 async def is_analyst_owner_only(db: AsyncSession) -> bool:
@@ -72,7 +73,7 @@ async def is_analyst_owner_only(db: AsyncSession) -> bool:
         logger.warning("AI Analyst feature flag not found, assuming owner-only")
         return True
 
-    return flag.owner_only
+    return cast(bool, flag.owner_only)
 
 
 async def build_outlook(

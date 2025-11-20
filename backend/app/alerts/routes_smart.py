@@ -5,7 +5,7 @@ API endpoints for creating, managing, and controlling smart alert rules.
 """
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -178,7 +178,7 @@ async def update_smart_rule(
             db=db, rule_id=rule_id, user_id=current_user.id, updates=request
         )
 
-        return result
+        return cast(dict[str, Any], result)
 
     except ValidationError as e:
         if "not found" in str(e):
@@ -231,7 +231,7 @@ async def mute_smart_rule(
         if PROMETHEUS_AVAILABLE:
             alerts_muted_total.labels(action="mute").inc()
 
-        return result
+        return cast(dict[str, Any], result)
 
     except ValidationError as e:
         if "not found" in str(e):
@@ -282,7 +282,7 @@ async def unmute_smart_rule(
         if PROMETHEUS_AVAILABLE:
             alerts_muted_total.labels(action="unmute").inc()
 
-        return result
+        return cast(dict[str, Any], result)
 
     except ValidationError as e:
         if "not found" in str(e):

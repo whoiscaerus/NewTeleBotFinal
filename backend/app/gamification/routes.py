@@ -9,7 +9,6 @@ Endpoints:
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -51,10 +50,10 @@ class LevelOut(BaseModel):
     id: str
     name: str
     min_xp: int
-    max_xp: Optional[int]
+    max_xp: int | None
     icon: str
     color: str
-    perks: Optional[str]
+    perks: str | None
 
 
 class UserBadgesResponse(BaseModel):
@@ -62,9 +61,9 @@ class UserBadgesResponse(BaseModel):
 
     user_id: str
     total_xp: int
-    current_level: Optional[LevelOut]
-    next_level: Optional[LevelOut]
-    xp_to_next_level: Optional[int]
+    current_level: LevelOut | None
+    next_level: LevelOut | None
+    xp_to_next_level: int | None
     earned_badges: list[EarnedBadgeOut]
     badges_available: list[BadgeOut]
 
@@ -83,7 +82,7 @@ class XPBreakdownResponse(BaseModel):
 class LeaderboardOptInRequest(BaseModel):
     """Request to opt into leaderboard."""
 
-    display_name: Optional[str] = Field(None, max_length=50)
+    display_name: str | None = Field(None, max_length=50)
 
 
 class LeaderboardOptInResponse(BaseModel):
@@ -91,7 +90,7 @@ class LeaderboardOptInResponse(BaseModel):
 
     user_id: str
     opted_in: bool
-    display_name: Optional[str]
+    display_name: str | None
     opted_in_at: str
 
 
@@ -481,7 +480,7 @@ async def get_leaderboard(
         from backend.app.gamification.models import LeaderboardOptIn
 
         stmt = select(func.count(LeaderboardOptIn.id)).where(
-            LeaderboardOptIn.opted_in == True
+            LeaderboardOptIn.opted_in
         )
         result = await db.execute(stmt)
         total_count = result.scalar() or 0

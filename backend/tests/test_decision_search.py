@@ -171,7 +171,8 @@ async def test_search_decisions_filter_by_date_range(client: AsyncClient, db_ses
     end_date = base_time.isoformat()
 
     response = await client.get(
-        f"/api/v1/decisions/search?start_date={start_date}&end_date={end_date}"
+        "/api/v1/decisions/search",
+        params={"start_date": start_date, "end_date": end_date},
     )
 
     assert response.status_code == 200
@@ -181,8 +182,19 @@ async def test_search_decisions_filter_by_date_range(client: AsyncClient, db_ses
     # Verify all timestamps in range
     for result in data["results"]:
         ts = datetime.fromisoformat(result["timestamp"].replace("Z", "+00:00"))
-        assert ts >= datetime.fromisoformat(start_date.replace("Z", "+00:00"))
-        assert ts <= datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+
+        start_ts = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+        if start_ts.tzinfo is None:
+            start_ts = start_ts.replace(tzinfo=UTC)
+
+        end_ts = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+        if end_ts.tzinfo is None:
+            end_ts = end_ts.replace(tzinfo=UTC)
+
+        assert ts >= start_ts
+        assert ts <= end_ts
 
 
 @pytest.mark.asyncio
@@ -429,7 +441,7 @@ async def test_search_decisions_increments_telemetry(
     client: AsyncClient, db_session, monkeypatch
 ):
     """Test search increments decision_search_total metric."""
-    from backend.app.observability.metrics import metrics_collector
+    from backend.app.observability.metrics import metrics
 
     # Track metric calls
     inc_called = []
@@ -437,7 +449,7 @@ async def test_search_decisions_increments_telemetry(
     def mock_inc():
         inc_called.append(True)
 
-    monkeypatch.setattr(metrics_collector.decision_search_total, "inc", mock_inc)
+    monkeypatch.setattr(metrics.decision_search_total, "inc", mock_inc)
 
     # Perform search
     response = await client.get("/api/v1/decisions/search")

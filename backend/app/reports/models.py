@@ -58,9 +58,9 @@ class Report(Base):
     __tablename__ = "reports"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    type = Column(Enum(ReportType), nullable=False, index=True)
-    period = Column(Enum(ReportPeriod), nullable=False)
-    status = Column(
+    type: Column[ReportType] = Column(Enum(ReportType), nullable=False, index=True)
+    period: Column[ReportPeriod] = Column(Enum(ReportPeriod), nullable=False)
+    status: Column[ReportStatus] = Column(
         Enum(ReportStatus), nullable=False, default=ReportStatus.PENDING, index=True
     )
 

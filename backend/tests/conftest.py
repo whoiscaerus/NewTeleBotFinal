@@ -1,11 +1,15 @@
 """Pytest configuration and shared fixtures."""
 
+import math
 import os
 import sys
 import time
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
+
+from sqlalchemy import event
+from sqlalchemy.pool import Pool
 
 # Mock MetaTrader5 BEFORE any imports that might use it
 # MetaTrader5 is Windows-only and not available on Linux/GitHub Actions
@@ -79,9 +83,6 @@ def pytest_configure(config):
     Solution: pytest_configure runs BEFORE test collection.
     Import all models here so they're in Base.metadata before ANY test file imports them.
     """
-    print("[ROOT CONFTEST] pytest_configure called")
-    print("[ROOT CONFTEST] Importing minimal models...")
-
     # Import all models to register with Base.metadata BEFORE test collection
     from backend.app.accounts.models import AccountLink  # noqa: F401
     from backend.app.ai.models import FeatureFlag  # noqa: F401
@@ -100,8 +101,6 @@ def pytest_configure(config):
     from backend.app.copy.models import CopyEntry, CopyVariant  # noqa: F401
 
     # Debug: Show which tables are registered
-    from backend.app.core.db import Base
-
     # CRM and copy models
     from backend.app.crm.models import (  # noqa: F401
         CRMDiscountCode,
@@ -242,8 +241,6 @@ def pytest_configure(config):
     # Web3 models
     from backend.app.web3.models import NFTAccess, WalletLink  # noqa: F401
 
-    print(f"[ROOT CONFTEST] Base.metadata.tables: {list(Base.metadata.tables.keys())}")
-
 
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():
@@ -380,6 +377,48 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
     """
     # Connect to the existing engine
     connection = await db_engine.connect()
+
+    # Register custom functions for SQLite (Directly on connection)
+    if "sqlite" in str(db_engine.url):
+
+        def register_stddev(conn):
+            # conn is sqlalchemy.engine.base.Connection
+            print(f"DEBUG: register_stddev called with {type(conn)}")
+
+            # Try to find the underlying sqlite3 connection
+            # 1. Direct dbapi_connection
+            if hasattr(conn, "connection") and hasattr(
+                conn.connection, "dbapi_connection"
+            ):
+                raw_conn = conn.connection.dbapi_connection
+                print(f"DEBUG: Found dbapi_connection: {type(raw_conn)}")
+
+                if hasattr(raw_conn, "create_aggregate"):
+                    print("DEBUG: Registering stddev on dbapi_connection")
+                    raw_conn.create_aggregate("stddev", 1, StdDev)
+                elif hasattr(raw_conn, "_conn") and hasattr(
+                    raw_conn._conn, "create_aggregate"
+                ):
+                    print(
+                        f"DEBUG: Registering stddev on raw_conn._conn (id={id(raw_conn._conn)})"
+                    )
+                    raw_conn._conn.create_aggregate("stddev", 1, StdDev)
+
+                    # Verify immediately
+                    try:
+                        cursor = raw_conn._conn.cursor()
+                        cursor.execute("SELECT stddev(1)")
+                        print("DEBUG: Verification query succeeded!")
+                        cursor.close()
+                    except Exception as e:
+                        print(f"DEBUG: Verification query failed: {e}")
+                else:
+                    print("DEBUG: Could not find create_aggregate on dbapi_connection")
+            else:
+                print("DEBUG: Could not find dbapi_connection")
+
+        await connection.run_sync(register_stddev)
+
     transaction = await connection.begin()
 
     # Bind session to this connection
@@ -1358,3 +1397,44 @@ def pytest_runtest_makereport(item, call):
             item.add_marker(
                 pytest.mark.skip(reason=f"Test timed out after {call.excinfo.value}")
             )
+
+
+# Define StdDev aggregate function for SQLite
+class StdDev:
+    def __init__(self):
+        self.values = []
+
+    def step(self, value):
+        if value is not None:
+            self.values.append(value)
+
+    def finalize(self):
+        if not self.values:
+            return None
+        if len(self.values) == 1:
+            return 0.0
+
+        mean = sum(self.values) / len(self.values)
+        variance = sum((x - mean) ** 2 for x in self.values) / (len(self.values) - 1)
+        return math.sqrt(variance)
+
+
+# Register the function on the Pool level for SQLite
+# This catches the raw sqlite3 connection immediately upon creation
+@event.listens_for(Pool, "connect")
+def _on_connect(dbapi_connection, connection_record):
+    print(f"DEBUG: Pool connect event. Connection type: {type(dbapi_connection)}")
+    if hasattr(dbapi_connection, "create_aggregate"):
+        try:
+            dbapi_connection.create_aggregate("stddev", 1, StdDev)
+            print("DEBUG: Registered stddev via Pool listener")
+        except Exception as e:
+            print(f"Failed to register stddev: {e}")
+
+    # Also try to enable foreign keys
+    try:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+    except Exception:
+        pass

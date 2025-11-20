@@ -16,7 +16,6 @@ import logging
 import os
 import time
 from datetime import UTC, datetime, timedelta
-from typing import Optional
 
 import aiohttp
 from tenacity import (
@@ -96,7 +95,7 @@ class RateLimiter:
 class RateFetcher:
     """Fetches FX and crypto rates with caching and resilience."""
 
-    def __init__(self, cache: Optional[dict] = None):
+    def __init__(self, cache: dict | None = None):
         """Initialize rate fetcher.
 
         Args:
@@ -107,10 +106,10 @@ class RateFetcher:
         self.rate_limiter = RateLimiter(
             RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS
         )
-        self.session: Optional[aiohttp.ClientSession] = None
+        self.session: aiohttp.ClientSession | None = None
         self.consecutive_failures = 0
         self.circuit_breaker_open = False
-        self.circuit_breaker_until: Optional[datetime] = None
+        self.circuit_breaker_until: datetime | None = None
 
     async def __aenter__(self):
         """Async context manager enter."""
@@ -194,7 +193,7 @@ class RateFetcher:
             if self._is_cache_valid(cached_value):
                 rate, _ = cached_value
                 logger.debug(f"Cache hit: GBP/USD = {rate:.4f}")
-                return rate
+                return float(rate)
 
         # Rate limiting
         if not await self.rate_limiter.check_limit():

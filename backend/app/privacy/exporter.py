@@ -148,7 +148,7 @@ class DataExporter:
         # Note: In real implementation, query subscription/payment tables
         # For now, return placeholder structure
 
-        billing_records = []
+        billing_records: list[dict[str, Any]] = []
 
         # Example structure (would query real tables):
         # from backend.app.billing.models import Payment

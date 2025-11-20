@@ -127,7 +127,7 @@ async def test_update_entry_metadata(
     """Test updating copy entry metadata."""
     update_data = CopyEntryUpdate(
         description="Updated description",
-        entry_metadata={"section": "landing", "priority": "high"},
+        metadata={"section": "landing", "priority": "high"},
     )
 
     updated = await copy_service.update_entry(
@@ -185,8 +185,8 @@ async def test_add_variant_to_existing_entry(
     assert variant.entry_id == sample_entry.id
 
     # Verify entry now has 3 variants
-    entry = await copy_service.get_entry(sample_entry.id)
-    assert len(entry.variants) == 3
+    await copy_service.db.refresh(sample_entry, attribute_names=["variants"])
+    assert len(sample_entry.variants) == 3
 
 
 @pytest.mark.asyncio

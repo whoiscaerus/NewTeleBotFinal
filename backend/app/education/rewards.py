@@ -8,7 +8,6 @@ PR-064 Implementation.
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -213,7 +212,7 @@ async def redeem_reward(
 async def get_active_rewards(
     db: AsyncSession,
     user_id: str,
-    reward_type: Optional[str] = None,
+    reward_type: str | None = None,
 ) -> list[Reward]:
     """Get user's active (unredeemed, unexpired) rewards.
 

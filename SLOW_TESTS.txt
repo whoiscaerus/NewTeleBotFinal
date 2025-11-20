@@ -1,0 +1,4 @@
+[SLOW - 31.1s] tests/test_messaging_bus.py::TestMessagingBusDeadLetterQueue::test_message_moved_to_dlq_after_max_retries
+[SLOW - 31.1s] tests/test_messaging_bus.py::TestMessagingBusDeadLetterQueue::test_dlq_message_preserves_all_fields
+[SLOW - 31.1s] tests/test_messaging_bus.py::TestMessagingBusMetrics::test_dlq_increments_fail_metric
+[SLOW - 32.0s] tests/test_fraud_detection.py::test_slippage_zscore_normal_range

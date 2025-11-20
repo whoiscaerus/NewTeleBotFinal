@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +29,7 @@ class RevenueService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def calculate_mrr(self, as_of: Optional[date] = None) -> float:
+    async def calculate_mrr(self, as_of: date | None = None) -> float:
         """Calculate Monthly Recurring Revenue.
 
         MRR = sum of all active subscription prices per month
@@ -65,7 +64,7 @@ class RevenueService:
             logger.error(f"Error calculating MRR: {e}", exc_info=True)
             return 0.0
 
-    async def calculate_arr(self, as_of: Optional[date] = None) -> float:
+    async def calculate_arr(self, as_of: date | None = None) -> float:
         """Calculate Annual Recurring Revenue.
 
         ARR = MRR * 12
@@ -81,7 +80,7 @@ class RevenueService:
         logger.info(f"Calculated ARR: £{arr:.2f}")
         return arr
 
-    async def calculate_churn_rate(self, month: Optional[str] = None) -> float:
+    async def calculate_churn_rate(self, month: str | None = None) -> float:
         """Calculate monthly churn rate.
 
         Churn Rate = (Churned Users / Starting Active Users) * 100
@@ -147,7 +146,7 @@ class RevenueService:
             logger.error(f"Error calculating churn rate: {e}", exc_info=True)
             return 0.0
 
-    async def calculate_arpu(self, as_of: Optional[date] = None) -> float:
+    async def calculate_arpu(self, as_of: date | None = None) -> float:
         """Calculate Average Revenue Per User.
 
         ARPU = MRR / Active Subscribers

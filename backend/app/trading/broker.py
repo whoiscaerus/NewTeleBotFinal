@@ -3,8 +3,8 @@ Broker Client Wrapper with Circuit Breaker.
 Provides a unified way to wrap broker API calls with circuit breaker protection.
 """
 
-from typing import Optional, TypeVar
-from collections.abc import Callable
+from typing import TypeVar, cast
+from collections.abc import Awaitable, Callable
 
 from backend.app.core.circuit_breaker import CircuitBreaker
 from backend.app.core.logging import get_logger
@@ -28,10 +28,10 @@ class BrokerClient:
             name: Unique name for the broker (e.g., "mt5", "binance")
         """
         self.name = name
-        self._circuit_breaker: Optional[CircuitBreaker] = None
+        self._circuit_breaker: CircuitBreaker | None = None
 
     @property
-    def circuit_breaker(self) -> Optional[CircuitBreaker]:
+    def circuit_breaker(self) -> CircuitBreaker | None:
         """Lazy load circuit breaker."""
         if self._circuit_breaker is None and _redis_client:
             self._circuit_breaker = CircuitBreaker(
@@ -43,7 +43,7 @@ class BrokerClient:
         return self._circuit_breaker
 
     async def execute_with_protection(
-        self, func: Callable[..., T], *args, **kwargs
+        self, func: Callable[..., Awaitable[T]], *args, **kwargs
     ) -> T:
         """
         Execute a broker function with circuit breaker protection.
@@ -62,7 +62,7 @@ class BrokerClient:
         """
         cb = self.circuit_breaker
         if cb:
-            return await cb.call(func, *args, **kwargs)
+            return cast(T, await cb.call(func, *args, **kwargs))
 
         # Fallback if Redis not available
         return await func(*args, **kwargs)

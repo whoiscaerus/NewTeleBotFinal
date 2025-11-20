@@ -279,7 +279,7 @@ async def cancel_execution(
         raise HTTPException(status_code=404, detail="Execution not found")
 
     execution.status = "abandoned"
-    execution.updated_at = datetime.utcnow()  # type: ignore
+    execution.updated_at = datetime.utcnow()
     await db.commit()
 
     logger.info(

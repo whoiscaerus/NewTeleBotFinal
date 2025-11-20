@@ -10,7 +10,7 @@ Handles:
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -134,10 +134,10 @@ class EAPollService:
     @staticmethod
     async def acknowledge_signal_execution(
         signal_id: str,
-        order_id: Optional[str] = None,
+        order_id: str | None = None,
         execution_status: str = "executed",
-        rejection_reason: Optional[str] = None,
-        db: Optional[AsyncSession] = None,
+        rejection_reason: str | None = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """
         Process acknowledgment from EA device for signal execution.

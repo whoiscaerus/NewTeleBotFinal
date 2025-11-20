@@ -167,7 +167,7 @@ async def get_trust_index_stats(
             PublicTrustIndexRecord.trust_band, func.count(PublicTrustIndexRecord.id)
         ).group_by(PublicTrustIndexRecord.trust_band)
         result = await db.execute(stmt)
-        distribution = {band: count for band, count in result.all()}
+        distribution = dict(result.all())
 
         # Get top by accuracy
         stmt = (

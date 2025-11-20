@@ -33,4 +33,4 @@ class EntitlementRecord(Base):
     @property
     def is_active(self) -> bool:
         """Check if entitlement is active."""
-        return self.status == "active"
+        return bool(self.status == "active")

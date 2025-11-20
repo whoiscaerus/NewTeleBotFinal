@@ -58,7 +58,7 @@ async def get_user_tier(user: User = Depends(get_current_user)) -> str:
     """Get user's subscription tier (stub)."""
     # For now, return free tier
     # In production, this would query user's subscription from DB
-    return SubscriptionTier.FREE.value
+    return str(SubscriptionTier.FREE.value)
 
 
 @router.get("/me", response_model=AllQuotasResponse)
@@ -98,7 +98,7 @@ async def get_my_quotas(
         quotas = await service.get_all_quotas(user.id, tier)
 
         # Convert datetime to ISO string
-        for quota_type, status in quotas.items():
+        for _quota_type, status in quotas.items():
             if "reset_at" in status and status["reset_at"]:
                 status["reset_at"] = status["reset_at"].isoformat()
 

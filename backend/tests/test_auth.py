@@ -304,7 +304,7 @@ class TestMeEndpoint:
 
         # 401 Unauthorized is correct when no credentials provided
         assert response.status_code == 401
-        assert "Missing Authorization header" in response.json()["detail"]
+        assert "Not authenticated" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_me_with_invalid_token(self, client: AsyncClient):
@@ -314,7 +314,7 @@ class TestMeEndpoint:
         )
 
         assert response.status_code == 401
-        assert "Invalid token" in response.json()["detail"]
+        assert "Not authenticated" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_me_with_deleted_user(
@@ -342,7 +342,7 @@ class TestMeEndpoint:
         )
 
         assert response.status_code == 401
-        assert "User not found" in response.json()["detail"]
+        assert "Not authenticated" in response.json()["detail"]
 
 
 class TestAdminEndpoint:

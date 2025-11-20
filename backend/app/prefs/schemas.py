@@ -5,7 +5,6 @@ Validation, serialization, and documentation for preference API.
 """
 
 from datetime import time
-from typing import Optional
 
 import pytz
 from pydantic import BaseModel, Field, field_validator
@@ -58,10 +57,10 @@ class UserPreferencesResponse(BaseModel):
     quiet_hours_enabled: bool = Field(
         default=False, description="Enable do not disturb periods"
     )
-    quiet_hours_start: Optional[str] = Field(
+    quiet_hours_start: str | None = Field(
         default=None, description="Quiet hours start time (HH:MM format)"
     )
-    quiet_hours_end: Optional[str] = Field(
+    quiet_hours_end: str | None = Field(
         default=None, description="Quiet hours end time (HH:MM format)"
     )
     timezone: str = Field(
@@ -79,8 +78,8 @@ class UserPreferencesResponse(BaseModel):
     max_alerts_per_hour: int = Field(
         default=10, ge=1, le=100, description="Max alerts per hour to prevent spam"
     )
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
     class Config:
         from_attributes = True
@@ -102,43 +101,43 @@ class UserPreferencesUpdate(BaseModel):
     - At least one notification channel must be enabled
     """
 
-    instruments_enabled: Optional[list[str]] = Field(
+    instruments_enabled: list[str] | None = Field(
         default=None, description="List of instruments to monitor", min_length=0
     )
-    alert_types_enabled: Optional[list[str]] = Field(
+    alert_types_enabled: list[str] | None = Field(
         default=None, description="List of alert types to receive", min_length=0
     )
-    notify_via_telegram: Optional[bool] = Field(
+    notify_via_telegram: bool | None = Field(
         default=None, description="Send notifications via Telegram"
     )
-    notify_via_email: Optional[bool] = Field(
+    notify_via_email: bool | None = Field(
         default=None, description="Send notifications via email"
     )
-    notify_via_push: Optional[bool] = Field(
+    notify_via_push: bool | None = Field(
         default=None, description="Send notifications via web push (PWA)"
     )
-    quiet_hours_enabled: Optional[bool] = Field(
+    quiet_hours_enabled: bool | None = Field(
         default=None, description="Enable do not disturb periods"
     )
-    quiet_hours_start: Optional[str] = Field(
+    quiet_hours_start: str | None = Field(
         default=None, description="Quiet hours start time (HH:MM format, local time)"
     )
-    quiet_hours_end: Optional[str] = Field(
+    quiet_hours_end: str | None = Field(
         default=None, description="Quiet hours end time (HH:MM format, local time)"
     )
-    timezone: Optional[str] = Field(
+    timezone: str | None = Field(
         default=None, description="User timezone (IANA timezone name)"
     )
-    digest_frequency: Optional[str] = Field(
+    digest_frequency: str | None = Field(
         default=None, description="Notification batching frequency"
     )
-    notify_entry_failure: Optional[bool] = Field(
+    notify_entry_failure: bool | None = Field(
         default=None, description="Alert on EA entry execution failure (PR-104)"
     )
-    notify_exit_failure: Optional[bool] = Field(
+    notify_exit_failure: bool | None = Field(
         default=None, description="Alert on position exit failure at SL/TP (PR-104)"
     )
-    max_alerts_per_hour: Optional[int] = Field(
+    max_alerts_per_hour: int | None = Field(
         default=None, ge=1, le=100, description="Max alerts per hour to prevent spam"
     )
 
@@ -217,7 +216,7 @@ class UserPreferencesUpdate(BaseModel):
         # Only validate if we're updating channels
         if any(ch is not None for ch in channels):
             # If all explicit values are False
-            enabled_channels = [ch for ch in channels if ch is not None and ch is True]
+            [ch for ch in channels if ch is not None and ch is True]
             all_disabled = all(ch is False for ch in channels if ch is not None)
             if all_disabled and len([ch for ch in channels if ch is not None]) == 3:
                 raise ValueError(
