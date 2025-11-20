@@ -179,7 +179,7 @@ class PolygonAdapter(BlockchainAdapter):
 
         except Exception as e:
             logger.error(f"Polygon submission error: {e}")
-            raise BlockchainSubmissionError(f"Polygon submission failed: {e}")
+            raise BlockchainSubmissionError(f"Polygon submission failed: {e}") from e
 
 
 class ArbitrumAdapter(BlockchainAdapter):
@@ -237,7 +237,7 @@ class ArbitrumAdapter(BlockchainAdapter):
 
         except Exception as e:
             logger.error(f"Arbitrum submission error: {e}")
-            raise BlockchainSubmissionError(f"Arbitrum submission failed: {e}")
+            raise BlockchainSubmissionError(f"Arbitrum submission failed: {e}") from e
 
 
 class BlockchainSubmissionError(Exception):

@@ -263,10 +263,10 @@ def _calculate_max_drawdown(trades: list[Trade]) -> float:
 
 @router.get("/performance/summary")
 async def get_performance_summary(
-    delay_minutes: int = Query(1440, ge=0, le=1_000_000),
-    from_date: datetime | None = Query(None),
-    to_date: datetime | None = Query(None),
-    db: AsyncSession = Depends(get_db),
+    delay_minutes: int = Query(1440, ge=0, le=1_000_000),  # noqa: B008
+    from_date: datetime | None = Query(None),  # noqa: B008
+    to_date: datetime | None = Query(None),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict:
     """Get aggregated performance summary with T+X delay.
 
@@ -345,23 +345,23 @@ async def get_performance_summary(
         public_performance_error_total.labels(
             endpoint="summary", error_type="validation"
         ).inc()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     except Exception as e:
         logger.error(f"Error fetching performance summary: {e}", exc_info=True)
         public_performance_error_total.labels(
             endpoint="summary", error_type="internal"
         ).inc()
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get("/performance/equity")
 async def get_equity_curve(
-    delay_minutes: int = Query(1440, ge=0, le=1_000_000),
-    from_date: datetime | None = Query(None),
-    to_date: datetime | None = Query(None),
-    granularity: str = Query("daily"),
-    db: AsyncSession = Depends(get_db),
+    delay_minutes: int = Query(1440, ge=0, le=1_000_000),  # noqa: B008
+    from_date: datetime | None = Query(None),  # noqa: B008
+    to_date: datetime | None = Query(None),  # noqa: B008
+    granularity: str = Query("daily"),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict:
     """Get equity curve data points for charting.
 
@@ -476,11 +476,11 @@ async def get_equity_curve(
         public_performance_error_total.labels(
             endpoint="equity", error_type="validation"
         ).inc()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     except Exception as e:
         logger.error(f"Error fetching equity curve: {e}", exc_info=True)
         public_performance_error_total.labels(
             endpoint="equity", error_type="internal"
         ).inc()
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

@@ -53,14 +53,24 @@ class DecisionSearchResponse(BaseModel):
 
 @router.get("/search", response_model=DecisionSearchResponse)
 async def search_decisions(
-    strategy: str | None = Query(None, description="Filter by strategy name"),
-    symbol: str | None = Query(None, description="Filter by trading symbol"),
-    outcome: str | None = Query(None, description="Filter by outcome"),
-    start_date: datetime | None = Query(None, description="Filter by start date"),
-    end_date: datetime | None = Query(None, description="Filter by end date"),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    db: AsyncSession = Depends(get_db),
+    strategy: str | None = Query(
+        None, description="Filter by strategy name"
+    ),  # noqa: B008
+    symbol: str | None = Query(
+        None, description="Filter by trading symbol"
+    ),  # noqa: B008
+    outcome: str | None = Query(None, description="Filter by outcome"),  # noqa: B008
+    start_date: datetime | None = Query(  # noqa: B008
+        None, description="Filter by start date"
+    ),
+    end_date: datetime | None = Query(  # noqa: B008
+        None, description="Filter by end date"
+    ),
+    page: int = Query(1, ge=1, description="Page number"),  # noqa: B008
+    page_size: int = Query(
+        20, ge=1, le=100, description="Items per page"
+    ),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> DecisionSearchResponse:
     """Search decisions with filters and pagination.
 
@@ -97,10 +107,12 @@ async def search_decisions(
 
     if outcome:
         try:
-            outcome_enum = DecisionOutcome[outcome.upper()]
+            outcome_enum = DecisionOutcome(outcome)
             query = query.where(DecisionLog.outcome == outcome_enum)
         except KeyError:
-            raise HTTPException(status_code=400, detail=f"Invalid outcome: {outcome}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid outcome: {outcome}"
+            ) from None
 
     if start_date:
         query = query.where(DecisionLog.timestamp >= start_date)
@@ -162,7 +174,7 @@ async def search_decisions(
 @router.get("/{decision_id}", response_model=DecisionSearchResult)
 async def get_decision(
     decision_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> DecisionSearchResult:
     """Get a single decision by ID.
 

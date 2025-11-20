@@ -185,7 +185,7 @@ class UserPreferencesUpdate(BaseModel):
             except pytz.UnknownTimeZoneError:
                 raise ValueError(
                     f"Invalid timezone: {v}. Must be a valid IANA timezone (e.g., 'Europe/London')"
-                )
+                ) from None
         return v
 
     @field_validator("quiet_hours_start", "quiet_hours_end")
@@ -198,7 +198,7 @@ class UserPreferencesUpdate(BaseModel):
             except ValueError:
                 raise ValueError(
                     f"Invalid time format: {v}. Must be HH:MM format (e.g., '22:00')"
-                )
+                ) from None
         return v
 
     def model_post_init(self, __context):

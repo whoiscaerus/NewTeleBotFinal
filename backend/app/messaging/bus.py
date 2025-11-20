@@ -36,19 +36,19 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime, UTC
-from typing import Any, Literal, cast
 from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any, Literal, cast
 
 import redis.asyncio as aioredis
 
 from backend.app.core.settings import get_settings
-
-UTC = UTC
 from backend.app.observability.metrics import (
     message_fail_total,
     messages_enqueued_total,
 )
+
+UTC = UTC
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

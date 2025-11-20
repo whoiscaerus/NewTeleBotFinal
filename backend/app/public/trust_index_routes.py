@@ -37,7 +37,7 @@ router = APIRouter(prefix="/api/v1", tags=["public"])
 )
 async def get_public_trust_index(
     user_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> PublicTrustIndexSchema:
     """
     Get public trust index for a user.
@@ -104,12 +104,12 @@ async def get_public_trust_index(
     except ValueError as e:
         if "not found" in str(e).lower():
             logger.warning(f"User not found: {user_id}")
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="User not found") from e
         logger.error(f"Validation error for user {user_id}: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error getting trust index for {user_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get(
@@ -120,8 +120,8 @@ async def get_public_trust_index(
     description="Get aggregate statistics on public trust indexes",
 )
 async def get_trust_index_stats(
-    db: AsyncSession = Depends(get_db),
-    limit: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    limit: int = Query(10, ge=1, le=100),  # noqa: B008
 ) -> dict:
     """
     Get aggregate statistics and top users by trust index.
@@ -167,7 +167,8 @@ async def get_trust_index_stats(
             PublicTrustIndexRecord.trust_band, func.count(PublicTrustIndexRecord.id)
         ).group_by(PublicTrustIndexRecord.trust_band)
         result = await db.execute(stmt)
-        distribution = dict(result.all())
+        rows = result.all()
+        distribution: dict[str, int] = {row[0]: row[1] for row in rows}
 
         # Get top by accuracy
         stmt = (
@@ -218,4 +219,4 @@ async def get_trust_index_stats(
 
     except Exception as e:
         logger.error(f"Error getting trust index stats: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

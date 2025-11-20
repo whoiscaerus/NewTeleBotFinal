@@ -119,7 +119,7 @@ class IdempotencyMiddleware:
 
                 try:
                     body_json = json.loads(response_body)
-                except:
+                except Exception:
                     body_json = response_body.decode("utf-8")
 
                 cache_data = {

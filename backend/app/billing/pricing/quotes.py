@@ -116,7 +116,7 @@ class QuoteService:
                     )
                     rate_tmp = self.BASE_RATES.get(currency)
                     if not rate_tmp:
-                        raise ValueError(f"No fallback rate for {currency}")
+                        raise ValueError(f"No fallback rate for {currency}") from e
                     rate = rate_tmp
             else:
                 # Use static rates

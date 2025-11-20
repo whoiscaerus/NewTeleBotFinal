@@ -76,7 +76,7 @@ def calculate_exposure_snapshots_task(self):
             except Exception as e:
                 logger.error(f"Exposure snapshot task failed: {e}", exc_info=True)
                 # Retry with exponential backoff
-                raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+                raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
     return asyncio.run(_run())
 
@@ -170,7 +170,7 @@ def check_drawdown_breakers_task(self):
             except Exception as e:
                 logger.error(f"Drawdown breaker task failed: {e}", exc_info=True)
                 # Retry
-                raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+                raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
     return asyncio.run(_run())
 
@@ -219,6 +219,6 @@ def cleanup_old_exposure_snapshots_task(self):
 
             except Exception as e:
                 logger.error(f"Snapshot cleanup task failed: {e}", exc_info=True)
-                raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+                raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
     return asyncio.run(_run())

@@ -274,7 +274,7 @@ class RateFetcher:
 
             raise RuntimeError(
                 f"Failed to fetch GBP/USD and no fallback available: {e}"
-            )
+            ) from e
 
         # Unreachable code - satisfies mypy type checker
         # All paths above return or raise
@@ -414,15 +414,9 @@ class RateFetcher:
             if not cached_prices and missing_ids:
                 raise RuntimeError(
                     f"Failed to fetch crypto prices and no fallback available: {e}"
-                )
+                ) from e
 
-            return cached_prices
-
-        # Unreachable code - satisfies mypy type checker
-        # All paths above return or raise
-        raise RuntimeError(
-            "Unexpected code path in fetch_crypto_prices"
-        )  # pragma: no cover
+        return cached_prices
 
     async def get_all_rates(self) -> dict[str, float]:
         """Get all exchange rates (GBP base).

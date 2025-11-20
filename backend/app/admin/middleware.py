@@ -13,8 +13,8 @@ from backend.app.core.db import get_db
 
 
 async def require_owner(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> User:
     """
     Dependency that requires the current user to have owner role.
@@ -43,8 +43,8 @@ async def require_owner(
 
 
 async def require_admin(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> User:
     """
     Dependency that requires the current user to have admin or owner role.

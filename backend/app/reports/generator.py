@@ -308,7 +308,9 @@ class ReportGenerator:
         # TODO: Implement actual MRR calculation from subscriptions
         # For now, return mock data for testing
         users_result = await self.db.execute(
-            select(User).where(User.tier != "free", not User.suspended)
+            select(User).where(
+                User.tier != "free", User.suspended == False  # noqa: E712
+            )
         )
         paid_users = users_result.scalars().all()
 
@@ -338,7 +340,9 @@ class ReportGenerator:
 
         # Active users
         users_result = await self.db.execute(
-            select(User).where(User.tier != "free", not User.suspended)
+            select(User).where(
+                User.tier != "free", User.suspended == False  # noqa: E712
+            )
         )
         active_users = len(users_result.scalars().all())
 

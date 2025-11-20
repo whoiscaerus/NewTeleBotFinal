@@ -5,7 +5,7 @@ Focuses specifically on drawdown metrics, analysis, and edge case handling.
 Used by equity engine and directly by routes.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import and_, select
@@ -294,4 +294,3 @@ class DrawdownAnalyzer:
 
 
 # Helper function for import
-from datetime import timedelta

@@ -3,21 +3,33 @@ AI Routes - FastAPI endpoints for chat assistant.
 """
 
 import logging
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from prometheus_client import Counter, Histogram
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.ai.analyst import (
+    FeatureDisabledError,
+    build_outlook,
+    is_analyst_enabled,
+    is_analyst_owner_only,
+)
 from backend.app.ai.assistant import AIAssistant
 from backend.app.ai.indexer import RAGIndexer
+from backend.app.ai.models import FeatureFlag
 from backend.app.ai.schemas import (
     ChatRequestIn,
     ChatResponseOut,
     ChatSessionDetailOut,
     ChatSessionOut,
     EscalateRequestIn,
+    FeatureFlagOut,
+    FeatureFlagUpdateIn,
     IndexStatusOut,
+    OutlookReport,
 )
 from backend.app.auth.dependencies import get_current_user
 from backend.app.auth.models import User, UserRole
@@ -364,19 +376,6 @@ async def index_status(
 # ========================================
 # PR-091: AI Analyst / Market Outlook Routes
 # ========================================
-
-from datetime import date
-
-from sqlalchemy import select, update
-
-from backend.app.ai.analyst import (
-    FeatureDisabledError,
-    build_outlook,
-    is_analyst_enabled,
-    is_analyst_owner_only,
-)
-from backend.app.ai.models import FeatureFlag
-from backend.app.ai.schemas import FeatureFlagOut, FeatureFlagUpdateIn, OutlookReport
 
 
 @router.post("/analyst/toggle", response_model=FeatureFlagOut)
