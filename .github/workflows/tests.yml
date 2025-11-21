@@ -283,7 +283,7 @@ jobs:
           # Check if JSON report exists before generating report
           if [ -f "test-results/test_results.json" ]; then
             echo "✅ JSON report found, generating detailed report..."
-            python scripts/generate_test_report.py test-results/test_results.json test-results/TEST_FAILURES_DETAILED.md || echo "⚠️ Report generation script failed"
+            python scripts/analyze_test_output.py --json test-results/test_results.json --output test-results/TEST_FAILURES_DETAILED.md --csv test-results/TEST_FAILURES.csv || echo "⚠️ Report generation script failed"
           else
             echo "❌ JSON report not found, creating placeholder report..."
             mkdir -p test-results
