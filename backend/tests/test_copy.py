@@ -512,6 +512,17 @@ async def test_copy_entry_get_variant_method(sample_entry: CopyEntry):
 @pytest.mark.asyncio
 async def test_copy_variant_record_impression_updates_metrics(db_session: AsyncSession):
     """Test that recording impression updates metrics correctly."""
+    # Create parent entry first
+    entry = CopyEntry(
+        id="test-entry",
+        key="test.key",
+        type=CopyType.MARKETING,
+        description="Test Entry",
+        status=CopyStatus.PUBLISHED,
+    )
+    db_session.add(entry)
+    await db_session.commit()
+
     variant = CopyVariant(
         entry_id="test-entry",
         locale="en",

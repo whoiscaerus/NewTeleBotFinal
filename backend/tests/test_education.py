@@ -19,6 +19,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User, UserRole
 from backend.app.education.models import (
     Attempt,
     Course,
@@ -149,6 +150,23 @@ async def sample_questions(db: AsyncSession, sample_quiz: Quiz) -> list[QuizQues
         await db.refresh(q)
 
     return questions
+
+
+@pytest_asyncio.fixture
+async def test_user(db: AsyncSession) -> User:
+    """Create a test user."""
+    user = User(
+        id=str(uuid4()),
+        email=f"test_edu_{uuid4()}@example.com",
+        password_hash="hashed_secret",
+        role=UserRole.USER,
+        # is_active=True,  # These might not be in the model, checking...
+        # is_verified=True,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 
 class TestCourseOperations:
@@ -652,7 +670,7 @@ class TestMaxAttempts:
         user_id = str(uuid4())
 
         # Create 3 attempts (max is 3)
-        for i in range(3):
+        for _ in range(3):
             attempt = Attempt(
                 id=str(uuid4()),
                 user_id=user_id,
@@ -835,10 +853,12 @@ class TestRewardIssuance:
     """Test reward creation and management."""
 
     @pytest.mark.asyncio
-    async def test_grant_discount(self, db: AsyncSession):
+    async def test_grant_discount(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test granting a discount reward."""
-        user_id = str(uuid4())
-        course_id = str(uuid4())
+        user_id = test_user.id
+        course_id = sample_course.id
 
         reward = await grant_discount(
             db=db,
@@ -863,22 +883,26 @@ class TestRewardIssuance:
         assert expires_at > datetime.now(UTC)
 
     @pytest.mark.asyncio
-    async def test_grant_discount_invalid_percent(self, db: AsyncSession):
+    async def test_grant_discount_invalid_percent(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test granting discount with invalid percent raises error."""
         with pytest.raises(ValueError, match="Invalid discount percent"):
             await grant_discount(
                 db=db,
-                user_id=str(uuid4()),
-                course_id=str(uuid4()),
+                user_id=test_user.id,
+                course_id=sample_course.id,
                 percent=150.0,  # Invalid: > 100%
                 expires_days=30,
             )
 
     @pytest.mark.asyncio
-    async def test_grant_credit(self, db: AsyncSession):
+    async def test_grant_credit(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test granting a credit reward."""
-        user_id = str(uuid4())
-        course_id = str(uuid4())
+        user_id = test_user.id
+        course_id = sample_course.id
 
         reward = await grant_credit(
             db=db,
@@ -895,23 +919,27 @@ class TestRewardIssuance:
         assert reward.currency == "GBP"
 
     @pytest.mark.asyncio
-    async def test_grant_credit_invalid_amount(self, db: AsyncSession):
+    async def test_grant_credit_invalid_amount(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test granting credit with invalid amount raises error."""
         with pytest.raises(ValueError, match="Invalid credit amount"):
             await grant_credit(
                 db=db,
-                user_id=str(uuid4()),
-                course_id=str(uuid4()),
+                user_id=test_user.id,
+                course_id=sample_course.id,
                 amount=-5.0,  # Invalid: negative
                 currency="GBP",
                 expires_days=30,
             )
 
     @pytest.mark.asyncio
-    async def test_redeem_reward(self, db: AsyncSession):
+    async def test_redeem_reward(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test redeeming a reward."""
-        user_id = str(uuid4())
-        course_id = str(uuid4())
+        user_id = test_user.id
+        course_id = sample_course.id
 
         # Create reward
         reward = await grant_discount(
@@ -937,10 +965,12 @@ class TestRewardIssuance:
         assert redeemed.redemption_order_id == order_id
 
     @pytest.mark.asyncio
-    async def test_redeem_already_redeemed(self, db: AsyncSession):
+    async def test_redeem_already_redeemed(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test redeeming already redeemed reward raises error."""
-        user_id = str(uuid4())
-        course_id = str(uuid4())
+        user_id = test_user.id
+        course_id = sample_course.id
 
         # Create and redeem reward
         reward = await grant_discount(
@@ -957,10 +987,12 @@ class TestRewardIssuance:
             await redeem_reward(db, reward.id, "order-2")
 
     @pytest.mark.asyncio
-    async def test_redeem_expired_reward(self, db: AsyncSession):
+    async def test_redeem_expired_reward(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test redeeming expired reward raises error."""
-        user_id = str(uuid4())
-        course_id = str(uuid4())
+        user_id = test_user.id
+        course_id = sample_course.id
 
         # Create expired reward
         reward = Reward(
@@ -981,14 +1013,28 @@ class TestRewardIssuance:
             await redeem_reward(db, reward.id, "order-1")
 
     @pytest.mark.asyncio
-    async def test_get_active_rewards(self, db: AsyncSession):
+    async def test_get_active_rewards(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test retrieving active rewards."""
-        user_id = str(uuid4())
-        course1_id = str(uuid4())
-        course2_id = str(uuid4())
+        user_id = test_user.id
+        course1_id = sample_course.id
+
+        # Create a second course for variety
+        course2 = Course(
+            id=str(uuid4()),
+            title="Course 2",
+            description="Desc",
+            difficulty_level=1,
+            duration_minutes=60,
+            status=CourseStatus.PUBLISHED,
+        )
+        db.add(course2)
+        await db.commit()
+        course2_id = course2.id
 
         # Create active discount
-        reward1 = await grant_discount(
+        await grant_discount(
             db=db,
             user_id=user_id,
             course_id=course1_id,
@@ -997,7 +1043,7 @@ class TestRewardIssuance:
         )
 
         # Create active credit
-        reward2 = await grant_credit(
+        await grant_credit(
             db=db,
             user_id=user_id,
             course_id=course2_id,
@@ -1033,22 +1079,25 @@ class TestRewardIssuance:
             assert expires_at > now
 
     @pytest.mark.asyncio
-    async def test_get_active_rewards_by_type(self, db: AsyncSession):
+    async def test_get_active_rewards_by_type(
+        self, db: AsyncSession, test_user: User, sample_course: Course
+    ):
         """Test filtering active rewards by type."""
-        user_id = str(uuid4())
+        user_id = test_user.id
+        course_id = sample_course.id
 
         # Create mixed rewards
         await grant_discount(
             db=db,
             user_id=user_id,
-            course_id=str(uuid4()),
+            course_id=course_id,
             percent=10.0,
             expires_days=30,
         )
         await grant_credit(
             db=db,
             user_id=user_id,
-            course_id=str(uuid4()),
+            course_id=course_id,
             amount=5.0,
             currency="GBP",
             expires_days=30,

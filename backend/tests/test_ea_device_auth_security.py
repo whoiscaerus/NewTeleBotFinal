@@ -19,6 +19,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.models import User, UserRole
 from backend.app.clients.devices.models import Device
 from backend.app.clients.models import Client
 from backend.app.ea.hmac import HMACBuilder
@@ -558,13 +559,28 @@ async def device(client_obj: Client, db_session: AsyncSession) -> Device:
 
 
 @pytest_asyncio.fixture
-async def approval(client_obj: Client, db_session: AsyncSession):
+async def test_user(db_session: AsyncSession) -> User:
+    """Create a test user for FK constraints."""
+    user = User(
+        email="test_ea_user@example.com",
+        password_hash="hashed_secret",
+        telegram_user_id="123456789",
+        role=UserRole.USER,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def approval(client_obj: Client, test_user: User, db_session: AsyncSession):
     """Create a test approval for ACK endpoint tests."""
     from backend.app.approvals.models import Approval, ApprovalDecision
     from backend.app.signals.models import Signal
 
     signal = Signal(
-        user_id=client_obj.id,
+        user_id=test_user.id,
         instrument="XAUUSD",
         side=0,  # BUY
         price=1950.50,
@@ -576,7 +592,7 @@ async def approval(client_obj: Client, db_session: AsyncSession):
     approval = Approval(
         signal_id=signal.id,
         client_id=client_obj.id,
-        user_id=client_obj.id,
+        user_id=test_user.id,
         decision=ApprovalDecision.APPROVED.value,
     )
     db_session.add(approval)

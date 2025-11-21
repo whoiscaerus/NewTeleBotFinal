@@ -296,6 +296,19 @@ def _compute_ppo_attribution(features: dict[str, Any]) -> dict[str, float]:
     confidence = abs(action_prob - 0.5)
     contributions["action_confidence"] = confidence * 0.1
 
+    # Normalize contributions to sum to prediction_delta (action_prob)
+    # This ensures the attribution is valid
+    current_sum = sum(contributions.values())
+    target_sum = action_prob  # Since baseline is 0.0
+
+    if current_sum != 0:
+        scale_factor = target_sum / current_sum
+        for key in contributions:
+            contributions[key] *= scale_factor
+    elif target_sum != 0:
+        # If current sum is 0 but target is not, assign all to action_confidence
+        contributions["action_confidence"] = target_sum
+
     return contributions
 
 
