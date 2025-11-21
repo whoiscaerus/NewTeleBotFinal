@@ -54,6 +54,7 @@ async def test_ack_successful_placement_creates_open_position(
         owner_only=encrypted_owner_only,
     )
     db_session.add(signal)
+    await db_session.flush()
 
     # Create approval
     approval = Approval(
@@ -144,6 +145,7 @@ async def test_ack_failed_execution_does_not_create_position(
         },
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
@@ -216,6 +218,7 @@ async def test_ack_without_owner_only_creates_position_with_null_levels(
         owner_only=None,  # No hidden levels
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
@@ -285,6 +288,7 @@ async def test_ack_all_foreign_keys_linked_correctly(
         payload={"instrument": "BTCUSD", "entry_price": 45000.00, "volume": 0.01},
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),

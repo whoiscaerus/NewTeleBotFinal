@@ -10,6 +10,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,8 +25,8 @@ def embedding_generator():
     return EmbeddingGenerator()
 
 
-@pytest.fixture
-async def test_article(db_session: AsyncSession) -> Article:
+@pytest_asyncio.fixture
+async def test_article(db_session: AsyncSession, test_user) -> Article:
     """Create a test KB article."""
     article = Article(
         id=uuid4(),
@@ -33,7 +34,7 @@ async def test_article(db_session: AsyncSession) -> Article:
         slug="how-to-reset-password",
         content="Click on forgot password and enter your email",
         status=ArticleStatus.PUBLISHED,
-        author_id=uuid4(),
+        author_id=test_user.id,
         locale="en",
         version=1,
         created_at=datetime.utcnow(),
@@ -46,8 +47,8 @@ async def test_article(db_session: AsyncSession) -> Article:
     return article
 
 
-@pytest.fixture
-async def test_articles(db_session: AsyncSession) -> list[Article]:
+@pytest_asyncio.fixture
+async def test_articles(db_session: AsyncSession, test_user) -> list[Article]:
     """Create multiple test KB articles."""
     articles = []
     titles = [
@@ -64,7 +65,7 @@ async def test_articles(db_session: AsyncSession) -> list[Article]:
             slug=title.lower().replace(" ", "-"),
             content=f"Content about {title.lower()}",
             status=ArticleStatus.PUBLISHED,
-            author_id=uuid4(),
+            author_id=test_user.id,
             locale="en",
             version=1,
             created_at=datetime.utcnow(),
@@ -178,9 +179,9 @@ class TestRAGIndexerIndexing:
     """Test article indexing."""
 
     @pytest.mark.asyncio
-    async def test_index_article(self, db_session: AsyncSession):
+    async def test_index_article(self, db_session: AsyncSession, test_article):
         """Should index published article and create embedding."""
-        article = await test_article.__wrapped__(db_session)
+        article = test_article
         indexer = RAGIndexer()
 
         result = await indexer.index_article(db_session, article.id)
@@ -192,7 +193,9 @@ class TestRAGIndexerIndexing:
         assert len(result.embedding) > 0
 
     @pytest.mark.asyncio
-    async def test_index_article_unpublished_fails(self, db_session: AsyncSession):
+    async def test_index_article_unpublished_fails(
+        self, db_session: AsyncSession, test_user
+    ):
         """Should reject indexing unpublished articles."""
         # Create unpublished article
         article = Article(
@@ -201,7 +204,7 @@ class TestRAGIndexerIndexing:
             slug="draft",
             content="Draft content",
             status=ArticleStatus.DRAFT,
-            author_id=uuid4(),
+            author_id=test_user.id,
             locale="en",
             version=1,
             created_at=datetime.utcnow(),
@@ -223,9 +226,11 @@ class TestRAGIndexerIndexing:
             await indexer.index_article(db_session, uuid4())
 
     @pytest.mark.asyncio
-    async def test_index_article_idempotent(self, db_session: AsyncSession):
+    async def test_index_article_idempotent(
+        self, db_session: AsyncSession, test_article
+    ):
         """Indexing same article twice should update, not duplicate."""
-        article = await test_article.__wrapped__(db_session)
+        article = test_article
         indexer = RAGIndexer()
 
         # Index first time
@@ -247,9 +252,9 @@ class TestRAGIndexerBatchIndexing:
     """Test batch indexing."""
 
     @pytest.mark.asyncio
-    async def test_index_all_published(self, db_session: AsyncSession):
+    async def test_index_all_published(self, db_session: AsyncSession, test_articles):
         """Should index all published articles."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
 
         count = await indexer.index_all_published(db_session)
@@ -262,7 +267,9 @@ class TestRAGIndexerBatchIndexing:
         assert len(embedding_records) == 5
 
     @pytest.mark.asyncio
-    async def test_index_all_skips_unpublished(self, db_session: AsyncSession):
+    async def test_index_all_skips_unpublished(
+        self, db_session: AsyncSession, test_user
+    ):
         """Should skip unpublished articles."""
         # Create 5 published articles
         for i in range(5):
@@ -272,7 +279,7 @@ class TestRAGIndexerBatchIndexing:
                 slug=f"published-{i}",
                 content=f"Content {i}",
                 status=ArticleStatus.PUBLISHED,
-                author_id=uuid4(),
+                author_id=test_user.id,
                 locale="en",
                 version=1,
                 created_at=datetime.utcnow(),
@@ -289,7 +296,7 @@ class TestRAGIndexerBatchIndexing:
                 slug=f"draft-{i}",
                 content=f"Draft {i}",
                 status=ArticleStatus.DRAFT,
-                author_id=uuid4(),
+                author_id=test_user.id,
                 locale="en",
                 version=1,
                 created_at=datetime.utcnow(),
@@ -310,9 +317,11 @@ class TestRAGIndexerSearch:
     """Test semantic search."""
 
     @pytest.mark.asyncio
-    async def test_search_similar_returns_results(self, db_session: AsyncSession):
+    async def test_search_similar_returns_results(
+        self, db_session: AsyncSession, test_articles
+    ):
         """Should return similar articles for query."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -326,9 +335,11 @@ class TestRAGIndexerSearch:
             assert "similarity_score" in result
 
     @pytest.mark.asyncio
-    async def test_search_similar_ranked_by_score(self, db_session: AsyncSession):
+    async def test_search_similar_ranked_by_score(
+        self, db_session: AsyncSession, test_articles
+    ):
         """Results should be ranked by similarity score."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -339,9 +350,9 @@ class TestRAGIndexerSearch:
         assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.asyncio
-    async def test_search_respects_top_k(self, db_session: AsyncSession):
+    async def test_search_respects_top_k(self, db_session: AsyncSession, test_articles):
         """Should return at most top_k results."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -350,9 +361,11 @@ class TestRAGIndexerSearch:
         assert len(results) <= 2
 
     @pytest.mark.asyncio
-    async def test_search_respects_min_score(self, db_session: AsyncSession):
+    async def test_search_respects_min_score(
+        self, db_session: AsyncSession, test_articles
+    ):
         """Should filter results below min_score threshold."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -378,9 +391,11 @@ class TestRAGIndexerSearch:
         assert results == []
 
     @pytest.mark.asyncio
-    async def test_search_nonexistent_query(self, db_session: AsyncSession):
+    async def test_search_nonexistent_query(
+        self, db_session: AsyncSession, test_articles
+    ):
         """Should handle queries with no similar articles gracefully."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -410,7 +425,9 @@ class TestRAGIndexerStatus:
         assert status["pending_articles"] == 0
 
     @pytest.mark.asyncio
-    async def test_index_status_with_articles(self, db_session: AsyncSession):
+    async def test_index_status_with_articles(
+        self, db_session: AsyncSession, test_user
+    ):
         """Should report correct status with articles."""
         # Create articles
         for i in range(5):
@@ -420,7 +437,7 @@ class TestRAGIndexerStatus:
                 slug=f"article-{i}",
                 content=f"Content {i}",
                 status=ArticleStatus.PUBLISHED,
-                author_id=uuid4(),
+                author_id=test_user.id,
                 locale="en",
                 version=1,
                 created_at=datetime.utcnow(),
@@ -439,9 +456,11 @@ class TestRAGIndexerStatus:
         assert status["pending_articles"] == 5
 
     @pytest.mark.asyncio
-    async def test_index_status_after_indexing(self, db_session: AsyncSession):
+    async def test_index_status_after_indexing(
+        self, db_session: AsyncSession, test_articles
+    ):
         """Should update status after indexing."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
 
         # Before indexing
@@ -475,9 +494,9 @@ class TestRAGIndexerEdgeCases:
     """Test edge cases."""
 
     @pytest.mark.asyncio
-    async def test_search_empty_query(self, db_session: AsyncSession):
+    async def test_search_empty_query(self, db_session: AsyncSession, test_articles):
         """Should handle empty query string."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -486,9 +505,11 @@ class TestRAGIndexerEdgeCases:
         assert isinstance(results, list)
 
     @pytest.mark.asyncio
-    async def test_search_very_long_query(self, db_session: AsyncSession):
+    async def test_search_very_long_query(
+        self, db_session: AsyncSession, test_articles
+    ):
         """Should handle very long query."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -498,9 +519,11 @@ class TestRAGIndexerEdgeCases:
         assert isinstance(results, list)
 
     @pytest.mark.asyncio
-    async def test_search_special_characters(self, db_session: AsyncSession):
+    async def test_search_special_characters(
+        self, db_session: AsyncSession, test_articles
+    ):
         """Should handle queries with special characters."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -510,9 +533,9 @@ class TestRAGIndexerEdgeCases:
         assert isinstance(results, list)
 
     @pytest.mark.asyncio
-    async def test_search_unicode_query(self, db_session: AsyncSession):
+    async def test_search_unicode_query(self, db_session: AsyncSession, test_articles):
         """Should handle Unicode in queries."""
-        articles = await test_articles.__wrapped__(db_session)
+        articles = test_articles
         indexer = RAGIndexer()
         await indexer.index_all_published(db_session)
 
@@ -522,7 +545,9 @@ class TestRAGIndexerEdgeCases:
         assert isinstance(results, list)
 
     @pytest.mark.asyncio
-    async def test_index_article_with_empty_content(self, db_session: AsyncSession):
+    async def test_index_article_with_empty_content(
+        self, db_session: AsyncSession, test_user
+    ):
         """Should handle articles with empty content."""
         article = Article(
             id=uuid4(),
@@ -530,7 +555,7 @@ class TestRAGIndexerEdgeCases:
             slug="empty",
             content="",
             status=ArticleStatus.PUBLISHED,
-            author_id=uuid4(),
+            author_id=test_user.id,
             locale="en",
             version=1,
             created_at=datetime.utcnow(),

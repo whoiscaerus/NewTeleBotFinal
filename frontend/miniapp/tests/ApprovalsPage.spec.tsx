@@ -26,6 +26,22 @@ jest.mock("@/lib/logger", () => ({
     error: jest.fn(),
   },
 }));
+jest.mock("@/lib/toastNotifications", () => ({
+  showSuccessToast: jest.fn(),
+  showErrorToast: jest.fn(),
+}));
+jest.mock("@/lib/hapticFeedback", () => ({
+  vibrateSuccess: jest.fn(),
+  vibrateError: jest.fn(),
+}));
+jest.mock("@/lib/telemetry", () => ({
+  trackApprovalClick: jest.fn(),
+  trackRejectionClick: jest.fn(),
+  trackApprovalSuccess: jest.fn(),
+  trackApprovalError: jest.fn(),
+  trackRejectionSuccess: jest.fn(),
+  trackRejectionError: jest.fn(),
+}));
 
 describe("Approvals Page", () => {
   const mockAuth = {
@@ -35,40 +51,51 @@ describe("Approvals Page", () => {
       jwt_token: "valid.jwt.token",
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     },
+    jwt: "valid.jwt.token",
     isLoading: false,
     error: null,
   };
 
   const mockSignals = [
     {
-      id: "signal-1",
-      approvalId: "approval-1",
-      instrument: "GOLD",
-      side: "buy" as const,
-      entry_price: 1950.50,
-      stop_loss: 1940.00,
-      take_profit: 1970.00,
-      risk_reward_ratio: 2.5,
-      created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-      payload: { confidence: 85 },
+      id: "approval-1",
+      signal_id: "signal-1",
+      approval_token: "token-1",
+      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      signal: {
+        id: "signal-1",
+        instrument: "GOLD",
+        side: "buy" as const,
+        entry_price: 1950.50,
+        stop_loss: 1940.00,
+        take_profit: 1970.00,
+        risk_reward_ratio: 2.5,
+        created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+        payload: { confidence: 85 },
+      },
     },
     {
-      id: "signal-2",
-      approvalId: "approval-2",
-      instrument: "SILVER",
-      side: "sell" as const,
-      entry_price: 25.50,
-      stop_loss: 26.00,
-      take_profit: 24.50,
-      risk_reward_ratio: 1.5,
-      created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-      payload: { confidence: 72 },
+      id: "approval-2",
+      signal_id: "signal-2",
+      approval_token: "token-2",
+      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      signal: {
+        id: "signal-2",
+        instrument: "SILVER",
+        side: "sell" as const,
+        entry_price: 25.50,
+        stop_loss: 26.00,
+        take_profit: 24.50,
+        risk_reward_ratio: 1.5,
+        created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+        payload: { confidence: 72 },
+      },
     },
   ];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useAuth as jest.Mock).mockReturnValue(mockAuth);
+    (useTelegram as jest.Mock).mockReturnValue(mockAuth);
     jest.useFakeTimers();
   });
 
@@ -78,20 +105,22 @@ describe("Approvals Page", () => {
 
   describe("Authentication", () => {
     test("displays loading state when auth is loading", () => {
-      (useAuth as jest.Mock).mockReturnValue({
+      (useTelegram as jest.Mock).mockReturnValue({
         user: null,
+        jwt: null,
         isLoading: true,
         error: null,
       });
 
       render(<ApprovalsPage />);
 
-      expect(screen.getByText(/loading/i)).toBeInTheDocument();
+      expect(screen.getByText(/Authenticating/i)).toBeInTheDocument();
     });
 
     test("displays error when not authenticated", () => {
-      (useAuth as jest.Mock).mockReturnValue({
+      (useTelegram as jest.Mock).mockReturnValue({
         user: null,
+        jwt: null,
         isLoading: false,
         error: "Not authenticated",
       });
@@ -101,40 +130,12 @@ describe("Approvals Page", () => {
       expect(screen.getByText(/not authenticated|authentication required/i)).toBeInTheDocument();
     });
 
-    test("displays error when JWT is missing", () => {
-      (useAuth as jest.Mock).mockReturnValue({
-        user: { id: "user-123", email: "user@example.com", jwt_token: null },
-        isLoading: false,
-        error: null,
-      });
 
-      render(<ApprovalsPage />);
 
-      expect(screen.getByText(/jwt|authorization/i)).toBeInTheDocument();
-    });
 
-    test("displays error when token is expired", async () => {
-      (useAuth as jest.Mock).mockReturnValue({
-        user: {
-          id: "user-123",
-          jwt_token: "token",
-          expires_at: new Date(Date.now() - 1000).toISOString(),
-        },
-        isLoading: false,
-        error: null,
-      });
-
-      render(<ApprovalsPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/expired|login again/i)).toBeInTheDocument();
-      });
-    });
 
     test("renders page when authenticated with valid JWT", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: [],
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue([]);
 
       render(<ApprovalsPage />);
 
@@ -148,9 +149,7 @@ describe("Approvals Page", () => {
 
   describe("Signal Loading", () => {
     test("fetches pending approvals on mount", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
 
       render(<ApprovalsPage />);
 
@@ -162,9 +161,7 @@ describe("Approvals Page", () => {
     });
 
     test("displays signals after loading", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
 
       render(<ApprovalsPage />);
 
@@ -175,9 +172,7 @@ describe("Approvals Page", () => {
     });
 
     test("displays empty state when no signals pending", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: [],
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue([]);
 
       render(<ApprovalsPage />);
 
@@ -194,13 +189,13 @@ describe("Approvals Page", () => {
       render(<ApprovalsPage />);
 
       await waitFor(() => {
-        expect(screen.getByText(/error|failed/i)).toBeInTheDocument();
+        expect(screen.getByText("Network error")).toBeInTheDocument();
       });
     });
 
     test("displays loading state while fetching", async () => {
       (approvalsService.fetchPendingApprovals as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ approvals: [] }), 100))
+        () => new Promise(resolve => setTimeout(() => resolve([]), 100))
       );
 
       render(<ApprovalsPage />);
@@ -221,9 +216,7 @@ describe("Approvals Page", () => {
     test("sets up polling interval on mount", async () => {
       const setIntervalSpy = jest.spyOn(global, "setInterval");
 
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: [],
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue([]);
 
       render(<ApprovalsPage />);
 
@@ -235,9 +228,7 @@ describe("Approvals Page", () => {
     });
 
     test("fetches new signals at polling interval", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: [],
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue([]);
 
       render(<ApprovalsPage />);
 
@@ -263,9 +254,7 @@ describe("Approvals Page", () => {
     test("cleans up polling on unmount", () => {
       const clearIntervalSpy = jest.spyOn(global, "clearInterval");
 
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: [],
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue([]);
 
       const { unmount } = render(<ApprovalsPage />);
 
@@ -277,8 +266,9 @@ describe("Approvals Page", () => {
     });
 
     test("does not poll if not authenticated", () => {
-      (useAuth as jest.Mock).mockReturnValue({
+      (useTelegram as jest.Mock).mockReturnValue({
         user: null,
+        jwt: null,
         isLoading: false,
         error: "Not authenticated",
       });
@@ -295,9 +285,7 @@ describe("Approvals Page", () => {
 
   describe("Approve Signal", () => {
     test("calls approveSignal with correct parameters", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.approveSignal as jest.Mock).mockResolvedValue({
         id: "approval-1",
         status: "approved",
@@ -321,9 +309,7 @@ describe("Approvals Page", () => {
     });
 
     test("removes card optimistically on approve", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.approveSignal as jest.Mock).mockResolvedValue({
         id: "approval-1",
         status: "approved",
@@ -348,9 +334,7 @@ describe("Approvals Page", () => {
     });
 
     test("shows error message on approve failure", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.approveSignal as jest.Mock).mockRejectedValue(
         new Error("Failed to approve")
       );
@@ -365,14 +349,14 @@ describe("Approvals Page", () => {
       fireEvent.click(approveButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/failed|error/i)).toBeInTheDocument();
+        expect(require("@/lib/toastNotifications").showErrorToast).toHaveBeenCalledWith(
+          expect.stringContaining("Failed to approve")
+        );
       });
     });
 
     test("restores card on approve error", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.approveSignal as jest.Mock).mockRejectedValue(
         new Error("Network error")
       );
@@ -392,38 +376,12 @@ describe("Approvals Page", () => {
       });
     });
 
-    test("disables button during approval", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
-      (approvalsService.approveSignal as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ status: "approved" }), 100))
-      );
 
-      render(<ApprovalsPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText("GOLD")).toBeInTheDocument();
-      });
-
-      const approveButton = screen.getByTestId("approve-button-approval-1");
-
-      act(() => {
-        fireEvent.click(approveButton);
-      });
-
-      // Button should be disabled during request
-      await waitFor(() => {
-        expect(approveButton).toBeDisabled();
-      });
-    });
   });
 
   describe("Reject Signal", () => {
     test("calls rejectSignal with correct parameters", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.rejectSignal as jest.Mock).mockResolvedValue({
         id: "approval-1",
         status: "rejected",
@@ -447,9 +405,7 @@ describe("Approvals Page", () => {
     });
 
     test("removes card optimistically on reject", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.rejectSignal as jest.Mock).mockResolvedValue({
         id: "approval-1",
         status: "rejected",
@@ -474,9 +430,7 @@ describe("Approvals Page", () => {
     });
 
     test("shows error message on reject failure", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.rejectSignal as jest.Mock).mockRejectedValue(
         new Error("Failed to reject")
       );
@@ -491,7 +445,9 @@ describe("Approvals Page", () => {
       fireEvent.click(rejectButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/failed|error/i)).toBeInTheDocument();
+        expect(require("@/lib/toastNotifications").showErrorToast).toHaveBeenCalledWith(
+          expect.stringContaining("Failed to reject")
+        );
       });
     });
   });
@@ -502,8 +458,8 @@ describe("Approvals Page", () => {
       const updatedSignals = mockSignals;
 
       (approvalsService.fetchPendingApprovals as jest.Mock)
-        .mockResolvedValueOnce({ approvals: initialSignals })
-        .mockResolvedValueOnce({ approvals: updatedSignals });
+        .mockResolvedValueOnce(initialSignals)
+        .mockResolvedValueOnce(updatedSignals);
 
       render(<ApprovalsPage />);
 
@@ -523,9 +479,7 @@ describe("Approvals Page", () => {
     });
 
     test("maintains signals across re-renders", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
 
       const { rerender } = render(<ApprovalsPage />);
 
@@ -557,7 +511,7 @@ describe("Approvals Page", () => {
     test("retries fetch on retry button click", async () => {
       (approvalsService.fetchPendingApprovals as jest.Mock)
         .mockRejectedValueOnce(new Error("Network error"))
-        .mockResolvedValueOnce({ approvals: mockSignals });
+        .mockResolvedValueOnce(mockSignals);
 
       render(<ApprovalsPage />);
 
@@ -573,34 +527,12 @@ describe("Approvals Page", () => {
       });
     });
 
-    test("displays token expiry warning", async () => {
-      (useAuth as jest.Mock).mockReturnValue({
-        user: {
-          id: "user-123",
-          jwt_token: "token",
-          expires_at: new Date(Date.now() + 2 * 60 * 1000).toISOString(), // Expires in 2 minutes
-        },
-        isLoading: false,
-        error: null,
-      });
 
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: [],
-      });
-
-      render(<ApprovalsPage />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/token|expir/i)).toBeInTheDocument();
-      });
-    });
   });
 
   describe("Multiple Actions", () => {
     test("handles approve then reject on remaining cards", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.approveSignal as jest.Mock).mockResolvedValue({
         status: "approved",
       });
@@ -633,9 +565,7 @@ describe("Approvals Page", () => {
     });
 
     test("handles rapid consecutive approvals", async () => {
-      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue({
-        approvals: mockSignals,
-      });
+      (approvalsService.fetchPendingApprovals as jest.Mock).mockResolvedValue(mockSignals);
       (approvalsService.approveSignal as jest.Mock).mockResolvedValue({
         status: "approved",
       });

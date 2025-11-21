@@ -74,12 +74,29 @@ def generate_device_auth_headers(
 
 
 @pytest_asyncio.fixture
-async def test_user(db_session):
-    """Create test user for EA ack tests."""
-    user = Client(
+async def test_client(db_session):
+    """Create test client for EA ack tests."""
+    client = Client(
         id=str(uuid4()),
         telegram_id="123456789",
         email="test@example.com",
+    )
+    db_session.add(client)
+    await db_session.commit()
+    await db_session.refresh(client)
+    return client
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session):
+    """Create test user for EA ack tests."""
+    from backend.app.auth.models import User, UserRole
+
+    user = User(
+        id=str(uuid4()),
+        email="signal_owner@example.com",
+        password_hash="hashed",
+        role=UserRole.USER,
     )
     db_session.add(user)
     await db_session.commit()
@@ -88,11 +105,11 @@ async def test_user(db_session):
 
 
 @pytest_asyncio.fixture
-async def test_device(db_session, test_user):
+async def test_device(db_session, test_client):
     """Create test device for EA ack tests."""
     device = Device(
         id=str(uuid4()),
-        client_id=test_user.id,
+        client_id=test_client.id,
         device_name="TestDevice",
         hmac_key_hash="test_hmac_key_hash_for_testing",
         is_active=True,
@@ -105,7 +122,7 @@ async def test_device(db_session, test_user):
 
 @pytest.mark.asyncio
 async def test_ack_successful_placement_creates_open_position(
-    client, db_session, test_user, test_device
+    client, db_session, test_user, test_client, test_device
 ):
     """Test: EA ack with status=placed creates OpenPosition with hidden levels."""
 
@@ -132,12 +149,13 @@ async def test_ack_successful_placement_creates_open_position(
         owner_only=encrypted_owner_only,
     )
     db_session.add(signal)
+    await db_session.flush()
 
     # Create approval
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=test_user.id,
+        client_id=test_client.id,
         user_id=test_user.id,  # Required field
         decision=ApprovalDecision.APPROVED.value,
         consent_version=1,  # Required field with default
@@ -222,7 +240,7 @@ async def test_ack_successful_placement_creates_open_position(
 
 @pytest.mark.asyncio
 async def test_ack_failed_execution_does_not_create_position(
-    client, db_session, test_user, test_device
+    client, db_session, test_user, test_client, test_device
 ):
     """Test: EA ack with status=failed does NOT create OpenPosition."""
 
@@ -240,11 +258,12 @@ async def test_ack_failed_execution_does_not_create_position(
         },
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=test_user.id,
+        client_id=test_client.id,
         user_id=test_user.id,  # Required field
         decision=ApprovalDecision.APPROVED.value,
         consent_version=1,  # Required field with default
@@ -299,7 +318,7 @@ async def test_ack_failed_execution_does_not_create_position(
 
 @pytest.mark.asyncio
 async def test_ack_without_owner_only_creates_position_with_null_levels(
-    client, db_session, test_user, test_device
+    client, db_session, test_user, test_client, test_device
 ):
     """Test: Signal without owner_only still creates OpenPosition (fallback with NULL levels)."""
 
@@ -318,11 +337,12 @@ async def test_ack_without_owner_only_creates_position_with_null_levels(
         owner_only=None,  # No hidden levels
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=test_user.id,
+        client_id=test_client.id,
         user_id=test_user.id,  # Required field
         decision=ApprovalDecision.APPROVED.value,
         consent_version=1,  # Required field with default
@@ -379,7 +399,7 @@ async def test_ack_without_owner_only_creates_position_with_null_levels(
 
 @pytest.mark.asyncio
 async def test_ack_all_foreign_keys_linked_correctly(
-    client, db_session, test_user, test_device
+    client, db_session, test_user, test_client, test_device
 ):
     """Test: Verify all foreign keys in OpenPosition are correctly linked."""
 
@@ -393,11 +413,12 @@ async def test_ack_all_foreign_keys_linked_correctly(
         payload={"instrument": "BTCUSD", "entry_price": 45000.00, "volume": 0.01},
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
-        client_id=test_user.id,
+        client_id=test_client.id,
         user_id=test_user.id,  # Required field
         decision=ApprovalDecision.APPROVED.value,
         consent_version=1,  # Required field with default

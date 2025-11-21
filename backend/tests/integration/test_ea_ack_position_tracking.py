@@ -54,6 +54,7 @@ async def test_ack_successful_placement_creates_open_position(
         owner_only=encrypted_owner_only,
     )
     db_session.add(signal)
+    await db_session.flush()
 
     # Create approval
     approval = Approval(
@@ -140,18 +141,27 @@ async def test_ack_failed_execution_does_not_create_position(
         password_hash="hashed_password",
     )
     db_session.add(user)
+    await db_session.flush()
+
+    # Create Client for the device
+    from backend.app.clients.models import Client
+
+    client_obj = Client(id=str(uuid4()), email=user.email, telegram_id=None)
+    db_session.add(client_obj)
+    await db_session.flush()
 
     device = Device(
         id=str(uuid4()),
-        client_id=user.id,
+        client_id=client_obj.id,
         device_name="TestDevice2",
         hmac_key_hash="test_hmac_key_hash_67890",
     )
     db_session.add(device)
+    await db_session.flush()
 
     signal = Signal(
         id=str(uuid4()),
-        user_id=test_user.id,
+        user_id=user.id,
         instrument="EURUSD",
         side=1,  # sell
         price=1.0850,
@@ -162,13 +172,14 @@ async def test_ack_failed_execution_does_not_create_position(
         },
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
         signal_id=signal.id,
         user_id=user.id,
         decision=ApprovalDecision.APPROVED.value,
-        client_id=test_device.client_id,
+        client_id=device.client_id,
     )
     db_session.add(approval)
 
@@ -186,7 +197,7 @@ async def test_ack_failed_execution_does_not_create_position(
         "/api/v1/client/ack",
         json=ack_payload,
         headers={
-            "X-Device-Id": test_device.id,
+            "X-Device-Id": device.id,
             "X-Nonce": "test_nonce_" + str(uuid4()),
             "X-Timestamp": datetime.utcnow().isoformat() + "Z",
             "X-Signature": "mock_signature",
@@ -237,6 +248,7 @@ async def test_ack_without_owner_only_still_creates_position(
         owner_only=None,  # No hidden levels
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
@@ -314,6 +326,7 @@ async def test_ack_with_corrupt_owner_only_creates_position_without_levels(
         owner_only="CORRUPT_ENCRYPTED_DATA_INVALID",  # Invalid encryption
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
@@ -384,6 +397,7 @@ async def test_ack_all_foreign_keys_linked_correctly(
         payload={"instrument": "BTCUSD", "entry_price": 45000.00, "volume": 0.01},
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
@@ -461,6 +475,7 @@ async def test_ack_position_opened_at_timestamp(
         payload={"instrument": "AUDCAD", "entry_price": 0.9050, "volume": 0.5},
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
@@ -530,6 +545,7 @@ async def test_ack_position_broker_ticket_stored(
         payload={"instrument": "NZDUSD", "entry_price": 0.6150, "volume": 1.0},
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),

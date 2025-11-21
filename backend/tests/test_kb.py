@@ -218,7 +218,6 @@ class TestKBServiceUpdate:
         self, db_session: AsyncSession, owner_user: User
     ):
         """Test that content changes reset approval."""
-        from uuid import UUID
 
         article = await KnowledgeBaseService.create_article(
             db=db_session,
@@ -229,9 +228,10 @@ class TestKBServiceUpdate:
         )
 
         # Manually approve (simulate approval flow)
-        article.approved_by_id = (
-            UUID(owner_user.id) if isinstance(owner_user.id, str) else owner_user.id
-        )
+        article.approved_by_id = owner_user.id
+        # article.approved_by_id = (
+        #     UUID(owner_user.id) if isinstance(owner_user.id, str) else owner_user.id
+        # )
         article.approved_at = datetime.utcnow()
         db_session.add(article)
         await db_session.commit()

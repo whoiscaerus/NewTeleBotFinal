@@ -119,7 +119,6 @@ export default function ApprovalsPage() {
       showErrorToast(message);
       await vibrateError();
 
-      setError(message);
       logger.error("Failed to approve signal - restored to list", {
         approval_id: approvalId,
         error: err,
@@ -186,7 +185,6 @@ export default function ApprovalsPage() {
       showErrorToast(message);
       await vibrateError();
 
-      setError(message);
       logger.error("Failed to reject signal - restored to list", {
         approval_id: approvalId,
         error: err,

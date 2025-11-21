@@ -1045,20 +1045,14 @@ class MetricsCollector:
 # Singleton instance
 metrics = MetricsCollector()
 
-# Global metrics instance
-_metrics: MetricsCollector | None = None
-
 
 def get_metrics() -> MetricsCollector:
-    """Get or initialize global metrics collector.
+    """Get global metrics collector.
 
     Returns:
         MetricsCollector: Global instance
     """
-    global _metrics
-    if _metrics is None:
-        _metrics = MetricsCollector()
-    return _metrics
+    return metrics
 
 
 # Export messaging metrics for convenient access (PR-060)

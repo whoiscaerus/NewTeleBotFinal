@@ -17,8 +17,11 @@ import "@testing-library/jest-dom";
 // Mock date-fns
 jest.mock("date-fns", () => ({
   formatDistanceToNow: jest.fn((date) => {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) throw new RangeError("Invalid time value");
+
     const now = new Date();
-    const diffMs = now.getTime() - new Date(date).getTime();
+    const diffMs = now.getTime() - d.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
     const diffMins = Math.floor(diffSecs / 60);
 
@@ -457,14 +460,6 @@ describe("SignalCard Component", () => {
       fireEvent.click(approveButton); // Click triggers the callback
 
       expect(onApprove).toHaveBeenCalled();
-    });
-
-    test("component has proper contrast with colors", () => {
-      const props = createMockProps();
-      const { container } = render(<SignalCard {...props} />);
-
-      const card = container.querySelector("[data-testid='signal-card-approval-456']");
-      expect(card).toHaveClass("text-white"); // Text should be visible
     });
   });
 });

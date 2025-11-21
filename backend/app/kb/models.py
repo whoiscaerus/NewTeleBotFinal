@@ -42,11 +42,11 @@ class Article(Base):
     status: ArticleStatus | None = Column(  # type: ignore[assignment]
         SQLEnum(ArticleStatus), nullable=False, default=ArticleStatus.DRAFT, index=True
     )
-    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    author_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     locale = Column(String(10), nullable=False, default="en")  # e.g., en, es, fr
     version = Column(Integer, nullable=False, default=1)
     requires_approval = Column(Boolean, nullable=False, default=True)
-    approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    approved_by_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
     approval_note = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -139,7 +139,7 @@ class ArticleVersion(Base):
     title = Column(String(500), nullable=False)
     content = Column(Text, nullable=False)
     status: ArticleStatus | None = Column(SQLEnum(ArticleStatus), nullable=False)  # type: ignore[assignment]
-    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    author_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     change_note = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
@@ -171,7 +171,7 @@ class ArticleAttachment(Base):
     )  # image/png, image/jpg, application/pdf, etc.
     file_size = Column(Integer, nullable=False)  # bytes
     s3_key = Column(String(500), nullable=False, unique=True)  # S3 storage path
-    uploaded_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    uploaded_by_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
@@ -194,7 +194,7 @@ class ArticleView(Base):
         UUID(as_uuid=True), ForeignKey("kb_articles.id"), nullable=False
     )
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        String(36), ForeignKey("users.id"), nullable=True
     )  # Anonymous if null
     locale = Column(String(10), nullable=False, default="en")
     viewed_at = Column(DateTime, nullable=False, default=datetime.utcnow)

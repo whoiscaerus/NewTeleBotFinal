@@ -43,6 +43,7 @@ from backend.app.health.routes import (
     router as health_router,  # PR-100: Health Monitoring
 )
 from backend.app.journeys.routes import router as journeys_router
+from backend.app.kb.routes import router as kb_router  # PR-091: Knowledge Base
 from backend.app.messaging.routes import router as messaging_router
 from backend.app.observability.metrics import metrics
 from backend.app.payments.routes import router as payments_router
@@ -142,6 +143,7 @@ app.include_router(education_router, tags=["education"])
 app.include_router(exports_router, prefix="/api/v1", tags=["exports"])
 app.include_router(fraud_router, tags=["fraud"])
 app.include_router(journeys_router, tags=["journeys"])
+app.include_router(kb_router, tags=["knowledge-base"])  # PR-091
 app.include_router(trust_router, tags=["trust"])
 app.include_router(messaging_router, tags=["messaging"])
 app.include_router(privacy_router, tags=["privacy"])

@@ -42,7 +42,7 @@ async def test_user(db_session: AsyncSession) -> User:
 
 
 @pytest.fixture
-async def test_articles(db_session: AsyncSession) -> list[Article]:
+async def test_articles(db_session: AsyncSession, test_user: User) -> list[Article]:
     """Create test KB articles with embeddings."""
     articles = []
     titles = [
@@ -59,7 +59,7 @@ async def test_articles(db_session: AsyncSession) -> list[Article]:
             slug=title.lower().replace(" ", "-"),
             content=f"Detailed content about {title.lower()}",
             status=ArticleStatus.PUBLISHED,
-            author_id=uuid4(),
+            author_id=test_user.id,
             locale="en",
             version=1,
             created_at=datetime.utcnow(),
@@ -99,7 +99,7 @@ class TestChatHappyPath:
     ):
         """Should create new session for first message."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -123,7 +123,7 @@ class TestChatHappyPath:
     ):
         """Should create session with title from first question."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         await ai_assistant.chat(
             db=db_session,
@@ -151,7 +151,7 @@ class TestChatHappyPath:
     ):
         """Should store user and assistant messages."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         await ai_assistant.chat(
             db=db_session,
@@ -188,7 +188,7 @@ class TestChatHappyPath:
     ):
         """Should continue conversation in existing session."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         # First message
         await ai_assistant.chat(
@@ -238,7 +238,7 @@ class TestChatWithRAG:
     ):
         """Should retrieve relevant KB articles."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -260,7 +260,7 @@ class TestChatWithRAG:
     ):
         """Response should include citations from retrieved articles."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -365,7 +365,7 @@ class TestChatGuardrails:
     ):
         """Should escalate questions containing API keys (not block input, but escalate for safety)."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -386,7 +386,7 @@ class TestChatGuardrails:
     ):
         """Should escalate questions containing PII (not block input, but escalate for safety)."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -407,7 +407,7 @@ class TestChatGuardrails:
     ):
         """Should escalate if response would contain financial advice."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         # This response might trigger escalation (depends on LLM stub)
         response = await ai_assistant.chat(
@@ -433,7 +433,7 @@ class TestChatEscalation:
     ):
         """Policy violation in response should trigger escalation."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -462,7 +462,7 @@ class TestChatEscalation:
     ):
         """Should support manual escalation."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         # Create session first
         await ai_assistant.chat(
@@ -506,7 +506,7 @@ class TestSessionManagement:
     ):
         """Should retrieve full session history."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         # Create multiple messages
         await ai_assistant.chat(
@@ -554,7 +554,7 @@ class TestSessionManagement:
     ):
         """Should list user's sessions with pagination."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         # Create multiple sessions
         for i in range(3):
@@ -585,7 +585,7 @@ class TestSessionManagement:
     ):
         """Pagination should work correctly."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         # Create 5 sessions
         for i in range(5):
@@ -631,7 +631,7 @@ class TestSessionIsolation:
         """User should not access another user's session."""
         user1 = await test_user.__wrapped__(db_session)
         user2 = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user1)
 
         # User 1 creates session
         await ai_assistant.chat(
@@ -667,7 +667,7 @@ class TestSessionIsolation:
         """User list should not include other users' sessions."""
         user1 = await test_user.__wrapped__(db_session)
         user2 = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user1)
 
         # User 1 creates sessions
         for i in range(2):
@@ -711,7 +711,7 @@ class TestEdgeCases:
     ):
         """Should handle very long but valid questions."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         long_question = "How do I reset my password? " * 50  # 1650 chars
 
@@ -733,7 +733,7 @@ class TestEdgeCases:
     ):
         """Should handle Unicode characters in questions."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -753,7 +753,7 @@ class TestEdgeCases:
     ):
         """Should handle special characters in questions."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -773,7 +773,7 @@ class TestEdgeCases:
     ):
         """Should handle questions with no relevant articles."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -798,7 +798,7 @@ class TestResponseQuality:
     ):
         """Response should include confidence score."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,
@@ -819,7 +819,7 @@ class TestResponseQuality:
     ):
         """Response should never be empty."""
         user = await test_user.__wrapped__(db_session)
-        await test_articles.__wrapped__(db_session)
+        await test_articles.__wrapped__(db_session, user)
 
         response = await ai_assistant.chat(
             db=db_session,

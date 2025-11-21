@@ -391,7 +391,7 @@ async def acknowledge_execution(
 
         db.add(execution)
         await db.commit()
-        await db.refresh(execution)
+        # await db.refresh(execution)
 
         logger.info(
             "Execution recorded",
@@ -463,7 +463,7 @@ async def acknowledge_execution(
 
                     db.add(position)
                     await db.commit()
-                    await db.refresh(position)
+                    # await db.refresh(position)
 
                     logger.info(
                         "OpenPosition created for trade execution",

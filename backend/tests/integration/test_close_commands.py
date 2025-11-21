@@ -5,21 +5,30 @@ that enable server-initiated position closes.
 """
 
 import json
+from collections import namedtuple
 from datetime import datetime
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import text
 
+from backend.app.approvals.models import Approval, ApprovalDecision
 from backend.app.auth.models import User
 from backend.app.clients.devices.models import Device
 from backend.app.clients.models import Client
 from backend.app.ea.auth import HMACBuilder
+from backend.app.ea.models import Execution, ExecutionStatus
+from backend.app.signals.models import Signal
 from backend.app.trading.positions.close_commands import (
     CloseCommandStatus,
     create_close_command,
 )
 from backend.app.trading.positions.models import OpenPosition, PositionStatus
+
+TestExecutionData = namedtuple(
+    "TestExecutionData", ["signal_id", "approval_id", "execution_id"]
+)
 
 
 @pytest_asyncio.fixture
@@ -57,6 +66,46 @@ async def test_device(db_session, test_user):
     db_session.add(device)
     await db_session.commit()
     return device
+
+
+@pytest_asyncio.fixture
+async def test_execution(db_session, test_user, test_device):
+    """Create a test execution chain (Signal -> Approval -> Execution)."""
+    # Create Signal
+    signal = Signal(
+        id=str(uuid4()),
+        user_id=test_user.id,
+        instrument="XAUUSD",
+        side=0,
+        price=2655.00,
+        status=1,  # Approved
+    )
+    db_session.add(signal)
+    await db_session.flush()
+
+    # Create Approval
+    approval = Approval(
+        id=str(uuid4()),
+        signal_id=signal.id,
+        user_id=test_user.id,
+        client_id=test_device.client_id,
+        decision=ApprovalDecision.APPROVED.value,
+    )
+    db_session.add(approval)
+    await db_session.flush()
+
+    # Create Execution
+    execution = Execution(
+        id=str(uuid4()),
+        approval_id=approval.id,
+        device_id=test_device.id,
+        status=ExecutionStatus.PLACED,
+        broker_ticket="123456",
+    )
+    db_session.add(execution)
+    await db_session.commit()
+
+    return TestExecutionData(signal.id, approval.id, execution.id)
 
 
 def generate_device_auth_headers(
@@ -112,7 +161,7 @@ async def test_poll_close_commands_no_pending(
 
 @pytest.mark.asyncio
 async def test_poll_close_commands_with_pending(
-    client, db_session, test_user, test_device
+    client, db_session, test_user, test_device, test_execution
 ):
     """Test polling when close commands are pending.
 
@@ -124,9 +173,9 @@ async def test_poll_close_commands_with_pending(
     # Create open position
     position = OpenPosition(
         id=str(uuid4()),
-        execution_id=str(uuid4()),
-        signal_id=str(uuid4()),
-        approval_id=str(uuid4()),
+        execution_id=test_execution.execution_id,
+        signal_id=test_execution.signal_id,
+        approval_id=test_execution.approval_id,
         user_id=test_user.id,
         device_id=test_device.id,
         instrument="XAUUSD",
@@ -183,11 +232,43 @@ async def test_poll_close_commands_multiple_pending(
     # Create 3 open positions
     positions = []
     for i in range(3):
+        # Create dependencies
+        signal = Signal(
+            id=str(uuid4()),
+            user_id=test_user.id,
+            instrument="XAUUSD",
+            side=0,
+            price=2655.00,
+            status=1,
+        )
+        db_session.add(signal)
+        await db_session.flush()
+
+        approval = Approval(
+            id=str(uuid4()),
+            signal_id=signal.id,
+            user_id=test_user.id,
+            client_id=test_device.client_id,
+            decision=ApprovalDecision.APPROVED.value,
+        )
+        db_session.add(approval)
+        await db_session.flush()
+
+        execution = Execution(
+            id=str(uuid4()),
+            approval_id=approval.id,
+            device_id=test_device.id,
+            status=ExecutionStatus.PLACED.value,
+            broker_ticket=f"ticket_{i}",
+        )
+        db_session.add(execution)
+        await db_session.flush()
+
         position = OpenPosition(
             id=str(uuid4()),
-            execution_id=str(uuid4()),
-            signal_id=str(uuid4()),
-            approval_id=str(uuid4()),
+            execution_id=execution.id,
+            signal_id=signal.id,
+            approval_id=approval.id,
             user_id=test_user.id,
             device_id=test_device.id,
             instrument="XAUUSD",
@@ -199,19 +280,23 @@ async def test_poll_close_commands_multiple_pending(
             status=PositionStatus.OPEN.value,
         )
         db_session.add(position)
+        await db_session.commit()
         positions.append(position)
 
-    await db_session.commit()
-
-    # Create close commands for all 3 positions
-    for position in positions:
-        await create_close_command(
+    # Monitor detects breach → creates close command
+    # Create commands with slight delay to ensure ordering
+    close_cmds = []
+    for i, pos in enumerate(positions):
+        cmd = await create_close_command(
             db_session,
-            position_id=position.id,
+            position_id=pos.id,
             device_id=test_device.id,
-            reason="tp_hit",
-            expected_price=2672.00,
+            reason="sl_hit",
+            expected_price=2643.50,
         )
+        close_cmds.append(cmd)
+        # Ensure timestamp difference
+        await db_session.execute(text("SELECT 1"))  # Tiny delay
 
     # EA polls for close commands
     headers = generate_device_auth_headers(
@@ -228,14 +313,16 @@ async def test_poll_close_commands_multiple_pending(
     assert data["count"] == 3
     assert len(data["commands"]) == 3
 
-    # All commands should have correct reason
-    for command in data["commands"]:
-        assert command["reason"] == "tp_hit"
-        assert command["expected_price"] == 2672.00
+    # Verify ordering (oldest first)
+    returned_ids = [cmd["id"] for cmd in data["commands"]]
+    expected_ids = [cmd.id for cmd in close_cmds]
+    assert returned_ids == expected_ids
 
 
 @pytest.mark.asyncio
-async def test_close_ack_success(client, db_session, test_user, test_device):
+async def test_close_ack_success(
+    client, db_session, test_user, test_device, test_execution
+):
     """Test acknowledging successful close execution.
 
     Workflow:
@@ -248,9 +335,9 @@ async def test_close_ack_success(client, db_session, test_user, test_device):
     # Create open position
     position = OpenPosition(
         id=str(uuid4()),
-        execution_id=str(uuid4()),
-        signal_id=str(uuid4()),
-        approval_id=str(uuid4()),
+        execution_id=test_execution.execution_id,
+        signal_id=test_execution.signal_id,
+        approval_id=test_execution.approval_id,
         user_id=test_user.id,
         device_id=test_device.id,
         instrument="XAUUSD",
@@ -315,7 +402,9 @@ async def test_close_ack_success(client, db_session, test_user, test_device):
 
 
 @pytest.mark.asyncio
-async def test_close_ack_failure(client, db_session, test_user, test_device):
+async def test_close_ack_failure(
+    client, db_session, test_user, test_device, test_execution
+):
     """Test acknowledging failed close execution.
 
     Workflow:
@@ -327,9 +416,9 @@ async def test_close_ack_failure(client, db_session, test_user, test_device):
     # Create open position
     position = OpenPosition(
         id=str(uuid4()),
-        execution_id=str(uuid4()),
-        signal_id=str(uuid4()),
-        approval_id=str(uuid4()),
+        execution_id=test_execution.execution_id,
+        signal_id=test_execution.signal_id,
+        approval_id=test_execution.approval_id,
         user_id=test_user.id,
         device_id=test_device.id,
         instrument="XAUUSD",
@@ -390,22 +479,27 @@ async def test_close_ack_failure(client, db_session, test_user, test_device):
 
 
 @pytest.mark.asyncio
-async def test_close_ack_invalid_status(client, db_session, test_user, test_device):
+async def test_close_ack_invalid_status(
+    client, db_session, test_user, test_device, test_execution
+):
     """Test ack with invalid status value.
 
     Should return 400 Bad Request.
     """
+    # Create open position
     position = OpenPosition(
         id=str(uuid4()),
-        execution_id=str(uuid4()),
-        signal_id=str(uuid4()),
-        approval_id=str(uuid4()),
+        execution_id=test_execution.execution_id,
+        signal_id=test_execution.signal_id,
+        approval_id=test_execution.approval_id,
         user_id=test_user.id,
         device_id=test_device.id,
         instrument="XAUUSD",
         side=0,
         entry_price=2655.00,
         volume=0.1,
+        owner_sl=2645.00,
+        owner_tp=2670.00,
         status=PositionStatus.OPEN.value,
     )
     db_session.add(position)
@@ -445,23 +539,26 @@ async def test_close_ack_invalid_status(client, db_session, test_user, test_devi
 
 @pytest.mark.asyncio
 async def test_close_ack_missing_close_price(
-    client, db_session, test_user, test_device
+    client, db_session, test_user, test_device, test_execution
 ):
     """Test ack with status=executed but missing actual_close_price.
 
     Should return 400 Bad Request.
     """
+    # Create open position
     position = OpenPosition(
         id=str(uuid4()),
-        execution_id=str(uuid4()),
-        signal_id=str(uuid4()),
-        approval_id=str(uuid4()),
+        execution_id=test_execution.execution_id,
+        signal_id=test_execution.signal_id,
+        approval_id=test_execution.approval_id,
         user_id=test_user.id,
         device_id=test_device.id,
         instrument="XAUUSD",
         side=0,
         entry_price=2655.00,
         volume=0.1,
+        owner_sl=2645.00,
+        owner_tp=2670.00,
         status=PositionStatus.OPEN.value,
     )
     db_session.add(position)

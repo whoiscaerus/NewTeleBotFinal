@@ -234,6 +234,8 @@ async def test_poll_with_owner_only_encrypted_data_not_exposed(
         owner_only=encrypted_owner_only,  # ENCRYPTED hidden levels
     )
     db_session.add(signal)
+    await db_session.commit()
+    await db_session.refresh(signal)
 
     # Create approval
     approval = Approval(
@@ -320,6 +322,7 @@ async def test_poll_without_owner_only_still_redacted(
         owner_only=None,  # No encrypted data
     )
     db_session.add(signal)
+    await db_session.flush()
 
     # Create approval
     approval = Approval(
@@ -467,6 +470,7 @@ async def test_multiple_signals_all_redacted(
             owner_only=encrypt_owner_only(owner_data),
         )
         db_session.add(signal)
+        await db_session.flush()
         signals.append(signal)
 
         # Create approval for each

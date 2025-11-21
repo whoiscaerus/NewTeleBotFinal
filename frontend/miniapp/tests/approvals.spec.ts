@@ -53,8 +53,9 @@ describe("Approvals Service", () => {
       const result = await fetchPendingApprovals(jwt);
 
       expect(global.fetch).toHaveBeenCalledWith(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/approvals/pending`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/approvals/pending?skip=0&limit=50`,
         {
+          method: "GET",
           headers: {
             Authorization: `Bearer ${jwt}`,
             "Content-Type": "application/json",
@@ -62,9 +63,9 @@ describe("Approvals Service", () => {
         }
       );
 
-      expect(result).toEqual({
-        approvals: [{ id: "app-1", signal: { id: "sig-1", instrument: "GOLD", side: "buy" } }],
-      });
+      expect(result).toEqual([
+        { id: "app-1", signal: { id: "sig-1", instrument: "GOLD", side: "buy" } },
+      ]);
     });
 
     test("includes pagination parameters when provided", async () => {
@@ -104,7 +105,7 @@ describe("Approvals Service", () => {
       const mockResponse = {
         ok: false,
         status: 401,
-        json: async () => ({ error: "Unauthorized" }),
+        json: async () => ({ detail: "Unauthorized" }),
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -117,7 +118,7 @@ describe("Approvals Service", () => {
       const mockResponse = {
         ok: false,
         status: 500,
-        json: async () => ({ error: "Internal Server Error" }),
+        json: async () => ({ detail: "Internal Server Error" }),
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -178,7 +179,7 @@ describe("Approvals Service", () => {
       await fetchPendingApprovals(jwt);
 
       expect(logger.info).toHaveBeenCalledWith(
-        "Fetching pending approvals",
+        "Fetched pending approvals",
         expect.any(Object)
       );
     });
@@ -234,7 +235,7 @@ describe("Approvals Service", () => {
       const mockResponse = {
         ok: false,
         status: 400,
-        json: async () => ({ error: "Approval already processed" }),
+        json: async () => ({ detail: "Approval already processed" }),
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -250,7 +251,7 @@ describe("Approvals Service", () => {
       const mockResponse = {
         ok: false,
         status: 401,
-        json: async () => ({ error: "Unauthorized" }),
+        json: async () => ({ detail: "Unauthorized" }),
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -318,7 +319,7 @@ describe("Approvals Service", () => {
       const mockResponse = {
         ok: false,
         status: 400,
-        json: async () => ({ error: "Approval already processed" }),
+        json: async () => ({ detail: "Approval already processed" }),
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -334,7 +335,7 @@ describe("Approvals Service", () => {
       const mockResponse = {
         ok: false,
         status: 401,
-        json: async () => ({ error: "Unauthorized" }),
+        json: async () => ({ detail: "Unauthorized" }),
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 

@@ -184,7 +184,8 @@ async def create_close_command(
 
     db.add(command)
     await db.commit()
-    await db.refresh(command)
+    # No need to refresh as all fields are set in Python
+    # await db.refresh(command)
 
     return command
 

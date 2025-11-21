@@ -64,8 +64,8 @@ class KnowledgeBaseService:
             ValueError: If article slug already exists for locale
         """
         # Convert string to UUID if needed
-        if isinstance(author_id, str):
-            author_id = UUID(author_id)
+        # if isinstance(author_id, str):
+        #     author_id = UUID(author_id)
 
         slug = slugify(title)
 
@@ -167,8 +167,8 @@ class KnowledgeBaseService:
         # Convert strings to UUIDs if needed
         if isinstance(article_id, str):
             article_id = UUID(article_id)
-        if isinstance(author_id, str):
-            author_id = UUID(author_id)
+        # if isinstance(author_id, str):
+        #     author_id = UUID(author_id)
 
         result = await db.execute(select(Article).where(Article.id == article_id))
         article = result.scalar_one_or_none()
@@ -266,8 +266,8 @@ class KnowledgeBaseService:
         # Convert strings to UUIDs if needed
         if isinstance(article_id, str):
             article_id = UUID(article_id)
-        if isinstance(approved_by_id, str):
-            approved_by_id = UUID(approved_by_id)
+        # if isinstance(approved_by_id, str):
+        #     approved_by_id = UUID(approved_by_id)
 
         result = await db.execute(select(Article).where(Article.id == article_id))
         article = result.scalar_one_or_none()
@@ -318,8 +318,8 @@ class KnowledgeBaseService:
         # Convert strings to UUIDs if needed
         if isinstance(article_id, str):
             article_id = UUID(article_id)
-        if isinstance(rejected_by_id, str):
-            rejected_by_id = UUID(rejected_by_id)
+        # if isinstance(rejected_by_id, str):
+        #     rejected_by_id = UUID(rejected_by_id)
 
         result = await db.execute(select(Article).where(Article.id == article_id))
         article = result.scalar_one_or_none()
@@ -572,8 +572,8 @@ class KnowledgeBaseService:
         # Convert strings to UUIDs if needed
         if isinstance(article_id, str):
             article_id = UUID(article_id)
-        if isinstance(user_id, str):
-            user_id = UUID(user_id)
+        # if isinstance(user_id, str):
+        #     user_id = UUID(user_id)
 
         view = ArticleView(article_id=article_id, user_id=user_id, locale=locale)
         db.add(view)
