@@ -12,6 +12,7 @@ Tests cover:
 """
 
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -93,8 +94,11 @@ async def test_calculate_user_xp_no_activity(db_session: AsyncSession, test_user
 
 
 @pytest.mark.asyncio
-async def test_calculate_user_xp_base_only(db_session: AsyncSession, test_user: User):
-    """Test: Calculate XP from approved trades only.
+async def test_calculate_user_xp_base_only(
+    db_session: AsyncSession,
+    test_user: User,
+) -> None:
+    """Test base XP calculation (10 XP per approved trade).
 
     Business Logic:
         - 10 XP per approved trade
@@ -116,6 +120,7 @@ async def test_calculate_user_xp_base_only(db_session: AsyncSession, test_user: 
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
+        await db_session.flush()
 
         approval = Approval(
             id=str(uuid4()),
@@ -125,6 +130,7 @@ async def test_calculate_user_xp_base_only(db_session: AsyncSession, test_user: 
             created_at=datetime.now(UTC),
         )
         db_session.add(approval)
+        await db_session.flush()
 
     # Create 2 rejected (should not count)
     for _ in range(2):
@@ -138,6 +144,7 @@ async def test_calculate_user_xp_base_only(db_session: AsyncSession, test_user: 
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
+        await db_session.flush()
 
         approval = Approval(
             id=str(uuid4()),
@@ -147,8 +154,9 @@ async def test_calculate_user_xp_base_only(db_session: AsyncSession, test_user: 
             created_at=datetime.now(UTC),
         )
         db_session.add(approval)
+        await db_session.flush()
 
-    await db_session.commit()
+    await db_session.flush()
 
     service = GamificationService(db_session)
     xp = await service.calculate_user_xp(test_user.id)
@@ -192,14 +200,18 @@ async def test_calculate_stability_bonus_high_sharpe(
         - High Sharpe ratio awards max bonus
         - Calculation uses equity series correctly
     """
+    print(f"DEBUG: Test user_id={test_user.id} (type={type(test_user.id)})")
+    print(f"DEBUG: Test db_session id={id(db_session)}")
+
     # Create 90 days of growing equity (high Sharpe)
     base_date = datetime.now(UTC) - timedelta(days=90)
-    initial_equity = 10000.0
+    initial_equity = Decimal("10000.0")
 
     for day in range(90):
         equity_date = base_date + timedelta(days=day)
         # Consistent 1% daily growth
-        final_equity = initial_equity * (1.01 ** (day + 1))
+        growth_factor = Decimal(str(1.01 ** (day + 1)))
+        final_equity = initial_equity * growth_factor
 
         snapshot = EquityPoint(
             equity_id=str(uuid4()),
@@ -207,16 +219,18 @@ async def test_calculate_stability_bonus_high_sharpe(
             snapshot_date=equity_date,
             final_equity=final_equity,
             total_pnl=final_equity - initial_equity,
-            realized_pnl=0.0,
-            unrealized_pnl=0.0,
+            realized_pnl=Decimal("0.0"),
+            unrealized_pnl=Decimal("0.0"),
             total_return_percent=((final_equity - initial_equity) / initial_equity)
-            * 100,
-            max_drawdown_percent=0.0,
+            * Decimal("100"),
+            max_drawdown_percent=Decimal("0.0"),
             days_in_period=day + 1,
         )
         db_session.add(snapshot)
 
-    await db_session.commit()
+    print("DEBUG: Flushing session...")
+    await db_session.flush()
+    print("DEBUG: Session flushed.")
 
     service = GamificationService(db_session)
     bonus = await service._calculate_stability_bonus(test_user.id)
@@ -264,7 +278,7 @@ async def test_calculate_stability_bonus_medium_sharpe(
         )
         db_session.add(snapshot)
 
-    await db_session.commit()
+    await db_session.flush()
 
     service = GamificationService(db_session)
     bonus = await service._calculate_stability_bonus(test_user.id)
@@ -323,6 +337,7 @@ async def test_get_user_level_silver(db_session: AsyncSession, test_user: User):
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
+        await db_session.flush()
 
         approval = Approval(
             id=str(uuid4()),
@@ -333,7 +348,7 @@ async def test_get_user_level_silver(db_session: AsyncSession, test_user: User):
         )
         db_session.add(approval)
 
-    await db_session.commit()
+    await db_session.flush()
 
     service = GamificationService(db_session)
     level = await service.get_user_level(test_user.id)
@@ -371,6 +386,7 @@ async def test_award_first_trade_badge(db_session: AsyncSession, test_user: User
         created_at=datetime.now(UTC),
     )
     db_session.add(signal)
+    await db_session.flush()
 
     approval = Approval(
         id=str(uuid4()),
@@ -380,14 +396,16 @@ async def test_award_first_trade_badge(db_session: AsyncSession, test_user: User
         created_at=datetime.now(UTC),
     )
     db_session.add(approval)
-    await db_session.commit()
+    await db_session.flush()
 
     # Check and award badges
     service = GamificationService(db_session)
     newly_earned = await service.check_and_award_badges(test_user.id)
 
     assert len(newly_earned) == 1
-    assert newly_earned[0].badge.name == "First Trade"
+    # Fetch badge to verify name safely
+    badge = await db_session.get(Badge, newly_earned[0].badge_id)
+    assert badge.name == "First Trade"
 
     # Verify badge is in DB
     stmt = select(EarnedBadge).where(EarnedBadge.user_id == test_user.id)
@@ -437,6 +455,7 @@ async def test_award_multiple_milestone_badges(
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
+        await db_session.flush()
 
         approval = Approval(
             id=str(uuid4()),
@@ -447,14 +466,19 @@ async def test_award_multiple_milestone_badges(
         )
         db_session.add(approval)
 
-    await db_session.commit()
+    await db_session.flush()
 
     # Check and award badges
     service = GamificationService(db_session)
     newly_earned = await service.check_and_award_badges(test_user.id)
 
     # Should earn: first_trade, getting_started, trader
-    earned_names = {badge.badge.name for badge in newly_earned}
+    # Fetch badge names safely
+    earned_names = set()
+    for earned in newly_earned:
+        badge = await db_session.get(Badge, earned.badge_id)
+        earned_names.add(badge.name)
+
     assert "First Trade" in earned_names
     assert "Getting Started" in earned_names
     assert "Trader" in earned_names
@@ -519,7 +543,7 @@ async def test_check_profit_streak_achieved(db_session: AsyncSession, test_user:
         )
         db_session.add(snapshot)
 
-    await db_session.commit()
+    await db_session.flush()
 
     service = GamificationService(db_session)
     has_streak = await service._check_profit_streak(test_user.id, days=90)
@@ -567,7 +591,7 @@ async def test_check_profit_streak_broken(db_session: AsyncSession, test_user: U
         )
         db_session.add(snapshot)
 
-    await db_session.commit()
+    await db_session.flush()
 
     service = GamificationService(db_session)
     has_streak = await service._check_profit_streak(test_user.id, days=90)
@@ -614,7 +638,7 @@ async def test_check_low_drawdown_achieved(db_session: AsyncSession, test_user: 
         )
         db_session.add(snapshot)
 
-    await db_session.commit()
+    await db_session.flush()
 
     service = GamificationService(db_session)
     has_low_dd = await service._check_low_drawdown(test_user.id, days=30, max_dd=0.10)
@@ -661,7 +685,7 @@ async def test_check_low_drawdown_exceeded(db_session: AsyncSession, test_user: 
         )
         db_session.add(snapshot)
 
-    await db_session.commit()
+    await db_session.flush()
 
     service = GamificationService(db_session)
     has_low_dd = await service._check_low_drawdown(test_user.id, days=30, max_dd=0.10)
@@ -757,7 +781,7 @@ async def test_leaderboard_privacy_only_opted_in_users(
         password_hash="hashed_password",
     )
     db_session.add(user2)
-    await db_session.commit()
+    await db_session.flush()
 
     # Give both users activity
     for user in [test_user, user2]:
@@ -772,6 +796,7 @@ async def test_leaderboard_privacy_only_opted_in_users(
                 created_at=datetime.now(UTC),
             )
             db_session.add(signal)
+            await db_session.flush()
 
             approval = Approval(
                 id=str(uuid4()),
@@ -782,7 +807,7 @@ async def test_leaderboard_privacy_only_opted_in_users(
             )
             db_session.add(approval)
 
-    await db_session.commit()
+    await db_session.flush()
 
     # Only opt in test_user
     service = GamificationService(db_session)
@@ -797,7 +822,9 @@ async def test_leaderboard_privacy_only_opted_in_users(
 
 
 @pytest.mark.asyncio
-async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
+async def test_leaderboard_ranking_determinism(
+    db_session: AsyncSession, test_user: User
+):
     """Test: Leaderboard ranking is deterministic and correct.
 
     Business Logic:
@@ -814,7 +841,7 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
 
     # Create 3 users with different Sharpe ratios
     users = []
-    for _ in range(3):
+    for i in range(3):
         user = User(
             id=str(uuid4()),
             email=f"user{i}@example.com",
@@ -823,12 +850,14 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
         db_session.add(user)
         users.append(user)
 
-    await db_session.commit()
+    await db_session.flush()
 
     # User 0: High Sharpe (2.5), Low XP (100)
     for day in range(90):
         equity_date = datetime.now(UTC) - timedelta(days=90 - day)
-        final_equity = 10000 * (1.01 ** (day + 1))  # Consistent growth
+        # Add small noise to ensure std_dev > 0 for Sharpe calculation
+        noise = (day % 2) * 5 - 2.5
+        final_equity = 10000 * (1.01 ** (day + 1)) + noise  # Consistent growth
 
         snapshot = EquityPoint(
             equity_id=str(uuid4()),
@@ -856,6 +885,7 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
+        await db_session.flush()
 
         approval = Approval(
             id=str(uuid4()),
@@ -868,7 +898,9 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
 
     for day in range(90):
         equity_date = datetime.now(UTC) - timedelta(days=90 - day)
-        final_equity = 10000 * (1.005 ** (day + 1))  # Moderate growth
+        # Add more noise
+        noise = (day % 3) * 10 - 5
+        final_equity = 10000 * (1.005 ** (day + 1)) + noise  # Moderate growth
 
         snapshot = EquityPoint(
             equity_id=str(uuid4()),
@@ -896,6 +928,7 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
+        await db_session.flush()
 
         approval = Approval(
             id=str(uuid4()),
@@ -925,7 +958,7 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
         )
         db_session.add(snapshot)
 
-    await db_session.commit()
+    await db_session.flush()
 
     # Opt all users in
     service = GamificationService(db_session)
@@ -946,12 +979,12 @@ async def test_leaderboard_ranking_determinism(db_session: AsyncSession):
     assert leaderboard[2]["rank"] == 3
 
     # Verify Sharpe ordering
-    assert leaderboard[0]["sharpe"] > leaderboard[1]["sharpe"]
-    assert leaderboard[1]["sharpe"] > leaderboard[2]["sharpe"]
+    assert leaderboard[0]["sharpe_ratio"] > leaderboard[1]["sharpe_ratio"]
+    assert leaderboard[1]["sharpe_ratio"] > leaderboard[2]["sharpe_ratio"]
 
 
 @pytest.mark.asyncio
-async def test_leaderboard_pagination(db_session: AsyncSession):
+async def test_leaderboard_pagination(db_session: AsyncSession, test_user: User):
     """Test: Leaderboard pagination works correctly.
 
     Business Logic:
@@ -967,7 +1000,7 @@ async def test_leaderboard_pagination(db_session: AsyncSession):
 
     # Create 10 users
     users = []
-    for _ in range(10):
+    for i in range(10):
         user = User(
             id=str(uuid4()),
             email=f"user{i}@example.com",
@@ -976,7 +1009,7 @@ async def test_leaderboard_pagination(db_session: AsyncSession):
         db_session.add(user)
         users.append(user)
 
-    await db_session.commit()
+    await db_session.flush()
 
     # Give each user different XP (via trades)
     service = GamificationService(db_session)
@@ -994,6 +1027,7 @@ async def test_leaderboard_pagination(db_session: AsyncSession):
                 created_at=datetime.now(UTC),
             )
             db_session.add(signal)
+            await db_session.flush()
 
             approval = Approval(
                 id=str(uuid4()),
@@ -1007,7 +1041,7 @@ async def test_leaderboard_pagination(db_session: AsyncSession):
         # Opt in
         await service.opt_in_leaderboard(user_id=user.id, display_name=f"User{i}")
 
-    await db_session.commit()
+    await db_session.flush()
 
     # Get first page (limit=3)
     page1 = await service.get_leaderboard(limit=3, offset=0)
@@ -1052,6 +1086,7 @@ async def test_xp_calculation_with_all_sources(
             created_at=datetime.now(UTC),
         )
         db_session.add(signal)
+        await db_session.flush()
 
         approval = Approval(
             id=str(uuid4()),
@@ -1085,7 +1120,7 @@ async def test_xp_calculation_with_all_sources(
         )
         db_session.add(snapshot)
 
-    await db_session.commit()
+    await db_session.flush()
 
     # Award badges (badge XP)
     service = GamificationService(db_session)
@@ -1097,11 +1132,15 @@ async def test_xp_calculation_with_all_sources(
     # Breakdown:
     # Base: 10 * 10 = 100
     # Stability: ~50 (high Sharpe)
-    # Badges: first_trade (50) + getting_started (100) = 150
-    # Total: ~300 XP
+    # Badges:
+    #   - first_trade (50)
+    #   - getting_started (100)
+    #   - profit_streak_90d (1000) - triggered by 90 days of profit
+    #   - risk_master (750) - triggered by 0% drawdown
+    # Total: ~2050 XP
 
-    assert total_xp >= 290  # Allow for slight Sharpe variation
-    assert total_xp <= 310
+    assert total_xp >= 2040
+    assert total_xp <= 2060
 
 
 @pytest.mark.asyncio
@@ -1143,29 +1182,28 @@ async def test_edge_case_diamond_level_no_upper_bound(
     """
     await seed_badges_and_levels(db_session)
 
-    # Create 5001 approved trades (50010 XP)
-    for _ in range(5001):
-        signal = Signal(
-            id=str(uuid4()),
-            user_id=test_user.id,
-            instrument="XAUUSD",
-            side=0,
-            price=1950.0,
-            status=SignalStatus.NEW.value,
-            created_at=datetime.now(UTC),
-        )
-        db_session.add(signal)
+    # Create a custom "God Mode" badge with 50001 XP to avoid creating 5000 trades
+    god_badge = Badge(
+        id=str(uuid4()),
+        name="God Mode",
+        description="Instant Diamond",
+        icon="⚡",
+        category="admin",
+        xp_reward=50001,
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(god_badge)
+    await db_session.flush()
 
-        approval = Approval(
-            id=str(uuid4()),
-            user_id=test_user.id,
-            signal_id=signal.id,
-            decision=ApprovalDecision.APPROVED.value,
-            created_at=datetime.now(UTC),
-        )
-        db_session.add(approval)
-
-    await db_session.commit()
+    # Award it
+    earned = EarnedBadge(
+        id=str(uuid4()),
+        user_id=test_user.id,
+        badge_id=god_badge.id,
+        earned_at=datetime.now(UTC),
+    )
+    db_session.add(earned)
+    await db_session.flush()
 
     service = GamificationService(db_session)
     level = await service.get_user_level(test_user.id)
