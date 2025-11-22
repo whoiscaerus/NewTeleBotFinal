@@ -91,6 +91,36 @@ async def user_fixture(db_session_test):
 
 
 @pytest_asyncio.fixture
+async def create_user_func(db_session_test):
+    """Factory fixture to create users on demand."""
+
+    async def _create_user(user_id):
+        import bcrypt
+        from sqlalchemy import select
+
+        from backend.app.auth.models import User
+
+        # Check if user exists
+        stmt = select(User).where(User.id == user_id)
+        result = await db_session_test.execute(stmt)
+        if result.scalar_one_or_none():
+            return
+
+        password_hash = bcrypt.hashpw(b"test_password", bcrypt.gensalt()).decode()
+        user = User(
+            id=user_id,
+            email=f"{user_id}@example.com",
+            password_hash=password_hash,
+            telegram_user_id=f"tg_{user_id}",
+        )
+        db_session_test.add(user)
+        await db_session_test.commit()
+        return user
+
+    return _create_user
+
+
+@pytest_asyncio.fixture
 async def copy_settings_fixture(db_session_test, user_fixture):
     """Create copy-trading settings for test user."""
     settings = CopyTradeSettings(
@@ -628,10 +658,15 @@ class TestDisclosureVersioningAsyncBusinessLogic:
 
     @pytest.mark.asyncio
     async def test_record_consent_immutable(
-        self, db_session_test, disclosure_service_fixture, disclosure_v1_fixture
+        self,
+        db_session_test,
+        disclosure_service_fixture,
+        disclosure_v1_fixture,
+        create_user_func,
     ):
         """Test: Record consent and verify it's immutable."""
         user_id = "user_consent_test"
+        await create_user_func(user_id)
 
         consent = await disclosure_service_fixture.record_consent(
             db_session_test,
@@ -656,10 +691,15 @@ class TestDisclosureVersioningAsyncBusinessLogic:
 
     @pytest.mark.asyncio
     async def test_has_accepted_version(
-        self, db_session_test, disclosure_service_fixture, disclosure_v1_fixture
+        self,
+        db_session_test,
+        disclosure_service_fixture,
+        disclosure_v1_fixture,
+        create_user_func,
     ):
         """Test: Check if user accepted specific version."""
         user_id = "user_v1_test"
+        await create_user_func(user_id)
 
         # Record consent for v1.0
         await disclosure_service_fixture.record_consent(
@@ -680,10 +720,15 @@ class TestDisclosureVersioningAsyncBusinessLogic:
 
     @pytest.mark.asyncio
     async def test_has_accepted_current_disclosure(
-        self, db_session_test, disclosure_service_fixture, disclosure_v1_fixture
+        self,
+        db_session_test,
+        disclosure_service_fixture,
+        disclosure_v1_fixture,
+        create_user_func,
     ):
         """Test: Check if user accepted current disclosure version."""
         user_id = "user_current_test"
+        await create_user_func(user_id)
 
         # Initially not accepted
         has_current = await disclosure_service_fixture.has_accepted_current(
@@ -704,10 +749,15 @@ class TestDisclosureVersioningAsyncBusinessLogic:
 
     @pytest.mark.asyncio
     async def test_get_consent_history(
-        self, db_session_test, disclosure_service_fixture, disclosure_v1_fixture
+        self,
+        db_session_test,
+        disclosure_service_fixture,
+        disclosure_v1_fixture,
+        create_user_func,
     ):
         """Test: Get full consent history (immutable audit trail)."""
         user_id = "user_history_test"
+        await create_user_func(user_id)
 
         # Create v1.0 and v2.0 disclosures
         await disclosure_service_fixture.create_disclosure(
@@ -740,10 +790,15 @@ class TestDisclosureVersioningAsyncBusinessLogic:
 
     @pytest.mark.asyncio
     async def test_require_current_consent_needs_upgrade(
-        self, db_session_test, disclosure_service_fixture, disclosure_v1_fixture
+        self,
+        db_session_test,
+        disclosure_service_fixture,
+        disclosure_v1_fixture,
+        create_user_func,
     ):
         """Test: Detect when user needs to accept new disclosure version."""
         user_id = "user_upgrade_test"
+        await create_user_func(user_id)
 
         # Record v1.0 consent
         await disclosure_service_fixture.record_consent(
@@ -986,10 +1041,15 @@ class TestEdgeCasesAndErrorsAsync:
 
     @pytest.mark.asyncio
     async def test_consent_record_duplicate_prevented(
-        self, db_session_test, disclosure_service_fixture, disclosure_v1_fixture
+        self,
+        db_session_test,
+        disclosure_service_fixture,
+        disclosure_v1_fixture,
+        create_user_func,
     ):
         """Test: Can record multiple consent records for same user (audit trail)."""
         user_id = "user_dup_test"
+        await create_user_func(user_id)
 
         # Record first consent
         consent1 = await disclosure_service_fixture.record_consent(

@@ -12,6 +12,7 @@ from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
+import pytest_asyncio
 
 from backend.app.research.models import (
     ResearchPaperTrade,
@@ -46,7 +47,7 @@ def sample_signal():
     return signal
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def sample_strategy_paper(db_session):
     """Strategy in paper status."""
     strategy = StrategyMetadata(

@@ -13,7 +13,7 @@ from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.app.core.idempotency import RedisIdempotencyStorage
-from backend.app.core.redis_cache import get_redis
+from backend.app.core.redis import get_redis
 
 # Context variable for request ID
 request_id_var: ContextVar[str] = ContextVar("request_id", default="")

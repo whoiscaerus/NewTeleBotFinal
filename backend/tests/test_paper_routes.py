@@ -17,8 +17,8 @@ async def test_enable_paper_trading(client: AsyncClient, test_user, db_session):
 
     assert response.status_code == 201
     data = response.json()
-    assert data["balance"] == 5000.00
-    assert data["equity"] == 5000.00
+    assert float(data["balance"]) == 5000.00
+    assert float(data["equity"]) == 5000.00
     assert data["enabled"] is True
     assert data["user_id"] == test_user.id
 
@@ -49,7 +49,7 @@ async def test_enable_paper_trading_default_balance(
 
     assert response.status_code == 201
     data = response.json()
-    assert data["balance"] == 10000.00  # Default
+    assert float(data["balance"]) == 10000.00  # Default
 
 
 @pytest.mark.asyncio
@@ -64,7 +64,7 @@ async def test_disable_paper_trading(client: AsyncClient, test_user, db_session)
     assert response.status_code == 200
     data = response.json()
     assert data["enabled"] is False
-    assert data["balance"] == 10000.00  # Preserved
+    assert float(data["balance"]) == 10000.00  # Preserved
 
 
 @pytest.mark.asyncio
@@ -89,8 +89,8 @@ async def test_get_paper_account(client: AsyncClient, test_user, db_session):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["balance"] == 7500.00
-    assert data["equity"] == 7500.00
+    assert float(data["balance"]) == 7500.00
+    assert float(data["equity"]) == 7500.00
     assert data["enabled"] is True
 
 
@@ -125,9 +125,9 @@ async def test_place_paper_order(client: AsyncClient, test_user, db_session):
     data = response.json()
     assert data["symbol"] == "GOLD"
     assert data["side"] == "buy"
-    assert data["volume"] == 1.0
-    assert data["entry_price"] == 1950.27  # Mid + slippage (2 pips)
-    assert data["slippage"] == 0.02
+    assert float(data["volume"]) == 1.0
+    assert float(data["entry_price"]) == 1950.27  # Mid + slippage (2 pips)
+    assert float(data["slippage"]) == 0.02
 
 
 @pytest.mark.asyncio
@@ -201,8 +201,8 @@ async def test_get_paper_positions(client: AsyncClient, test_user, db_session):
     assert len(data) == 1
     assert data[0]["symbol"] == "GOLD"
     assert data[0]["side"] == "buy"
-    assert data[0]["volume"] == 1.0
-    assert data[0]["unrealized_pnl"] == 0.0
+    assert float(data[0]["volume"]) == 1.0
+    assert float(data[0]["unrealized_pnl"]) == 0.0
 
 
 @pytest.mark.asyncio
@@ -299,7 +299,7 @@ async def test_paper_trading_isolation(client: AsyncClient, test_user, db_sessio
     paper_data = response.json()
 
     # Verify paper balance reduced
-    assert paper_data["balance"] < 10000.00
+    assert float(paper_data["balance"]) < 10000.00
 
     # Note: Live trading would be separate API endpoints (not implemented yet)
     # This test verifies paper trading maintains separate state
@@ -323,7 +323,7 @@ async def test_re_enable_paper_trading_resets_balance(
 
     assert response.status_code == 201
     data = response.json()
-    assert data["balance"] == 7500.00  # Reset to new amount
+    assert float(data["balance"]) == 7500.00  # Reset to new amount
 
 
 @pytest.mark.asyncio
@@ -406,7 +406,7 @@ async def test_paper_trading_telemetry(
         metrics.paper_fills_total,
         "labels",
         lambda symbol, side: type(
-            "MockCounter", (), {"inc": lambda: mock_fills_inc(symbol, side)}
+            "MockCounter", (), {"inc": lambda amount=1: mock_fills_inc(symbol, side)}
         )(),
     )
     monkeypatch.setattr(metrics.paper_pnl_total, "set", mock_pnl_set)

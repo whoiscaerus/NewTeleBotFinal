@@ -228,7 +228,6 @@ jobs:
             --json-report \
             --json-report-file=./test-results/test_results.json \
             --json-report-indent=2 \
-            --json-report-omit=log \
             --tb=short \
             --timeout=60 \
             --timeout-method=thread \
@@ -273,58 +272,138 @@ jobs:
           # Exit with original test exit code
           exit $TEST_EXIT_CODE
 
-      - name: Generate test failure report
+      - name: Generate comprehensive test results report
         if: always()
         run: |
           echo "=========================================="
-          echo "GENERATING TEST FAILURE REPORT"
+          echo "GENERATING COMPREHENSIVE TEST RESULTS REPORT"
           echo "=========================================="
 
-          # Check if JSON report exists before generating report
+          # Ensure output directory exists
+          mkdir -p test-results
+
+          # Check if JSON report exists
           if [ -f "test-results/test_results.json" ]; then
-            echo "✅ JSON report found, generating detailed report..."
-            python scripts/analyze_test_output.py --json test-results/test_results.json --output test-results/TEST_FAILURES_DETAILED.md --csv test-results/TEST_FAILURES.csv || echo "⚠️ Report generation script failed"
+            echo "✅ JSON report found, generating comprehensive report..."
+            python scripts/generate_test_report.py \
+              --json test-results/test_results.json \
+              --output test-results/TEST_RESULTS_REPORT.md \
+              --csv test-results/TEST_FAILURES.csv
+
+            if [ $? -eq 0 ]; then
+              echo "✅ Report generation successful"
+              echo ""
+              echo "Report Summary (first 100 lines):"
+              head -100 test-results/TEST_RESULTS_REPORT.md
+            else
+              echo "⚠️ Report generation script failed"
+            fi
           else
-            echo "❌ JSON report not found, creating placeholder report..."
+            echo "❌ JSON report not found at test-results/test_results.json"
+            echo "   Creating placeholder comprehensive report..."
+
             mkdir -p test-results
-            cat > test-results/TEST_FAILURES_DETAILED.md <<EOF
-          # 🧪 Test Failure Report
+            cat > test-results/TEST_RESULTS_REPORT.md << 'PLACEHOLDER_EOF'
+# 🧪 Comprehensive Test Results Report
 
-          ⚠️ **Report Generation Issue**
+**Generated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
 
-          The pytest JSON report was not found at expected location: \`test-results/test_results.json\`
+## ⚠️ Report Generation Issue
 
-          This can happen if:
-          - pytest was terminated due to timeout (>120 minutes)
-          - pytest crashed before completing
-          - pytest-json-report plugin failed to initialize
-          - Tests collection failed completely
+The pytest JSON report was not found at expected location: `test-results/test_results.json`
 
-          ## 📋 What We Know
+This typically means one of the following occurred:
+- ❌ pytest was terminated due to timeout (>120 minutes)
+- ❌ pytest crashed or failed to complete normally
+- ❌ pytest-json-report plugin failed to initialize
+- ❌ Tests collection phase failed completely
+- ❌ Disk space or memory issues during test execution
 
-          - **Test Run**: Started but may not have completed
-          - **Timeout**: Individual tests limited to 60 seconds
-          - **Total Timeout**: Job limited to 120 minutes
-          - **See**: Full logs in test_output.log artifact
+## 📋 Available Artifacts
 
-          ## 🔍 Next Steps
+1. **test_output.log** - Full pytest console output (search for errors here)
+2. **ci_collected_tests.txt** - List of tests that were collected before failure
+3. **coverage/backend/htmlcov/** - HTML coverage report
 
-          1. Download the \`test_output.log\` artifact from this run
-          2. Search for the last test that ran before timeout/failure
-          3. Run that specific test locally: \`pytest path/to/test.py::test_name -xvs\`
-          4. Fix the hanging/failing test
-          5. Push fix and re-run CI
+## 🔍 Troubleshooting Steps
 
-          ---
-          *This placeholder was created because pytest did not generate a JSON report*
-          EOF
-            echo "Created placeholder report"
+### Step 1: Check the Test Output Log
+```bash
+# Download test_output.log from CI artifacts
+# Search for the last test that ran
+# Look for patterns like:
+#   - TIMEOUT
+#   - FAILED
+#   - ERROR
+#   - AssertionError
+```
+
+### Step 2: Identify the Problem Test
+Once you find where the test run stopped, note the test name and run it locally:
+
+```powershell
+# Run the specific failing test
+.venv/Scripts/python.exe -m pytest backend/tests/test_file.py::test_name -xvs
+
+# Or run with timeout detection
+.venv/Scripts/python.exe -m pytest backend/tests/ --timeout=60 -x
+```
+
+### Step 3: Check Common Issues
+
+| Issue | Symptom | Fix |
+|-------|---------|-----|
+| Memory exhaustion | Last tests very slow, then timeout | Reduce test parallelism or split into smaller batches |
+| Database connection pool | "too many connections" errors | Check database max_connections setting |
+| Redis/Postgres services | "Connection refused" early in log | Verify CI service containers started correctly |
+| Hanging test | Test runs but never completes | Add timeout decorator or investigate external API calls |
+| Import error | Collection errors at start | Check Python imports and dependency installation |
+
+### Step 4: Review Logs
+
+Key sections to search in `test_output.log`:
+- `FAILED` - Lists all failed tests
+- `ERROR` - Collection or setup errors
+- `TIMEOUT` - Tests that exceeded time limit
+- `PASSED` - Confirms tests that did run successfully
+
+### Step 5: Fix & Re-run
+
+Once you identify and fix the issue:
+
+```bash
+# Verify locally first
+.venv/Scripts/python.exe -m pytest backend/tests/ -v --tb=short
+
+# Then push to GitHub
+git add .
+git commit -m "Fix: [describe fix]"
+git push origin main
+```
+
+## 📊 What We Know
+
+- **Timeout**: Individual tests limited to 60 seconds
+- **Job Timeout**: CI job limited to 120 minutes
+- **Full Output**: Available in `test_output.log` artifact
+- **Test Collection**: Results in `ci_collected_tests.txt` artifact
+
+---
+
+*This placeholder was created because pytest JSON report generation failed. The comprehensive report will be available once the test suite completes successfully.*
+
+**Time to Debug**: Usually 5-15 minutes to identify the issue locally
+
+PLACEHOLDER_EOF
+
+            echo "Created placeholder comprehensive report"
           fi
 
-          # Always show what we created
           echo ""
-          echo "Report preview (first 50 lines):"
-          head -50 test-results/TEST_FAILURES_DETAILED.md || echo "Report not created"
+          echo "=========================================="
+          echo "Report file(s) created:"
+          ls -lh test-results/*.md test-results/*.csv 2>/dev/null || echo "No reports found"
+          echo "=========================================="
 
       - name: Upload test results
         if: always()

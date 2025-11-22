@@ -1,14 +1,31 @@
 #!/usr/bin/env python3
 """
-Generate detailed test failure report from pytest JSON output.
-Saves to TEST_FAILURES_DETAILED.md in repo root for easy review.
+Generate comprehensive test report from pytest JSON output.
+Saves to TEST_RESULTS_REPORT.md and TEST_FAILURES.csv.
+
+Usage:
+    python generate_test_report.py --json test-results/test_results.json \
+                                   --output test-results/TEST_RESULTS_REPORT.md \
+                                   --csv test-results/TEST_FAILURES.csv
 """
 
+import csv
 import json
 import sys
 from collections import defaultdict
 from datetime import datetime
-from pathlib import Path
+
+
+def group_failures_by_module(tests: list) -> dict:
+    """Group failed tests by module."""
+    failures = defaultdict(list)
+    for test in tests:
+        outcome = test.get("outcome", "unknown")
+        if outcome in ["failed", "error"]:
+            nodeid = test.get("nodeid", "unknown")
+            module = nodeid.split("::")[0]
+            failures[module].append(test)
+    return failures
 
 
 def parse_pytest_json(json_file: str) -> dict:
@@ -19,31 +36,13 @@ def parse_pytest_json(json_file: str) -> dict:
     except FileNotFoundError:
         print(f"⚠️ {json_file} not found")
         return None
+    except json.JSONDecodeError as e:
+        print(f"⚠️ Invalid JSON in {json_file}: {e}")
+        return None
 
 
-def group_failures_by_module(tests: list) -> dict:
-    """Group test failures by module."""
-    failures = defaultdict(list)
-    for test in tests:
-        if test["outcome"] == "failed":
-            # Extract module name from test nodeid
-            module = test["nodeid"].split("::")[0].replace("backend/tests/", "")
-            failures[module].append(test)
-    return failures
-
-
-def generate_report(json_file: str, output_file: str):
-    """Generate detailed failure report."""
-
-    # Parse JSON
-    data = parse_pytest_json(json_file)
-
-    # Handle missing JSON file
-    if data is None:
-        print("⚠️ Cannot generate report without pytest JSON output")
-        print(f"   Tried: {json_file}")
-        print("   Make sure pytest runs with --json-report flag")
-        return
+def generate_markdown_report(data: dict, output_md: str) -> None:
+    """Generate comprehensive Markdown report."""
 
     # Get summary
     summary = data.get("summary", {})
@@ -52,140 +51,312 @@ def generate_report(json_file: str, output_file: str):
     failed = summary.get("failed", 0)
     skipped = summary.get("skipped", 0)
     errors = summary.get("error", 0)
+    duration = data.get("duration", 0.0)
 
-    # Get tests
+    # Calculate pass rate
+    pass_rate = (passed / total * 100) if total > 0 else 0.0
+
+    # Get tests and group failures
     tests = data.get("tests", [])
-
-    # Group failures
     failures_by_module = group_failures_by_module(tests)
 
-    # Generate markdown report
+    # Build report
     report = []
-    report.append("# 🧪 Test Failure Report\n")
-    report.append(f"**Generated**: {datetime.now().isoformat()}\n")
+    report.append("# 🧪 Comprehensive Test Results Report\n")
     report.append(
-        f"**GitHub Actions Run**: {Path('GITHUB_ACTIONS_RUN_URL').read_text().strip() if Path('GITHUB_ACTIONS_RUN_URL').exists() else 'Unknown'}\n\n"
+        f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
     )
 
     # Summary section
-    report.append("## 📊 Summary\n")
-    report.append(f"- **Total Tests**: {total}\n")
-    report.append(f"- ✅ **Passed**: {passed}\n")
-    report.append(f"- ❌ **Failed**: {failed}\n")
-    report.append(f"- ⏭️ **Skipped**: {skipped}\n")
-    report.append(f"- 💥 **Errors**: {errors}\n")
-    # Fix division by zero
-    if total > 0:
-        report.append(f"- **Pass Rate**: {(passed/total*100):.1f}%\n\n")
-    else:
-        report.append("- **Pass Rate**: N/A (no tests collected)\n\n")
+    report.append("## 📊 Executive Summary\n")
+    report.append("| Metric | Value |\n")
+    report.append("|--------|-------|\n")
+    report.append(f"| **Total Tests** | {total} |\n")
+    report.append(f"| ✅ **Passed** | {passed} |\n")
+    report.append(f"| ❌ **Failed** | {failed} |\n")
+    report.append(f"| ⏭️ **Skipped** | {skipped} |\n")
+    report.append(f"| 💥 **Errors** | {errors} |\n")
+    report.append(f"| **Duration** | {duration:.2f}s |\n")
+    report.append(f"| **Pass Rate** | {pass_rate:.1f}% |\n\n")
 
-    # Quick summary table
+    # Status indicator
+    if failed == 0 and errors == 0:
+        report.append("### ✅ **Status: ALL TESTS PASSED**\n\n")
+        report.append(f"🎉 Congratulations! All {total} tests passed successfully!\n\n")
+    else:
+        total_issues = failed + errors
+        report.append(f"### ⚠️ **Status: {total_issues} Test(s) Failing**\n\n")
+        report.append("Please review the failures below and fix before merging.\n\n")
+
+    # Failures by module section
     if failures_by_module:
         report.append("## 🚨 Failures by Module\n\n")
-        report.append("| Module | Count | Tests |\n")
-        report.append("|--------|-------|-------|\n")
+        report.append("| Module | Failed | Error | Total Issues |\n")
+        report.append("|--------|--------|-------|---------------|\n")
 
         for module in sorted(failures_by_module.keys()):
-            failures = failures_by_module[module]
-            test_names = ", ".join([t["nodeid"].split("::")[-1] for t in failures[:3]])
-            if len(failures) > 3:
-                test_names += f", ... +{len(failures)-3} more"
-            report.append(f"| `{module}` | {len(failures)} | {test_names} |\n")
+            module_failures = failures_by_module[module]
+            fail_count = sum(1 for t in module_failures if t.get("outcome") == "failed")
+            err_count = sum(1 for t in module_failures if t.get("outcome") == "error")
+            total_count = len(module_failures)
+            report.append(
+                f"| `{module}` | {fail_count} | {err_count} | **{total_count}** |\n"
+            )
 
         report.append("\n")
 
-    # Detailed failures
+    # Test details table
+    report.append("## 📋 All Test Results\n\n")
+    report.append("| Test Case | Status | Duration | Error Summary |\n")
+    report.append("|-----------|--------|----------|----------------|\n")
+
+    for test in tests:
+        nodeid = test.get("nodeid", "unknown")
+        outcome = test.get("outcome", "unknown")
+        test_duration = test.get("call", {}).get("duration", 0.0)
+
+        # Status emoji
+        if outcome == "passed":
+            status = "✅ PASS"
+        elif outcome == "failed":
+            status = "❌ FAIL"
+        elif outcome == "error":
+            status = "💥 ERROR"
+        elif outcome == "skipped":
+            status = "⏭️ SKIP"
+        else:
+            status = f"❓ {outcome.upper()}"
+
+        # Get error message
+        error_msg = ""
+        if "call" in test and "longrepr" in test["call"]:
+            longrepr = test["call"]["longrepr"]
+            if isinstance(longrepr, str):
+                # Get last line of error
+                lines = longrepr.strip().split("\n")
+                error_msg = lines[-1] if lines else "Unknown error"
+            else:
+                error_msg = str(longrepr)[:100]
+        elif "setup" in test and "longrepr" in test["setup"]:
+            error_msg = "Setup failed"
+        elif "teardown" in test and "longrepr" in test["teardown"]:
+            error_msg = "Teardown failed"
+
+        # Truncate and escape
+        error_msg = error_msg.replace("|", "\\|").replace("\n", " ")
+        if len(error_msg) > 80:
+            error_msg = error_msg[:77] + "..."
+
+        report.append(
+            f"| `{nodeid}` | {status} | {test_duration:.4f}s | {error_msg} |\n"
+        )
+
+    report.append("\n")
+
+    # Detailed failure section
     if failures_by_module:
-        report.append("## 📋 Detailed Failures\n\n")
+        report.append("## 🔍 Detailed Failure Analysis\n\n")
 
+        failure_index = 1
         for module in sorted(failures_by_module.keys()):
-            failures = failures_by_module[module]
-            report.append(f"### {module}\n\n")
+            module_failures = failures_by_module[module]
+            report.append(f"### {module} ({len(module_failures)} issue(s))\n\n")
 
-            for i, test in enumerate(failures, 1):
-                test_name = test["nodeid"].split("::")[-1]
-                report.append(f"#### {i}. {test_name}\n\n")
-                report.append(f"**Test Path**: `{test['nodeid']}`\n\n")
+            for test in module_failures:
+                nodeid = test.get("nodeid", "unknown")
+                outcome = test.get("outcome", "unknown")
+                test_duration = test.get("call", {}).get("duration", 0.0)
 
-                # Get failure info
-                if "call" in test and test["call"].get("longrepr"):
-                    report.append("**Error**:\n```\n")
-                    report.append(test["call"]["longrepr"][:500])  # First 500 chars
-                    if len(test["call"]["longrepr"]) > 500:
-                        report.append("\n... (truncated)")
+                report.append(f"#### {failure_index}. {nodeid}\n")
+                report.append(f"**Status**: {outcome.upper()}\n")
+                report.append(f"**Duration**: {test_duration:.4f}s\n\n")
+
+                # Get full traceback
+                longrepr = None
+                if "call" in test and "longrepr" in test["call"]:
+                    longrepr = test["call"]["longrepr"]
+                elif "setup" in test and "longrepr" in test["setup"]:
+                    longrepr = test["setup"]["longrepr"]
+                    report.append("**Phase**: Setup\n\n")
+                elif "teardown" in test and "longrepr" in test["teardown"]:
+                    longrepr = test["teardown"]["longrepr"]
+                    report.append("**Phase**: Teardown\n\n")
+
+                if longrepr:
+                    report.append("**Error Details**:\n```\n")
+                    if isinstance(longrepr, str):
+                        # Truncate very long tracebacks
+                        lines = longrepr.split("\n")
+                        if len(lines) > 50:
+                            report.append("\n".join(lines[:25]))
+                            report.append(
+                                f"\n... ({len(lines) - 50} lines omitted) ...\n"
+                            )
+                            report.append("\n".join(lines[-25:]))
+                        else:
+                            report.append(longrepr)
+                    else:
+                        report.append(json.dumps(longrepr, indent=2)[:2000])
                     report.append("\n```\n\n")
 
-                # Get assertion details
+                # Add captured output if available
                 if "call" in test:
                     call = test["call"]
-                    if call.get("outcome") == "failed":
-                        if "longreprtext" in call:
-                            report.append("**Details**:\n```\n")
-                            report.append(call["longreprtext"][:300])
-                            report.append("\n```\n\n")
 
-    # No failures section
-    if failed == 0 and errors == 0:
-        report.append("## ✅ All Tests Passed!\n\n")
-        report.append(f"🎉 **{passed} tests passed** with 0 failures!\n\n")
+                    if call.get("stdout"):
+                        report.append("**Captured Stdout**:\n```\n")
+                        stdout = call["stdout"][:500]
+                        report.append(stdout)
+                        if len(call["stdout"]) > 500:
+                            report.append("\n... (truncated)")
+                        report.append("\n```\n\n")
+
+                    if call.get("stderr"):
+                        report.append("**Captured Stderr**:\n```\n")
+                        stderr = call["stderr"][:500]
+                        report.append(stderr)
+                        if len(call["stderr"]) > 500:
+                            report.append("\n... (truncated)")
+                        report.append("\n```\n\n")
+
+                    if call.get("log"):
+                        report.append("**Captured Logs**:\n```\n")
+                        logs = json.dumps(call["log"], indent=2)[:1000]
+                        report.append(logs)
+                        if len(json.dumps(call["log"], indent=2)) > 1000:
+                            report.append("\n... (truncated)")
+                        report.append("\n```\n\n")
+
+                report.append("---\n\n")
+                failure_index += 1
 
     # How to fix section
-    report.append("## 🔧 How to Fix\n\n")
-    report.append("1. **Read the error message** in each failure above\n")
+    report.append("## 🔧 How to Fix Failing Tests\n\n")
+    report.append("### Quick Steps\n")
+    report.append("1. **Read the error** in the detailed failure section above\n")
     report.append(
-        "2. **Identify the root cause** (wrong assertion, missing data, etc.)\n"
+        "2. **Identify the root cause** (assertion failure, missing data, timeout, etc.)\n"
     )
     report.append("3. **Run locally** to reproduce:\n")
-    report.append("   ```bash\n")
-    report.append("   .venv/Scripts/python.exe -m pytest <test-path> -xvs\n")
+    report.append("   ```powershell\n")
+    report.append("   .venv/Scripts/python.exe -m pytest <test_path> -xvs\n")
     report.append("   ```\n")
-    report.append("4. **Fix the code** based on error\n")
-    report.append("5. **Commit & push** to GitHub → CI/CD re-runs automatically\n\n")
+    report.append("4. **Fix the issue** in your code\n")
+    report.append("5. **Verify locally** that the test passes\n")
+    report.append(
+        "6. **Commit & push** to GitHub → CI/CD will re-run automatically\n\n"
+    )
+
+    # Common issues
+    report.append("### Common Issues & Solutions\n")
+    report.append("| Issue | Cause | Solution |\n")
+    report.append("|-------|-------|----------|\n")
+    report.append(
+        "| `AssertionError` | Expected value doesn't match actual | Check assertion logic and expected values |\n"
+    )
+    report.append(
+        "| `TimeoutError` | Test took too long (>60s) | Optimize test or increase timeout |\n"
+    )
+    report.append(
+        "| `ConnectionError` | Can't connect to service | Verify PostgreSQL/Redis are running |\n"
+    )
+    report.append(
+        "| `KeyError` | Missing required data | Check fixture or test setup |\n"
+    )
+    report.append(
+        "| `ImportError` | Can't import module | Check file location and PYTHONPATH |\n\n"
+    )
+
+    # Resources
+    report.append("## 📚 Resources\n\n")
+    report.append(
+        "- **Test Command**: `.venv/Scripts/python.exe -m pytest backend/tests -v`\n"
+    )
+    report.append(
+        "- **Coverage Report**: `coverage/backend/htmlcov/index.html` (in CI artifacts)\n"
+    )
+    report.append("- **Full Test Log**: `test_output.log` (in CI artifacts)\n")
+    report.append(
+        "- **GitHub Actions Run**: [View in Actions tab](https://github.com/who-is-caerus/NewTeleBotFinal/actions)\n\n"
+    )
 
     # Footer
     report.append("---\n")
-    report.append("*Report generated by GitHub Actions CI/CD pipeline*\n")
+    report.append("*Report automatically generated by GitHub Actions CI/CD pipeline*\n")
+    report.append(f"*Generated at: {datetime.now().isoformat()}*\n")
 
     # Write report
-    with open(output_file, "w") as f:
-        f.writelines(report)
+    with open(output_md, "w", encoding="utf-8") as f:
+        f.write("".join(report))
 
-    print(f"✅ Report saved: {output_file}")
-    print(f"📊 Summary: {passed} passed, {failed} failed, {skipped} skipped")
+    print(f"✅ Markdown report generated: {output_md}")
+
+
+def generate_csv_report(data: dict, output_csv: str) -> None:
+    """Generate CSV report for easy analysis."""
+
+    tests = data.get("tests", [])
+    csv_rows = [["Test Case", "Status", "Duration (s)", "Outcome", "Error Summary"]]
+
+    for test in tests:
+        nodeid = test.get("nodeid", "unknown")
+        outcome = test.get("outcome", "unknown")
+        test_duration = test.get("call", {}).get("duration", 0.0)
+
+        # Get error message
+        error_msg = ""
+        if outcome in ["failed", "error"]:
+            if "call" in test and "longrepr" in test["call"]:
+                longrepr = test["call"]["longrepr"]
+                if isinstance(longrepr, str):
+                    lines = longrepr.strip().split("\n")
+                    error_msg = lines[-1] if lines else "Unknown error"
+                else:
+                    error_msg = str(longrepr)[:200]
+            elif "setup" in test and "longrepr" in test["setup"]:
+                error_msg = "Setup failed"
+            elif "teardown" in test and "longrepr" in test["teardown"]:
+                error_msg = "Teardown failed"
+
+        csv_rows.append(
+            [
+                nodeid,
+                outcome.upper(),
+                f"{test_duration:.4f}",
+                outcome.upper(),
+                error_msg[:500],  # Truncate for CSV
+            ]
+        )
+
+    # Write CSV
+    with open(output_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerows(csv_rows)
+
+    print(f"✅ CSV report generated: {output_csv}")
 
 
 if __name__ == "__main__":
-    # Accept command line arguments for file paths
-    if len(sys.argv) >= 3:
-        json_report = sys.argv[1]
-        output_report = sys.argv[2]
-    else:
-        # Default paths - pytest-json-report outputs to repo root by default
-        json_report = "test_results.json"
-        output_report = "TEST_FAILURES_DETAILED.md"
+    import argparse
 
-    # Check if pytest JSON exists
-    if not Path(json_report).exists():
-        print(f"⚠️ {json_report} not found, trying alternate paths...")
-        # Try alternate locations
-        for alt_path in [
-            "test-results/test_results.json",
-            "backend/tests/.pytest_cache/test_results.json",
-            "backend/test_results.json",
-            ".pytest_cache/test_results.json",
-            ".pytest_results.json",
-        ]:
-            if Path(alt_path).exists():
-                json_report = alt_path
-                print(f"   ✅ Found: {json_report}")
-                break
-        else:
-            print("   ⚠️ No JSON report found in any location")
-            print("   This can happen if pytest didn't complete or JSON plugin failed")
-            print(
-                "   ⚠️ Script will exit with error - GitHub Actions will create placeholder"
-            )
-            sys.exit(1)  # Exit with error so GitHub Actions knows to create placeholder
+    parser = argparse.ArgumentParser(
+        description="Generate comprehensive test report from pytest JSON output"
+    )
+    parser.add_argument("--json", required=True, help="Input pytest JSON report file")
+    parser.add_argument("--output", required=True, help="Output Markdown report file")
+    parser.add_argument("--csv", required=True, help="Output CSV file")
 
-    generate_report(json_report, output_report)
+    args = parser.parse_args()
+
+    # Parse JSON
+    data = parse_pytest_json(args.json)
+
+    if data is None:
+        print(f"❌ Failed to parse pytest JSON from: {args.json}")
+        sys.exit(1)
+
+    # Generate reports
+    generate_markdown_report(data, args.output)
+    generate_csv_report(data, args.csv)
+
+    print("\n✅ All reports generated successfully!")

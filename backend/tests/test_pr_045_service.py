@@ -263,10 +263,12 @@ class TestCopyTradingExecution:
         assert "not enabled" in reason
 
     @pytest.mark.asyncio
-    async def test_can_copy_execute_daily_limit_reached(self, db_session, copy_service):
+    async def test_can_copy_execute_daily_limit_reached(
+        self, db_session, copy_service, test_user
+    ):
         """Test can_copy_execute blocks when daily trade limit reached."""
         user_id = "test-user-001"
-        copy_service.enable_copy_trading(db_session, user_id)
+        await copy_service.enable_copy_trading(db_session, user_id)
 
         # Get settings and max out trades_today
         from sqlalchemy.future import select
@@ -279,22 +281,24 @@ class TestCopyTradingExecution:
         db_session.add(settings)
         await db_session.commit()
 
-        can_exec, reason = copy_service.can_copy_execute(db_session, user_id)
+        can_exec, reason = await copy_service.can_copy_execute(db_session, user_id)
 
         assert can_exec is False
         assert "Daily trade limit" in reason
 
     @pytest.mark.asyncio
-    async def test_execute_copy_trade_success(self, db_session, copy_service):
+    async def test_execute_copy_trade_success(
+        self, db_session, copy_service, test_user
+    ):
         """Test successful copy trade execution creates record and applies multiplier."""
         user_id = "test-user-001"
         signal_id = "sig-123"
         signal_volume = 2.0
         signal_data = {}
 
-        copy_service.enable_copy_trading(db_session, user_id, risk_multiplier=0.5)
+        await copy_service.enable_copy_trading(db_session, user_id, risk_multiplier=0.5)
 
-        result = copy_service.execute_copy_trade(
+        result = await copy_service.execute_copy_trade(
             db_session,
             user_id,
             signal_id,
@@ -310,11 +314,13 @@ class TestCopyTradingExecution:
         assert result["markup_percent"] == 30.0
 
     @pytest.mark.asyncio
-    async def test_execute_copy_trade_disabled(self, db_session, copy_service):
+    async def test_execute_copy_trade_disabled(
+        self, db_session, copy_service, test_user
+    ):
         """Test execute_copy_trade returns error when copy-trading disabled."""
         user_id = "test-user-001"
 
-        result = copy_service.execute_copy_trade(
+        result = await copy_service.execute_copy_trade(
             db_session, user_id, "sig-123", 1.0, {}
         )
 
@@ -323,14 +329,14 @@ class TestCopyTradingExecution:
 
     @pytest.mark.asyncio
     async def test_execute_copy_trade_persists_to_database(
-        self, db_session, copy_service
+        self, db_session, copy_service, test_user
     ):
         """Test copy trade execution is persisted to database."""
         user_id = "test-user-001"
         signal_id = "sig-456"
 
-        copy_service.enable_copy_trading(db_session, user_id)
-        result = copy_service.execute_copy_trade(
+        await copy_service.enable_copy_trading(db_session, user_id)
+        result = await copy_service.execute_copy_trade(
             db_session, user_id, signal_id, 1.5, {}
         )
 
@@ -351,15 +357,17 @@ class TestCopyTradingExecution:
 
     @pytest.mark.asyncio
     async def test_execute_copy_trade_increments_daily_counter(
-        self, db_session, copy_service
+        self, db_session, copy_service, test_user
     ):
         """Test each execution increments trades_today counter."""
         user_id = "test-user-001"
-        copy_service.enable_copy_trading(db_session, user_id)
+        await copy_service.enable_copy_trading(db_session, user_id)
 
         # Execute 3 trades
         for i in range(3):
-            copy_service.execute_copy_trade(db_session, user_id, f"sig-{i}", 1.0, {})
+            await copy_service.execute_copy_trade(
+                db_session, user_id, f"sig-{i}", 1.0, {}
+            )
 
         # Check counter
         from sqlalchemy.future import select
@@ -372,11 +380,11 @@ class TestCopyTradingExecution:
 
     @pytest.mark.asyncio
     async def test_execute_copy_trade_caps_at_max_position_size(
-        self, db_session, copy_service
+        self, db_session, copy_service, test_user
     ):
         """Test executed volume is capped at max_position_size_lot."""
         user_id = "test-user-001"
-        copy_service.enable_copy_trading(db_session, user_id, risk_multiplier=2.0)
+        await copy_service.enable_copy_trading(db_session, user_id, risk_multiplier=2.0)
 
         # Set small max_position_size
         from sqlalchemy.future import select
@@ -389,7 +397,7 @@ class TestCopyTradingExecution:
         await db_session.commit()
 
         # Try to execute 3.0 with 2.0x multiplier = 6.0, should cap at 2.0
-        result = copy_service.execute_copy_trade(
+        result = await copy_service.execute_copy_trade(
             db_session, user_id, "sig-123", 3.0, {}
         )
 
@@ -406,7 +414,7 @@ class TestRiskEvaluator:
 
     @pytest.mark.asyncio
     async def test_evaluate_risk_allow_trade_within_limits(
-        self, db_session, risk_evaluator
+        self, db_session, risk_evaluator, test_user
     ):
         """Test trade allowed when all risk parameters within limits."""
         user_id = "test-user-001"
@@ -448,7 +456,7 @@ class TestRiskEvaluator:
 
     @pytest.mark.asyncio
     async def test_evaluate_risk_block_on_max_leverage_breach(
-        self, db_session, risk_evaluator
+        self, db_session, risk_evaluator, test_user
     ):
         """Test trade blocked when leverage exceeds max_leverage."""
         user_id = "test-user-001"
@@ -489,7 +497,7 @@ class TestRiskEvaluator:
 
     @pytest.mark.asyncio
     async def test_evaluate_risk_block_on_trade_risk_breach(
-        self, db_session, risk_evaluator
+        self, db_session, risk_evaluator, test_user
     ):
         """Test trade blocked when per-trade risk exceeds limit."""
         user_id = "test-user-001"
@@ -530,7 +538,7 @@ class TestRiskEvaluator:
 
     @pytest.mark.asyncio
     async def test_evaluate_risk_block_on_total_exposure_breach(
-        self, db_session, risk_evaluator
+        self, db_session, risk_evaluator, test_user
     ):
         """Test trade blocked when total exposure exceeds limit."""
         user_id = "test-user-001"
@@ -569,7 +577,7 @@ class TestRiskEvaluator:
 
     @pytest.mark.asyncio
     async def test_evaluate_risk_block_on_daily_stop_breach(
-        self, db_session, risk_evaluator
+        self, db_session, risk_evaluator, test_user
     ):
         """Test trade blocked when daily losses exceed daily_stop."""
         user_id = "test-user-001"
@@ -703,11 +711,21 @@ class TestDisclosureService:
 
     @pytest.mark.asyncio
     async def test_record_consent_creates_immutable_record(
-        self, db_session, disclosure_service
+        self, db_session, disclosure_service, test_user
     ):
         """Test recording user consent creates immutable record."""
         user_id = "test-user-001"
         version = "1.0"
+
+        # Create disclosure first
+        await disclosure_service.create_disclosure(
+            db_session,
+            version,
+            "Risk Disclosure",
+            "Content",
+            datetime.utcnow(),
+            is_active=True,
+        )
 
         consent = await disclosure_service.record_consent(
             db_session,
@@ -736,7 +754,7 @@ class TestDisclosureService:
 
     @pytest.mark.asyncio
     async def test_has_accepted_current_disclosure(
-        self, db_session, disclosure_service
+        self, db_session, disclosure_service, test_user
     ):
         """Test checking if user has accepted current disclosure."""
         user_id = "test-user-001"
@@ -767,9 +785,22 @@ class TestDisclosureService:
         assert has_accepted is True
 
     @pytest.mark.asyncio
-    async def test_get_user_consent_history(self, db_session, disclosure_service):
+    async def test_get_user_consent_history(
+        self, db_session, disclosure_service, test_user
+    ):
         """Test retrieving user's consent history."""
         user_id = "test-user-001"
+
+        # Create disclosures first
+        await disclosure_service.create_disclosure(
+            db_session, "1.0", "V1", "C1", datetime.utcnow(), is_active=False
+        )
+        await disclosure_service.create_disclosure(
+            db_session, "1.1", "V1.1", "C1.1", datetime.utcnow(), is_active=False
+        )
+        await disclosure_service.create_disclosure(
+            db_session, "2.0", "V2", "C2", datetime.utcnow(), is_active=True
+        )
 
         # Record consent for multiple versions
         await disclosure_service.record_consent(db_session, user_id, "1.0")
@@ -793,7 +824,7 @@ class TestCopyTradingIntegration:
 
     @pytest.mark.asyncio
     async def test_full_workflow_enable_accept_consent_execute_trade(
-        self, db_session, copy_service, disclosure_service
+        self, db_session, copy_service, disclosure_service, test_user
     ):
         """Test complete workflow: enable → accept consent → execute trade."""
         user_id = "test-user-001"
@@ -812,13 +843,13 @@ class TestCopyTradingIntegration:
         await disclosure_service.record_consent(db_session, user_id, "1.0")
 
         # Step 3: Enable copy-trading
-        result = copy_service.enable_copy_trading(
+        result = await copy_service.enable_copy_trading(
             db_session, user_id, consent_version="1.0"
         )
         assert result["enabled"] is True
 
         # Step 4: Execute trade
-        execution = copy_service.execute_copy_trade(
+        execution = await copy_service.execute_copy_trade(
             db_session, user_id, "sig-123", 2.0, {}
         )
         assert execution["status"] == "executed"
@@ -866,7 +897,9 @@ class TestEdgeCasesAndErrors:
     """Test edge cases and error conditions."""
 
     @pytest.mark.asyncio
-    async def test_copy_trading_with_zero_equity(self, db_session, risk_evaluator):
+    async def test_copy_trading_with_zero_equity(
+        self, db_session, risk_evaluator, test_user
+    ):
         """Test risk evaluation with zero equity (should block)."""
         user_id = "test-user-001"
 
@@ -903,7 +936,7 @@ class TestEdgeCasesAndErrors:
 
     @pytest.mark.asyncio
     async def test_copy_trading_paused_blocks_all_trades(
-        self, db_session, risk_evaluator
+        self, db_session, risk_evaluator, test_user
     ):
         """Test that paused copy-trading blocks all trades."""
         user_id = "test-user-001"
@@ -940,18 +973,18 @@ class TestEdgeCasesAndErrors:
         assert "paused" in reason
 
     @pytest.mark.asyncio
-    async def test_risk_multiplier_bounds(self, db_session, copy_service):
+    async def test_risk_multiplier_bounds(self, db_session, copy_service, test_user):
         """Test risk multiplier respects bounds (0.1 to 2.0)."""
         user_id = "test-user-001"
 
         # Valid: 1.0x
-        result = copy_service.enable_copy_trading(
+        result = await copy_service.enable_copy_trading(
             db_session, user_id, risk_multiplier=1.0
         )
         assert result["risk_multiplier"] == 1.0
 
         # Valid: 0.5x
-        result = copy_service.enable_copy_trading(
+        result = await copy_service.enable_copy_trading(
             db_session, user_id, risk_multiplier=0.5
         )
         assert result["risk_multiplier"] == 0.5

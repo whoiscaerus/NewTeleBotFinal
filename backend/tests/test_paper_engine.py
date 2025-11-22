@@ -7,6 +7,8 @@ Validates fill math, slippage calculation, position tracking, and PnL accuracy.
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from backend.app.paper.engine import FillPriceMode, PaperTradingEngine, SlippageMode
 from backend.app.paper.models import PaperAccount, TradeSide
@@ -221,7 +223,13 @@ async def test_position_tracking(db_session, test_user):
         ask=Decimal("1950.50"),
     )
 
-    await db_session.refresh(account)
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
 
     # Check position was created
     assert len(account.positions) == 1
@@ -271,7 +279,13 @@ async def test_position_averaging(db_session, test_user):
         ask=Decimal("1960.50"),
     )
 
-    await db_session.refresh(account)
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
 
     # Position should be averaged
     assert len(account.positions) == 1
@@ -308,7 +322,13 @@ async def test_close_position_profitable(db_session, test_user):
         ask=Decimal("1950.50"),
     )
 
-    await db_session.refresh(account)
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
     position = account.positions[0]
     # initial_balance = account.balance  # Removed - unused variable
 
@@ -321,7 +341,16 @@ async def test_close_position_profitable(db_session, test_user):
         ask=Decimal("1960.50"),
     )
 
-    await db_session.refresh(account)
+    # Expire account to force reload of relationships
+    db_session.expunge(account)
+
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
 
     # Verify PnL
     assert trade.realized_pnl == Decimal("10.00")  # (1960.25 - 1950.25) * 1.0
@@ -363,7 +392,13 @@ async def test_close_position_loss(db_session, test_user):
         ask=Decimal("1950.50"),
     )
 
-    await db_session.refresh(account)
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
     position = account.positions[0]
 
     # Close position at 1940.25 (loss of 10.00 per unit)
@@ -375,7 +410,13 @@ async def test_close_position_loss(db_session, test_user):
         ask=Decimal("1940.50"),
     )
 
-    await db_session.refresh(account)
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
 
     # Verify PnL
     assert trade.realized_pnl == Decimal("-10.00")  # (1940.25 - 1950.25) * 1.0
@@ -412,7 +453,13 @@ async def test_equity_calculation(db_session, test_user):
         ask=Decimal("1950.50"),
     )
 
-    await db_session.refresh(account)
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
     position = account.positions[0]
 
     # Update position price to simulate market movement
@@ -457,10 +504,16 @@ async def test_sell_position_pnl(db_session, test_user):
         ask=Decimal("1950.50"),
     )
 
-    await db_session.refresh(account)
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
     position = account.positions[0]
 
-    # Close SELL position at 1940.25 (profit because price went down)
+    # Close position at 1940.25 (profit of 10.00 per unit for SELL)
     trade = await engine.close_position(
         db=db_session,
         account=account,
@@ -469,5 +522,20 @@ async def test_sell_position_pnl(db_session, test_user):
         ask=Decimal("1940.50"),
     )
 
-    # For SELL: profit = entry - exit = 1950.25 - 1940.25 = 10.00
+    # Reload account with positions
+    result = await db_session.execute(
+        select(PaperAccount)
+        .where(PaperAccount.id == account.id)
+        .options(selectinload(PaperAccount.positions))
+    )
+    account = result.scalar_one()
+
+    # Verify PnL
+    # Entry: 1950.25, Exit: 1940.25
+    # Profit = (Entry - Exit) * Volume = (1950.25 - 1940.25) * 1.0 = 10.00
     assert trade.realized_pnl == Decimal("10.00")
+
+    # Verify balance updated
+    # Initial balance after sell: 10000 - 1950.25 = 8049.75
+    # After close: 8049.75 + 1950.25 (margin) + 10.00 (profit) = 10010.00
+    assert account.balance == Decimal("10010.00")

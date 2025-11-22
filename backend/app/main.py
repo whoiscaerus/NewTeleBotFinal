@@ -46,6 +46,7 @@ from backend.app.journeys.routes import router as journeys_router
 from backend.app.kb.routes import router as kb_router  # PR-091: Knowledge Base
 from backend.app.messaging.routes import router as messaging_router
 from backend.app.observability.metrics import metrics
+from backend.app.paper.routes import router as paper_router
 from backend.app.payments.routes import router as payments_router
 from backend.app.polling.routes import router as polling_v2_router
 from backend.app.prefs.routes import router as prefs_router
@@ -147,6 +148,7 @@ app.include_router(kb_router, tags=["knowledge-base"])  # PR-091
 app.include_router(trust_router, tags=["trust"])
 app.include_router(messaging_router, tags=["messaging"])
 app.include_router(privacy_router, tags=["privacy"])
+app.include_router(paper_router, tags=["paper-trading"])
 app.include_router(copy_router, tags=["copy"])
 app.include_router(web_router, tags=["web-telemetry"])  # PR-084
 app.include_router(

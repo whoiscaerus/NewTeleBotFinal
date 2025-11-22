@@ -10,6 +10,22 @@ from backend.app.auth.models import User, UserRole
 from backend.app.auth.utils import create_access_token, hash_password, verify_password
 
 
+@pytest.fixture(autouse=True)
+def use_real_auth(client):
+    """Ensure auth tests use real authentication logic, not mocks.
+
+    The conftest.py client fixture mocks get_current_user to return the first user found.
+    This is great for other tests, but bad for auth tests that need to verify
+    token validation, user deletion, etc.
+    """
+    from backend.app.auth.dependencies import get_current_user
+    from backend.app.main import app
+
+    # Remove the mock override set by conftest.py
+    app.dependency_overrides.pop(get_current_user, None)
+    yield
+
+
 class TestPasswordHashing:
     """Test password hashing and verification."""
 
@@ -304,7 +320,7 @@ class TestMeEndpoint:
 
         # 401 Unauthorized is correct when no credentials provided
         assert response.status_code == 401
-        assert "Not authenticated" in response.json()["detail"]
+        assert "Missing Authorization header" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_me_with_invalid_token(self, client: AsyncClient):
@@ -314,7 +330,7 @@ class TestMeEndpoint:
         )
 
         assert response.status_code == 401
-        assert "Not authenticated" in response.json()["detail"]
+        assert "Invalid token" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_me_with_deleted_user(
@@ -323,13 +339,15 @@ class TestMeEndpoint:
         """Test /me fails if user deleted after token creation."""
         # Create user
         user = User(
-            email="deleted@example.com", password_hash=hash_password("password")
+            email="deleted@example.com",
+            password_hash="hash",
+            role=UserRole.USER,
         )
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
 
-        # Create token
+        # Generate token
         token = create_access_token(subject=user.id, role=user.role.value)
 
         # Delete user
@@ -342,7 +360,7 @@ class TestMeEndpoint:
         )
 
         assert response.status_code == 401
-        assert "Not authenticated" in response.json()["detail"]
+        assert "User not found" in response.json()["detail"]
 
 
 class TestAdminEndpoint:

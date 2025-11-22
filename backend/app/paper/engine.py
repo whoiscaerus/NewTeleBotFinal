@@ -9,6 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.observability.metrics import metrics
@@ -112,8 +113,7 @@ class PaperTradingEngine:
 
         # Deduct from balance (for buy side, margin requirement)
         # Simplified: deduct full cost on entry, return on exit
-        if side == TradeSide.BUY:
-            account.balance -= required_margin
+        account.balance -= required_margin
 
         # Create trade record
         trade = PaperTrade(
@@ -134,7 +134,7 @@ class PaperTradingEngine:
         await self._update_account_equity(db, account)
 
         await db.commit()
-        await db.refresh(trade)
+        # await db.refresh(trade)
 
         # Telemetry
         metrics.paper_fills_total.labels(symbol=symbol, side=side.value).inc()
@@ -208,12 +208,13 @@ class PaperTradingEngine:
 
         # Remove position
         await db.delete(position)
+        await db.flush()
 
         # Update account equity
         await self._update_account_equity(db, account)
 
         await db.commit()
-        await db.refresh(trade)
+        # await db.refresh(trade)
 
         # Telemetry
         metrics.paper_fills_total.labels(
@@ -273,11 +274,13 @@ class PaperTradingEngine:
             price: Fill price
         """
         # Find existing position
-        existing = None
-        for pos in account.positions:
-            if pos.symbol == symbol and pos.side == side:
-                existing = pos
-                break
+        stmt = select(PaperPosition).where(
+            PaperPosition.account_id == account.id,
+            PaperPosition.symbol == symbol,
+            PaperPosition.side == side,
+        )
+        result = await db.execute(stmt)
+        existing = result.scalar_one_or_none()
 
         if existing:
             # Average entry price
@@ -309,8 +312,13 @@ class PaperTradingEngine:
             db: Database session
             account: Paper account
         """
+        # Fetch all positions for the account
+        stmt = select(PaperPosition).where(PaperPosition.account_id == account.id)
+        result = await db.execute(stmt)
+        positions = result.scalars().all()
+
         unrealized_pnl = Decimal("0")
-        for pos in account.positions:
+        for pos in positions:
             if pos.side == TradeSide.BUY:
                 pos_pnl = (pos.current_price - pos.entry_price) * pos.volume
             else:
