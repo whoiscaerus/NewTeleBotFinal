@@ -7,7 +7,7 @@ Handles gaps, partial days, and peak tracking robustly.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.analytics.models import TradesFact
 from backend.app.core.logging import get_logger
+from backend.app.trading.store.models import EquityPoint
 
 logger = get_logger(__name__)
 
@@ -219,6 +220,60 @@ class EquityEngine:
         """
         if start_date and end_date and start_date > end_date:
             raise ValueError("start_date must be <= end_date")
+
+        # Try EquityPoint first (Gamification snapshots)
+        stmt = (
+            select(EquityPoint)
+            .where(EquityPoint.user_id == user_id)
+            .order_by(EquityPoint.snapshot_date)
+        )
+        result = await self.db.execute(stmt)
+        points = result.scalars().all()
+
+        if points:
+
+            dates = []
+            equity_values = []
+            peak_equity_values = []
+            cumulative_pnl_values = []
+
+            current_peak = initial_balance
+
+            for p in points:
+                # Handle both date and datetime
+                p_date = (
+                    p.snapshot_date.date()
+                    if isinstance(p.snapshot_date, datetime)
+                    else p.snapshot_date
+                )
+
+                if start_date and p_date < start_date:
+                    continue
+                if end_date and p_date > end_date:
+                    continue
+
+                dates.append(p_date)
+                equity_values.append(p.final_equity)
+
+                # Update peak
+                current_peak = max(current_peak, p.final_equity)
+                peak_equity_values.append(current_peak)
+
+                cumulative_pnl_values.append(p.total_pnl)
+
+            with open("c:\\Users\\FCumm\\NewTeleBotFinal\\debug_equity.log", "a") as f:
+                f.write(f"DEBUG: EquityEngine filtered points: {len(dates)}\n")
+            if dates:
+                self.logger.info(
+                    f"Computed equity series from EquityPoints for user {user_id}: {len(dates)} points",
+                    extra={"user_id": user_id, "points": len(dates)},
+                )
+                return EquitySeries(
+                    dates=dates,
+                    equity=equity_values,
+                    peak_equity=peak_equity_values,
+                    cumulative_pnl=cumulative_pnl_values,
+                )
 
         # Get all trades for user, sorted by exit date
         trades_query = (

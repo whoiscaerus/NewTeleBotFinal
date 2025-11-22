@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import Index, String
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.core.db import Base
@@ -191,11 +191,15 @@ class EquityPoint(Base):
 
     Attributes:
         equity_id: Unique identifier (UUID)
-        timestamp: When measured (UTC)
-        equity: Account equity in GBP
-        balance: Account balance in GBP
-        drawdown_percent: Current drawdown %
-        trades_open: Count of open trades
+        user_id: Reference to user
+        snapshot_date: When measured (UTC)
+        final_equity: Account equity in GBP
+        total_pnl: Total Profit/Loss
+        realized_pnl: Realized Profit/Loss
+        unrealized_pnl: Unrealized Profit/Loss
+        total_return_percent: Total return percentage
+        max_drawdown_percent: Maximum drawdown percentage
+        days_in_period: Number of days in the period
     """
 
     __tablename__ = "equity_points"
@@ -205,16 +209,24 @@ class EquityPoint(Base):
         String(36), primary_key=True, default=lambda: str(uuid4())
     )
 
+    # Foreign Keys
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=False, index=True
+    )
+
     # Equity Data
-    timestamp: Mapped[datetime] = mapped_column(nullable=False, index=True)
-    equity: Mapped[Decimal] = mapped_column(nullable=False)
-    balance: Mapped[Decimal] = mapped_column(nullable=False)
-    drawdown_percent: Mapped[Decimal] = mapped_column(nullable=False)
-    trades_open: Mapped[int] = mapped_column(nullable=False, default=0)
+    snapshot_date: Mapped[datetime] = mapped_column(nullable=False, index=True)
+    final_equity: Mapped[Decimal] = mapped_column(nullable=False)
+    total_pnl: Mapped[Decimal] = mapped_column(nullable=False, default=0)
+    realized_pnl: Mapped[Decimal] = mapped_column(nullable=False, default=0)
+    unrealized_pnl: Mapped[Decimal] = mapped_column(nullable=False, default=0)
+    total_return_percent: Mapped[Decimal] = mapped_column(nullable=False, default=0)
+    max_drawdown_percent: Mapped[Decimal] = mapped_column(nullable=False, default=0)
+    days_in_period: Mapped[int] = mapped_column(nullable=False, default=0)
 
     def __repr__(self) -> str:
         """String representation of equity point."""
-        return f"<EquityPoint {self.timestamp}: £{self.equity} (dd: {self.drawdown_percent}%)>"
+        return f"<EquityPoint {self.snapshot_date}: £{self.final_equity} (dd: {self.max_drawdown_percent}%)>"
 
 
 class ValidationLog(Base):
